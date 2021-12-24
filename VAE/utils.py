@@ -4,9 +4,9 @@ from scipy.stats import norm
 
 
 def plot_latent_image(model, latent_dim, patch_count, patch_side_size):
-    # 3δ原则
-    xs = norm.ppf(np.linspace(0.05, 0.95, patch_count))
-    ys = norm.ppf(np.linspace(0.05, 0.95, patch_count))
+    # 3σ原则
+    xs = norm.ppf(np.linspace(0.01, 0.99, patch_count))
+    ys = norm.ppf(np.linspace(0.01, 0.99, patch_count))
     image_size = [patch_count * patch_side_size, patch_count * patch_side_size]
     image = np.zeros(image_size)
 
