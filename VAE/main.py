@@ -1,8 +1,13 @@
+import torch
+
+import train
 import utils
 
 if __name__ == "__main__":
-    model = torch.load("...")
+    # train.train()
+
+    model = torch.load("./save_model/latent_dim-20/VAE_epoch_100_2021-12-25-21-40-36.pth")
     if hasattr(model, "latent_dim"):
-        utils.plot_latent_image(model, model.latent_dim, patch_count=30, patch_side_size=28)
+        utils.plot_latent_image(model, model.latent_dim, patch_count=20, patch_side_size=28)
     else:
-        utils.plot_latent_image(model, int(input("latent_dim=")), patch_count=30, patch_side_size=28)
+        utils.plot_latent_image(model, int(input("latent_dim=")), patch_count=20, patch_side_size=28)

@@ -1,4 +1,3 @@
-import torch
 from torch import sigmoid, exp, randn_like, sum
 from torch.nn import Module, Linear
 from torch.nn.functional import relu, binary_cross_entropy
