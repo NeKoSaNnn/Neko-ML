@@ -13,7 +13,7 @@ from neko import neko_utils
 def train():
     encoder_dim = 400
     decoder_dim = 400
-    latent_dim = 20
+    latent_dim = 2
     dataset_type = "mnist"
     dataset_path = "/dataset"
     save_val_path = "./val_result"
