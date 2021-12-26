@@ -1,7 +1,10 @@
 import os
 import os.path as osp
 import shutil
+import sys
 import time
+
+sys.path.append(osp.dirname(sys.path[0]))
 
 
 def log(log_type, now_epoch, now_iter, dict_loss):
@@ -12,9 +15,9 @@ def log(log_type, now_epoch, now_iter, dict_loss):
     print(Log)
 
 
-def divid_line(divid_line_str, totoal_len=60):
-    divid_line_len = (totoal_len - len(divid_line_str) - 2) // 2
-    line = "=" * divid_line_len + " " + divid_line_str + " " + "=" * divid_line_len
+def divide_line(divide_line_str, total_len=60):
+    divide_line_len = (total_len - len(divide_line_str) - 2) // 2
+    line = "=" * divide_line_len + " " + divide_line_str + " " + "=" * divide_line_len
     print(line)
 
 
