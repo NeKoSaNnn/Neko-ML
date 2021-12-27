@@ -1,4 +1,5 @@
 import os.path as osp
+import sys
 
 import torch
 import torch.optim as optim
@@ -7,6 +8,8 @@ from tqdm import tqdm
 
 import dataset
 from model import VAE
+
+sys.path.append(osp.dirname(sys.path[0]))
 from neko import neko_utils
 
 
