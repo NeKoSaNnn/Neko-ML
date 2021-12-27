@@ -1,12 +1,12 @@
 import os.path as osp
 import sys
 
-sys.path.append(osp.dirname(sys.path[0]))
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from scipy.stats import norm
 
+sys.path.append(osp.dirname(sys.path[0]))
 from neko import neko_utils
 
 
