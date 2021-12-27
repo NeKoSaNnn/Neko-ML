@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 
 def plot_latent_image(model, latent_dim, patch_count, patch_side_size):
-    # 3σ原则
+    # 2σ原则
     xs = norm.ppf(np.linspace(0.05, 0.95, patch_count))
     ys = norm.ppf(np.linspace(0.05, 0.95, patch_count))
     image_size = [patch_count * patch_side_size, patch_count * patch_side_size]
