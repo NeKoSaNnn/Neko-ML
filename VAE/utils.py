@@ -1,7 +1,7 @@
 import numpy as np
 import torch
-from scipy.stats import norm
 from matplotlib import pyplot as plt
+from scipy.stats import norm
 
 
 def plot_latent_image(model, latent_dim, patch_count, patch_side_size):

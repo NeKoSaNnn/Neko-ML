@@ -1,10 +1,7 @@
 import os
 import os.path as osp
 import shutil
-import sys
 import time
-
-sys.path.append(osp.dirname(sys.path[0]))
 
 
 def log(log_type, now_epoch, now_iter, dict_loss):

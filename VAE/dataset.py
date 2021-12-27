@@ -1,3 +1,8 @@
+import os.path as osp
+import sys
+
+sys.path.append(osp.dirname(sys.path[0]))
+
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
