@@ -34,4 +34,4 @@ def mkdir_nf(dir_path):
 
 
 def get_now_time():
-    return time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+    return time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())

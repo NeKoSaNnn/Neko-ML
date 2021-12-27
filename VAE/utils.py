@@ -3,6 +3,8 @@ import torch
 from matplotlib import pyplot as plt
 from scipy.stats import norm
 
+from neko import neko_utils
+
 
 def plot_latent_image(model, latent_dim, patch_count, patch_side_size):
     # 2σ原则
@@ -21,4 +23,6 @@ def plot_latent_image(model, latent_dim, patch_count, patch_side_size):
             y_index * patch_side_size:(y_index + 1) * patch_side_size] = decoder_image[0].cpu().detach().numpy()
     plt.figure(figsize=(10, 10))
     plt.imshow(image, cmap="gray")
+    plt.savefig("latent-{}_space_image_{}.png".format(latent_dim, neko_utils.get_now_time()))
+    neko_utils.divide_line("save latent space images !")
     plt.show()
