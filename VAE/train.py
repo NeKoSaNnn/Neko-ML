@@ -39,6 +39,8 @@ def train():
     # dataset
 
     train_loader, test_loader, input_size = dataset.get(dataset_type, dataset_path, batch_size)
+    print(len(train_loader))
+    print(len(test_loader))
 
     # model
 
@@ -48,10 +50,6 @@ def train():
 
     # optimizer
     optimizer = optim.Adam(vae.parameters(), lr)
-    train_rec_loss = []
-    train_kl_loss = []
-    train_total_loss = []
-    train_mean_loss = []
     for now_epoch in tqdm(range(1, epoch + 1), desc="Epoch", unit="epoch"):
         # train
         utils.divide_line("train")
@@ -69,8 +67,8 @@ def train():
             train_rec_loss.append(vae.reconstruct_loss(decoder_images, train_img.reshape(-1, input_size)))
             # kl_loss
             train_kl_loss.append(vae.kl_loss(mean, log_variance))
-            train_total_loss.append(rec_loss + kl_loss)
-            train_mean_loss.append(total_loss[-1] / len(train_loader))
+            train_total_loss.append(train_rec_loss[-1] + train_kl_loss[-1])
+            train_mean_loss.append(train_total_loss[-1] / batch_size)
 
             optimizer.zero_grad()
             train_mean_loss[-1].backward()
@@ -106,8 +104,8 @@ def train():
                 test_rec_loss.append(vae.reconstruct_loss(decoder_images, test_img.reshape(-1, input_size)))
                 # kl_loss
                 test_kl_loss.append(vae.kl_loss(mean, log_variance))
-                test_total_loss.append(rec_loss + kl_loss)
-                test_mean_loss.append(test_total_loss[-1] / len(test_loader))
+                test_total_loss.append(test_rec_loss[-1] + test_kl_loss[-1])
+                test_mean_loss.append(test_total_loss[-1] / batch_size)
 
                 test_img = test_img.reshape(-1, 1, 28, 28)
                 decoder_images = decoder_images.reshape(-1, 1, 28, 28)
