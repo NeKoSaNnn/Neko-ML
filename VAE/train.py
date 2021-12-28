@@ -3,7 +3,7 @@ import os.path as osp
 import torch
 import torch.optim as optim
 import torchvision
-from tqdm import tqdm
+from tqdm import tqdm_notebook as tqdm
 
 import dataset
 from model import VAE
@@ -89,7 +89,7 @@ def train():
                 sava_data = torch.cat((test_img, decoder_images), dim=3)
 
                 if test_iter % log_interval == 0:
-                    utils.log("train", {"epoch": now_epoch, "iter": test_iter,
+                    utils.log(" val ", {"epoch": now_epoch, "iter": test_iter,
                                         "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
                                         "totoal_loss": format(total_loss, ".4f"),
                                         "mean_loss": format(mean_loss, ".4f")})

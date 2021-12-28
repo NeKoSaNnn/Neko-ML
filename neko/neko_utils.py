@@ -20,7 +20,7 @@ class neko_utils(object):
         else:
             print("\r" + Log, end="\n")
 
-    def divide_line(self, divide_line_str, total_len=60):
+    def divide_line(self, divide_line_str, total_len=100):
         print("\n" + (" " + divide_line_str + " ").center(total_len, "="))
 
     def mkdir_f(self, dir_path):
