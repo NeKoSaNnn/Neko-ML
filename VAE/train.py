@@ -44,12 +44,12 @@ def train():
     # optimizer
     optimizer = optim.Adam(vae.parameters(), lr)
 
-    for now_epoch in tqdm(range(1, epoch + 1), desc="Epoch", unit="epoch", mininterval=1):
+    for now_epoch in tqdm(range(1, epoch + 1), desc="Epoch", unit="epoch"):
         # train
         utils.divide_line("train")
         vae.train()
         for train_iter, (train_img, train_label) in enumerate(
-                tqdm(train_loader, desc="Train", unit="batch", mininterval=1)):
+                tqdm(train_loader, desc="Train", unit="batch")):
             train_img = train_img.cuda()
 
             decoder_images, mean, log_variance = vae(train_img)
@@ -68,15 +68,12 @@ def train():
                 utils.log("train", now_epoch, train_iter,
                           {"kl_loss": kl_loss, "rec_loss": rec_loss, "totoal_loss": total_loss,
                            "mean_loss": mean_loss})
-                # print(
-                #     "train -- epoch {} iter {} : kl_loss = {:.6f},rec_loss = {:.6f},total_loss = {:.6f},mean_loss = {:.6f}".format(
-                #         i, train_iter, kl_loss, rec_loss, total_loss, mean_loss))
         # validation
         utils.divide_line("val")
         vae.eval()
         with torch.no_grad():
             for test_iter, (test_img, test_label) in enumerate(
-                    tqdm(test_loader, desc="Validate", unit="batch", mininterval=1)):
+                    tqdm(test_loader, desc="Validate", unit="batch")):
                 test_img = test_img.cuda()
                 decoder_images, mean, log_variance = vae(test_img)
                 # reconstruct_loss
@@ -94,9 +91,6 @@ def train():
                     utils.log("val", now_epoch, test_iter,
                               {"kl_loss": kl_loss, "rec_loss": rec_loss, "totoal_loss": total_loss,
                                "mean_loss": mean_loss})
-                    # print(
-                    #     "val -- epoch {} iter {} : kl_loss = {:.6f},rec_loss = {:.6f},total_loss = {:.6f},mean_loss = {:.6f}".format(
-                    #         i, test_iter, kl_loss, rec_loss, total_loss, mean_loss))
                 if test_iter == 0:
                     torchvision.utils.save_image(sava_data, osp.join(save_val_path,
                                                                      "epoch_{}_test_iter_{}_val.jpg".format(now_epoch,

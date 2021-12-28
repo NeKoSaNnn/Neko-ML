@@ -4,17 +4,21 @@ import shutil
 import time
 
 
-class neko_utils(self):
+class neko_utils(object):
     def __init__(self):
-        pass
+        self.log_file = open("log.txt", "a+")
 
-    def log(self, log_type, now_epoch, now_iter, dict_loss):
+    def __del__(self):
+        self.log_file.close()
+
+    def log(self, log_type, now_epoch, now_iter, dict_loss, is_dynamic=True):
         assert dict_loss is not None
         Log = "{} -- epoch {} iter {} : ".format(log_type, now_epoch, now_iter) + " , ".join(
             f"{loss_name} = {loss_val:.6f}" for
             loss_name, loss_val in
             dict_loss.items())
-        print(Log)
+        self.log_file.writelines(self.get_now_time() + Log + "\n")
+        print(Log, flush=is_dynamic)
 
     def divide_line(self, divide_line_str, total_len=60):
         divide_line_len = (total_len - len(divide_line_str) - 2) // 2
@@ -35,4 +39,4 @@ class neko_utils(self):
             os.mkdir(dir_path)
 
     def get_now_time(self):
-        return time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
+        return time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
