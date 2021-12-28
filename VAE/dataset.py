@@ -1,19 +1,16 @@
-import os.path as osp
-import sys
-
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
-sys.path.append(osp.dirname(sys.path[0]))
+from utils import utils
 
-from neko import neko_utils
+utils = utils()
 
 
 def get(dataset_type, dataset_path, batch_size):
     # MINST
     if dataset_type.lower() == "mnist":
-        neko_utils.mkdir_nf(dataset_path)
+        utils.mkdir_nf(dataset_path)
         train_dataset = datasets.MNIST(root=dataset_path, train=True, transform=transforms.ToTensor(), download=True)
         test_dataset = datasets.MNIST(root=dataset_path, train=False, transform=transforms.ToTensor(), download=True)
 

@@ -1,5 +1,4 @@
 import os.path as osp
-import sys
 
 import torch
 import torch.optim as optim
@@ -8,9 +7,9 @@ from tqdm import tqdm
 
 import dataset
 from model import VAE
+from utils import utils
 
-sys.path.append(osp.dirname(sys.path[0]))
-from neko import neko_utils
+utils = utils()
 
 
 def train():
@@ -28,9 +27,9 @@ def train():
     log_interval = 10  # iter
     checkpoint_interval = 20  # epoch
 
-    neko_utils.mkdir_f(save_val_path)
-    neko_utils.mkdir_nf(dataset_path)
-    neko_utils.mkdir_nf(save_model_path)
+    utils.mkdir_f(save_val_path)
+    utils.mkdir_nf(dataset_path)
+    utils.mkdir_nf(save_model_path)
 
     # dataset
 
@@ -47,7 +46,7 @@ def train():
 
     for now_epoch in tqdm(range(1, epoch + 1), desc="Epoch", unit="epoch", mininterval=1):
         # train
-        neko_utils.divide_line("train")
+        utils.divide_line("train")
         vae.train()
         for train_iter, (train_img, train_label) in enumerate(
                 tqdm(train_loader, desc="Train", unit="batch", mininterval=1)):
@@ -66,14 +65,14 @@ def train():
             optimizer.step()
 
             if train_iter % log_interval == 0:
-                neko_utils.log("train", now_epoch, train_iter,
-                               {"kl_loss": kl_loss, "rec_loss": rec_loss, "totoal_loss": total_loss,
-                                "mean_loss": mean_loss})
+                utils.log("train", now_epoch, train_iter,
+                          {"kl_loss": kl_loss, "rec_loss": rec_loss, "totoal_loss": total_loss,
+                           "mean_loss": mean_loss})
                 # print(
                 #     "train -- epoch {} iter {} : kl_loss = {:.6f},rec_loss = {:.6f},total_loss = {:.6f},mean_loss = {:.6f}".format(
                 #         i, train_iter, kl_loss, rec_loss, total_loss, mean_loss))
         # validation
-        neko_utils.divide_line("val")
+        utils.divide_line("val")
         vae.eval()
         with torch.no_grad():
             for test_iter, (test_img, test_label) in enumerate(
@@ -92,9 +91,9 @@ def train():
                 sava_data = torch.cat((test_img, decoder_images), dim=3)
 
                 if test_iter % log_interval == 0:
-                    neko_utils.log("val", now_epoch, test_iter,
-                                   {"kl_loss": kl_loss, "rec_loss": rec_loss, "totoal_loss": total_loss,
-                                    "mean_loss": mean_loss})
+                    utils.log("val", now_epoch, test_iter,
+                              {"kl_loss": kl_loss, "rec_loss": rec_loss, "totoal_loss": total_loss,
+                               "mean_loss": mean_loss})
                     # print(
                     #     "val -- epoch {} iter {} : kl_loss = {:.6f},rec_loss = {:.6f},total_loss = {:.6f},mean_loss = {:.6f}".format(
                     #         i, test_iter, kl_loss, rec_loss, total_loss, mean_loss))
@@ -104,9 +103,9 @@ def train():
                                                                                                             test_iter)))
         # checkpoint
         if now_epoch % checkpoint_interval == 0:
-            neko_utils.divide_line("save")
+            utils.divide_line("save")
             now_save_model_path = osp.join(save_model_path, "latent_dim-{}".format(latent_dim))
-            neko_utils.mkdir_nf(now_save_model_path)
-            save_model_name = "VAE_epoch_{}_{}.pth".format(now_epoch, neko_utils.get_now_time())
+            utils.mkdir_nf(now_save_model_path)
+            save_model_name = "VAE_epoch_{}_{}.pth".format(now_epoch, utils.get_now_time())
             torch.save(vae, osp.join(now_save_model_path, save_model_name))
-            neko_utils.divide_line("save {} success !".format(save_model_name))
+            utils.divide_line("save {} success !".format(save_model_name))

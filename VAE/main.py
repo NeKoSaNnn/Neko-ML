@@ -2,9 +2,10 @@
 import torch
 
 import train
-import utils
+from utils import utils
 
 if __name__ == "__main__":
+    utils = utils()
     train.train()
 
     # model = torch.load("./save_model/latent_dim-2/VAE_epoch_100_2021-12-26-12-11-14.pth")
