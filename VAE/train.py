@@ -39,8 +39,6 @@ def train():
     # dataset
 
     train_loader, test_loader, input_size = dataset.get(dataset_type, dataset_path, batch_size)
-    print(len(train_loader))
-    print(len(test_loader))
 
     # model
 
