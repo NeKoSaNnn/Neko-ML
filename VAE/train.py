@@ -73,7 +73,12 @@ def train():
                 utils.log("train", {"epoch": now_epoch, "iter": train_iter,
                                     "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
                                     "totoal_loss": format(total_loss, ".4f"),
-                                    "mean_loss": format(mean_loss, ".4f")})
+                                    "mean_loss": format(mean_loss, ".4f")}, is_dynamic=True)
+            if train_iter == len(train_loader) - 1:
+                utils.log("train", {"epoch": now_epoch, "iter": train_iter,
+                                    "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
+                                    "totoal_loss": format(total_loss, ".4f"),
+                                    "mean_loss": format(mean_loss, ".4f")}, is_dynamic=False)
         # validation
         utils.divide_line("val")
         vae.eval()
@@ -97,7 +102,12 @@ def train():
                     utils.log(" val ", {"epoch": now_epoch, "iter": test_iter,
                                         "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
                                         "totoal_loss": format(total_loss, ".4f"),
-                                        "mean_loss": format(mean_loss, ".4f")})
+                                        "mean_loss": format(mean_loss, ".4f")}, is_dynamic=True)
+                if test_iter == len(test_loader) - 1:
+                    utils.log(" val ", {"epoch": now_epoch, "iter": test_iter,
+                                        "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
+                                        "totoal_loss": format(total_loss, ".4f"),
+                                        "mean_loss": format(mean_loss, ".4f")}, is_dynamic=False)
                 if test_iter == 0:
                     torchvision.utils.save_image(sava_data, osp.join(save_val_path,
                                                                      "epoch_{}_test_iter_{}_val.jpg".format(now_epoch,
