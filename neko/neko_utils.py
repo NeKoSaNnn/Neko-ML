@@ -11,7 +11,7 @@ class neko_utils(object):
     def __del__(self):
         self.log_file.close()
 
-    def log(self, log_type, is_dynamic=False, **dict_val):
+    def log(self, log_type, dict_val, is_dynamic=False):
         assert dict_val is not None and isinstance(dict_val, dict)
         Log = "{} -- ".format(log_type) + " , ".join(f"{k} : {v}" for k, v in dict_val.items())
         self.log_file.write(self.get_now_time() + " -- " + Log + "\n")
