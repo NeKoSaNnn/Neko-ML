@@ -1,9 +1,14 @@
 import os.path as osp
+import sys
 
 import torch
 import torch.optim as optim
 import torchvision
-from tqdm import tqdm_notebook as tqdm
+
+if hasattr(sys.modules["__main__"], "get_ipython"):
+    from tqdm import tqdm_notebook as tqdm
+else:
+    from tqdm import tqdm
 
 import dataset
 from model import VAE
