@@ -17,13 +17,14 @@ class neko_utils(object):
             f"{loss_name} = {loss_val:.6f}" for
             loss_name, loss_val in
             dict_loss.items())
-        self.log_file.writelines(self.get_now_time() + Log + "\n")
-        print(Log, flush=is_dynamic)
+        self.log_file.writelines(self.get_now_time() + " : " + Log + "\n")
+        if is_dynamic:
+            print("\r" + Log, end='', flush=is_dynamic)
+        else:
+            print(Log)
 
     def divide_line(self, divide_line_str, total_len=60):
-        divide_line_len = (total_len - len(divide_line_str) - 2) // 2
-        line = "=" * divide_line_len + " " + divide_line_str + " " + "=" * divide_line_len
-        print(line)
+        print((" " + divide_line_str + " ").center(total_len, "="))
 
     def mkdir_f(self, dir_path):
         # 强制mkdir
