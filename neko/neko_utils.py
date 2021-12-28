@@ -11,20 +11,17 @@ class neko_utils(object):
     def __del__(self):
         self.log_file.close()
 
-    def log(self, log_type, now_epoch, now_iter, dict_loss, is_dynamic=True):
+    def log(self, log_type, now_epoch, now_iter, dict_loss):
         assert dict_loss is not None
         Log = "{} -- epoch {} iter {} : ".format(log_type, now_epoch, now_iter) + " , ".join(
             f"{loss_name} = {loss_val:.6f}" for
             loss_name, loss_val in
             dict_loss.items())
         self.log_file.writelines(self.get_now_time() + " : " + Log + "\n")
-        if is_dynamic:
-            print("\r" + Log, end='', flush=is_dynamic)
-        else:
-            print(Log)
+        print(Log)
 
     def divide_line(self, divide_line_str, total_len=60):
-        print((" " + divide_line_str + " ").center(total_len, "="))
+        print("\n" + (" " + divide_line_str + " ").center(total_len, "="))
 
     def mkdir_f(self, dir_path):
         # 强制mkdir
