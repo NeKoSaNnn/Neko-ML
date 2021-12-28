@@ -65,9 +65,10 @@ def train():
             optimizer.step()
 
             if train_iter % log_interval == 0:
-                utils.log("train", now_epoch, train_iter,
-                          {"kl_loss": kl_loss, "rec_loss": rec_loss, "totoal_loss": total_loss,
-                           "mean_loss": mean_loss})
+                utils.log("train", {"epoch": now_epoch, "iter": train_iter,
+                                    "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
+                                    "totoal_loss": format(total_loss, ".4f"),
+                                    "mean_loss": format(mean_loss, ".4f")})
         # validation
         utils.divide_line("val")
         vae.eval()
@@ -88,9 +89,10 @@ def train():
                 sava_data = torch.cat((test_img, decoder_images), dim=3)
 
                 if test_iter % log_interval == 0:
-                    utils.log("val", now_epoch, test_iter,
-                              {"kl_loss": kl_loss, "rec_loss": rec_loss, "totoal_loss": total_loss,
-                               "mean_loss": mean_loss})
+                    utils.log("train", {"epoch": now_epoch, "iter": test_iter,
+                                        "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
+                                        "totoal_loss": format(total_loss, ".4f"),
+                                        "mean_loss": format(mean_loss, ".4f")})
                 if test_iter == 0:
                     torchvision.utils.save_image(sava_data, osp.join(save_val_path,
                                                                      "epoch_{}_test_iter_{}_val.jpg".format(now_epoch,

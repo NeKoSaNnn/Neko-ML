@@ -11,12 +11,14 @@ class neko_utils(object):
     def __del__(self):
         self.log_file.close()
 
-    def log(self, log_type, now_epoch, now_iter, dict_val):
+    def log(self, log_type, is_dynamic=False, **dict_val):
         assert dict_val is not None and isinstance(dict_val, dict)
-        Log = "{} -- epoch {} iter {} : ".format(log_type, now_epoch, now_iter) + " , ".join(
-            f"{k} = {v:.4f}" for k, v in dict_val.items())
-        self.log_file.writelines(self.get_now_time() + " : " + Log + "\n")
-        print(Log)
+        Log = "{} -- ".format(log_type) + " , ".join(f"{k} : {v}" for k, v in dict_val.items())
+        self.log_file.write(self.get_now_time() + " -- " + Log + "\n")
+        if is_dynamic:
+            print("\r" + Log, end="", flush=True)
+        else:
+            print("\r" + Log, end="\n")
 
     def divide_line(self, divide_line_str, total_len=60):
         print("\n" + (" " + divide_line_str + " ").center(total_len, "="))
