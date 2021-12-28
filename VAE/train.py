@@ -48,66 +48,84 @@ def train():
 
     # optimizer
     optimizer = optim.Adam(vae.parameters(), lr)
-
+    train_rec_loss = []
+    train_kl_loss = []
+    train_total_loss = []
+    train_mean_loss = []
     for now_epoch in tqdm(range(1, epoch + 1), desc="Epoch", unit="epoch"):
         # train
         utils.divide_line("train")
         vae.train()
+        train_rec_loss = []
+        train_kl_loss = []
+        train_total_loss = []
+        train_mean_loss = []
         for train_iter, (train_img, train_label) in enumerate(
                 tqdm(train_loader, desc="Train", unit="batch")):
             train_img = train_img.cuda()
 
             decoder_images, mean, log_variance = vae(train_img)
             # reconstruct_loss
-            rec_loss = vae.reconstruct_loss(decoder_images, train_img.reshape(-1, input_size))
+            train_rec_loss.append(vae.reconstruct_loss(decoder_images, train_img.reshape(-1, input_size)))
             # kl_loss
-            kl_loss = vae.kl_loss(mean, log_variance)
-            total_loss = rec_loss + kl_loss
-            mean_loss = total_loss / batch_size
+            train_kl_loss.append(vae.kl_loss(mean, log_variance))
+            train_total_loss.append(rec_loss + kl_loss)
+            train_mean_loss.append(total_loss[-1] / len(train_loader))
 
             optimizer.zero_grad()
-            mean_loss.backward()
+            train_mean_loss[-1].backward()
             optimizer.step()
 
             if train_iter % log_interval == 0:
                 utils.log("train", {"epoch": now_epoch, "iter": train_iter,
-                                    "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
-                                    "totoal_loss": format(total_loss, ".4f"),
-                                    "mean_loss": format(mean_loss, ".4f")}, is_dynamic=True)
+                                    "kl_loss": format(train_kl_loss[-1], ".4f"),
+                                    "rec_loss": format(train_rec_loss[-1], ".4f"),
+                                    "totoal_loss": format(train_total_loss[-1], ".4f"),
+                                    "mean_loss": format(train_mean_loss[-1], ".4f")}, is_dynamic=True)
             if train_iter == len(train_loader) - 1:
-                utils.log("train", {"epoch": now_epoch, "iter": train_iter,
-                                    "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
-                                    "totoal_loss": format(total_loss, ".4f"),
-                                    "mean_loss": format(mean_loss, ".4f")}, is_dynamic=False)
+                utils.log("train", {"epoch": now_epoch,
+                                    "avg_kl_loss": format(torch.stack(train_kl_loss).mean(), ".4f"),
+                                    "avg_rec_loss": format(torch.stack(train_rec_loss).mean(), ".4f"),
+                                    "avg_totoal_loss": format(torch.stack(train_total_loss).mean(), ".4f"),
+                                    "avg_mean_loss": format(torch.stack(train_mean_loss).mean(), ".4f")},
+                          is_dynamic=False)
         # validation
         utils.divide_line("val")
+        test_rec_loss = []
+        test_kl_loss = []
+        test_total_loss = []
+        test_mean_loss = []
         vae.eval()
         with torch.no_grad():
             for test_iter, (test_img, test_label) in enumerate(
                     tqdm(test_loader, desc="Validate", unit="batch")):
                 test_img = test_img.cuda()
                 decoder_images, mean, log_variance = vae(test_img)
+
                 # reconstruct_loss
-                rec_loss = vae.reconstruct_loss(decoder_images, test_img.reshape(-1, input_size))
+                test_rec_loss.append(vae.reconstruct_loss(decoder_images, test_img.reshape(-1, input_size)))
                 # kl_loss
-                kl_loss = vae.kl_loss(mean, log_variance)
-                total_loss = rec_loss + kl_loss
-                mean_loss = total_loss / batch_size
+                test_kl_loss.append(vae.kl_loss(mean, log_variance))
+                test_total_loss.append(rec_loss + kl_loss)
+                test_mean_loss.append(test_total_loss[-1] / len(test_loader))
 
                 test_img = test_img.reshape(-1, 1, 28, 28)
                 decoder_images = decoder_images.reshape(-1, 1, 28, 28)
                 sava_data = torch.cat((test_img, decoder_images), dim=3)
 
                 if test_iter % log_interval == 0:
-                    utils.log(" val ", {"epoch": now_epoch, "iter": test_iter,
-                                        "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
-                                        "totoal_loss": format(total_loss, ".4f"),
-                                        "mean_loss": format(mean_loss, ".4f")}, is_dynamic=True)
+                    utils.log("val", {"epoch": now_epoch, "iter": test_iter,
+                                      "kl_loss": format(test_kl_loss[-1], ".4f"),
+                                      "rec_loss": format(test_rec_loss[-1], ".4f"),
+                                      "totoal_loss": format(test_total_loss[-1], ".4f"),
+                                      "mean_loss": format(test_mean_loss[-1], ".4f")}, is_dynamic=True)
                 if test_iter == len(test_loader) - 1:
-                    utils.log(" val ", {"epoch": now_epoch, "iter": test_iter,
-                                        "kl_loss": format(kl_loss, ".4f"), "rec_loss": format(rec_loss, ".4f"),
-                                        "totoal_loss": format(total_loss, ".4f"),
-                                        "mean_loss": format(mean_loss, ".4f")}, is_dynamic=False)
+                    utils.log("val", {"epoch": now_epoch,
+                                      "avg_kl_loss": format(torch.stack(test_kl_loss).mean(), ".4f"),
+                                      "avg_rec_loss": format(torch.stack(test_rec_loss).mean(), ".4f"),
+                                      "avg_totoal_loss": format(torch.stack(test_total_loss).mean(), ".4f"),
+                                      "avg_mean_loss": format(torch.stack(test_mean_loss).mean(), ".4f")},
+                              is_dynamic=False)
                 if test_iter == 0:
                     torchvision.utils.save_image(sava_data, osp.join(save_val_path,
                                                                      "epoch_{}_test_iter_{}_val.jpg".format(now_epoch,
