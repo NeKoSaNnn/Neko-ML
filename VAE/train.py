@@ -77,7 +77,8 @@ def train():
                                     "kl_loss": format(train_kl_loss[-1], ".4f"),
                                     "rec_loss": format(train_rec_loss[-1], ".4f"),
                                     "totoal_loss": format(train_total_loss[-1], ".4f"),
-                                    "mean_loss": format(train_mean_loss[-1], ".4f")}, is_dynamic=True)
+                                    "mean_loss": format(train_mean_loss[-1], ".4f")},
+                          is_dynamic=True)
             if train_iter == len(train_loader) - 1:
                 utils.log("train", {"epoch": now_epoch,
                                     "avg_kl_loss": format(torch.stack(train_kl_loss).mean(), ".4f"),
@@ -114,7 +115,8 @@ def train():
                                       "kl_loss": format(test_kl_loss[-1], ".4f"),
                                       "rec_loss": format(test_rec_loss[-1], ".4f"),
                                       "totoal_loss": format(test_total_loss[-1], ".4f"),
-                                      "mean_loss": format(test_mean_loss[-1], ".4f")}, is_dynamic=True)
+                                      "mean_loss": format(test_mean_loss[-1], ".4f")},
+                              is_dynamic=True)
                 if test_iter == len(test_loader) - 1:
                     utils.log("val", {"epoch": now_epoch,
                                       "avg_kl_loss": format(torch.stack(test_kl_loss).mean(), ".4f"),
