@@ -38,7 +38,7 @@ def train():
 
     # dataset
 
-    train_loader, test_loader, input_size = dataset.get(dataset_type, dataset_path, batch_size)
+    train_loader, test_loader, input_size = dataset.get(dataset_type, dataset_path, batch_size, num_workers=1)
 
     # model
 

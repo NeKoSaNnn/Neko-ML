@@ -25,7 +25,7 @@ class neko_utils(object):
         divide_line_str = (" " + divide_line_str + " ").center(total_len, "=")
         print(divide_line_str)
         if is_log:
-            self.log_file.write(divide_line_str)
+            self.log_file.write(divide_line_str + "\n")
 
     def mkdir_f(self, dir_path):
         # 强制mkdir

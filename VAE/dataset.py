@@ -7,7 +7,7 @@ from utils import utils
 utils = utils()
 
 
-def get(dataset_type, dataset_path, batch_size, resize=None):
+def get(dataset_type, dataset_path, batch_size, resize=None, num_workers=utils.get_num_workers()):
     trans = [transforms.ToTensor()]
     if resize:
         trans.append(0, transforms.Resize(resize))
@@ -19,8 +19,8 @@ def get(dataset_type, dataset_path, batch_size, resize=None):
         train_dataset = datasets.MNIST(root=dataset_path, train=True, transform=trans, download=True)
         test_dataset = datasets.MNIST(root=dataset_path, train=False, transform=trans, download=True)
 
-        train_loader = DataLoader(train_dataset, batch_size, shuffle=True, num_workers=utils.get_num_workers())
-        test_loader = DataLoader(test_dataset, batch_size, shuffle=False, num_workers=utils.get_num_workers())
+        train_loader = DataLoader(train_dataset, batch_size, shuffle=True, num_workers=num_workers)
+        test_loader = DataLoader(test_dataset, batch_size, shuffle=False, num_workers=num_workers)
 
         input_size = 28 * 28
 
