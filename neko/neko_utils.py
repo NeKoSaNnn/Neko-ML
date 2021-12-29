@@ -7,7 +7,8 @@ import time
 
 class neko_utils(object):
     def __init__(self):
-        self.log_file = open("log.txt", "a+")
+        self.mkdir_nf("./log")
+        self.log_file = open("./log/log_{}.txt".format(self.get_now_day()), "a+")
 
     def __del__(self):
         self.log_file.close()
@@ -39,6 +40,9 @@ class neko_utils(object):
         # 不强制mkdir
         if not osp.exists(dir_path):
             os.mkdir(dir_path)
+
+    def get_now_day(self):
+        return time.strftime("%Y_%m_%d", time.localtime())
 
     def get_now_time(self):
         return time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
