@@ -48,6 +48,8 @@ def train():
 
     # optimizer
     optimizer = optim.Adam(vae.parameters(), lr)
+    utils.divide_line("{}--latent-{}--batch_size-{}".format(dataset_type, latent_dim, batch_size), total_len=120,
+                      is_log=True)
     for now_epoch in tqdm(range(1, epoch + 1), desc="Epoch", unit="epoch"):
         # train
         utils.divide_line("train")
@@ -79,13 +81,12 @@ def train():
                                     "totoal_loss": format(train_total_loss[-1], ".4f"),
                                     "mean_loss": format(train_mean_loss[-1], ".4f")},
                           is_dynamic=True)
-            if train_iter == len(train_loader) - 1:
-                utils.log("train", {"epoch": now_epoch,
-                                    "avg_kl_loss": format(torch.stack(train_kl_loss).mean(), ".4f"),
-                                    "avg_rec_loss": format(torch.stack(train_rec_loss).mean(), ".4f"),
-                                    "avg_totoal_loss": format(torch.stack(train_total_loss).mean(), ".4f"),
-                                    "avg_mean_loss": format(torch.stack(train_mean_loss).mean(), ".4f")},
-                          is_dynamic=False)
+        utils.log("train", {"epoch": now_epoch,
+                            "avg_kl_loss": format(torch.stack(train_kl_loss).mean(), ".4f"),
+                            "avg_rec_loss": format(torch.stack(train_rec_loss).mean(), ".4f"),
+                            "avg_totoal_loss": format(torch.stack(train_total_loss).mean(), ".4f"),
+                            "avg_mean_loss": format(torch.stack(train_mean_loss).mean(), ".4f")},
+                  is_dynamic=False)
         # validation
         utils.divide_line("val")
         test_rec_loss = []
@@ -117,17 +118,16 @@ def train():
                                       "totoal_loss": format(test_total_loss[-1], ".4f"),
                                       "mean_loss": format(test_mean_loss[-1], ".4f")},
                               is_dynamic=True)
-                if test_iter == len(test_loader) - 1:
-                    utils.log("val", {"epoch": now_epoch,
-                                      "avg_kl_loss": format(torch.stack(test_kl_loss).mean(), ".4f"),
-                                      "avg_rec_loss": format(torch.stack(test_rec_loss).mean(), ".4f"),
-                                      "avg_totoal_loss": format(torch.stack(test_total_loss).mean(), ".4f"),
-                                      "avg_mean_loss": format(torch.stack(test_mean_loss).mean(), ".4f")},
-                              is_dynamic=False)
                 if test_iter == 0:
                     torchvision.utils.save_image(sava_data, osp.join(save_val_path,
                                                                      "epoch_{}_test_iter_{}_val.jpg".format(now_epoch,
                                                                                                             test_iter)))
+            utils.log("val", {"epoch": now_epoch,
+                              "avg_kl_loss": format(torch.stack(test_kl_loss).mean(), ".4f"),
+                              "avg_rec_loss": format(torch.stack(test_rec_loss).mean(), ".4f"),
+                              "avg_totoal_loss": format(torch.stack(test_total_loss).mean(), ".4f"),
+                              "avg_mean_loss": format(torch.stack(test_mean_loss).mean(), ".4f")},
+                      is_dynamic=False)
         # checkpoint
         if now_epoch % checkpoint_interval == 0:
             utils.divide_line("save")

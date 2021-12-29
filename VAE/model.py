@@ -34,7 +34,7 @@ class VAE(Module):
         return res, mean, log_variance
 
     def kl_loss(self, mean, log_variance):
-        return -0.5 * sum(1 + log_variance - mean.pow(2) - exp(log_variance))
+        return -0.5 * sum(1 + log_variance - mean ** 2 - exp(log_variance))
 
     def reconstruct_loss(self, decoder_images, ori_images):
         return binary_cross_entropy(decoder_images, ori_images, reduction="sum")

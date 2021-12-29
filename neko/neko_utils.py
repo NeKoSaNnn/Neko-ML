@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import os.path as osp
 import shutil
@@ -20,8 +21,11 @@ class neko_utils(object):
         else:
             print("\r" + Log, end="\n")
 
-    def divide_line(self, divide_line_str, total_len=100):
-        print("\n" + (" " + divide_line_str + " ").center(total_len, "="))
+    def divide_line(self, divide_line_str, total_len=100, is_log=False):
+        divide_line_str = (" " + divide_line_str + " ").center(total_len, "=")
+        print(divide_line_str)
+        if is_log:
+            self.log_file.write(divide_line_str)
 
     def mkdir_f(self, dir_path):
         # 强制mkdir
@@ -38,3 +42,6 @@ class neko_utils(object):
 
     def get_now_time(self):
         return time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+
+    def get_num_workers(self):
+        return multiprocessing.cpu_count()
