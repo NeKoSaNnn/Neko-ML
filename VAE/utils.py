@@ -12,7 +12,7 @@ from neko import neko_utils
 
 class utils(neko_utils.neko_utils):
     def __init__(self):
-        super().__init__()
+        super(utils, self).__init__()
 
     def plot_latent_image(self, model, latent_dim, patch_count, patch_side_size):
         # 2σ原则

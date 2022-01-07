@@ -6,9 +6,9 @@ import time
 
 
 class neko_utils(object):
-    def __init__(self):
-        self.mkdir_nf("./log")
-        self.log_file = open("./log/log_{}.txt".format(self.get_now_day()), "a+")
+    def __init__(self, log_path="./log"):
+        self.mkdir_nf(log_path)
+        self.log_file = open(osp.join(log_path, "{}.log".format(self.get_now_day())), "a+")
 
     def __del__(self):
         self.log_file.close()
