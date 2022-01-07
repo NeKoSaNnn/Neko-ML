@@ -10,7 +10,7 @@ utils = utils()
 def get(dataset_type, dataset_path, batch_size, resize=None, num_workers=utils.get_num_workers()):
     trans = [transforms.ToTensor()]
     if resize:
-        trans.append(0, transforms.Resize(resize))
+        trans.append(transforms.Resize(resize))
     trans = transforms.Compose(trans)
 
     # MINST

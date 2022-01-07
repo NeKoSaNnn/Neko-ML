@@ -31,8 +31,11 @@ class neko_args(object):
 
         # other arguments
         self.parser.add_argument("--dataset", type=str, default="mnist", help="name of dataset")
+        self.parser.add_argument("--input_size", type=int, default=28 * 28,
+                                 help="the input size of dataset for fc-layer")
         self.parser.add_argument("--num_classes", type=int, default=10, help="number of classes")
-        self.parser.add_argument("--num_channels", type=int, default=3, help="number of channels of imges")
+        self.parser.add_argument("--num_channels", type=int, default=3, help="number of channels of imgs")
+        self.parser.add_argument("--num_workers", type=int, default=1, help="number of workers")
         self.parser.add_argument("--gpu", type=int, default=0, help="GPU ID, -1 for CPU")
         self.parser.add_argument("--stopping_rounds", type=int, default=10, help="rounds of early stopping")
         self.parser.add_argument("--seed", type=int, default=1, help="random seed (default: 1)")
