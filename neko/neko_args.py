@@ -17,6 +17,7 @@ class neko_args(object):
         self.parser.add_argument("--lr", type=float, default=0.01, help="learning rate")
         self.parser.add_argument("--train_bs", type=int, default=128, help="train batch size")
         self.parser.add_argument("--test_bs", type=int, default=128, help="test batch size")
+        self.parser.add_argument("--eval_interval", type=int, default=20, help="the interval of train epoch to eval")
         self.parser.add_argument("--momentum", type=float, default=0.5, help="SGD momentum (default: 0.5)")
 
         # model arguments

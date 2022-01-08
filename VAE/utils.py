@@ -31,6 +31,6 @@ class utils(neko_utils.neko_utils):
                 y_index * patch_side_size:(y_index + 1) * patch_side_size] = decoder_image[0].cpu().detach().numpy()
         plt.figure(figsize=(10, 10))
         plt.imshow(image, cmap="gray")
-        plt.savefig("latent-{}_space_image_{}.png".format(latent_dim, neko_utils.get_now_time()))
-        neko_utils.divide_line("save latent space images !")
+        plt.savefig("latent-{}_space_image_{}.png".format(latent_dim, self.get_now_time()))
+        self.divide_line("save latent space images !")
         plt.show()

@@ -34,12 +34,12 @@ class neko_utils(object):
             shutil.rmtree(dir_path)
         except:
             pass
-        os.mkdir(dir_path)
+        os.makedirs(dir_path)
 
     def mkdir_nf(self, dir_path):
         # 不强制mkdir
         if not osp.exists(dir_path):
-            os.mkdir(dir_path)
+            os.makedirs(dir_path)
 
     def get_now_day(self):
         return time.strftime("%Y_%m_%d", time.localtime())
