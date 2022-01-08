@@ -6,14 +6,11 @@
 import torch
 import torch.nn.functional as F
 
-from utils.utils import utils
-
-utils = utils(log_path="./log")
-
 
 class Eval(object):
-    def __init__(self, args, dataloader):
+    def __init__(self, args, dataloader, utils):
         self.args = args
+        self.utils = utils
         self.dataloader = dataloader
 
     def eval(self, net, log_type="Test"):
@@ -31,5 +28,5 @@ class Eval(object):
         eval_loss /= len(self.dataloader.dataset)  # 方法一
         # eval_loss /= len(self.dataloader)  # 方法二
         eval_acc = correct / len(self.dataloader.dataset)
-        utils.log(log_type, {"Loss": format(eval_loss, ".4f"), "Acc": "{:.2f}%".format(eval_acc * 100)})
+        self.utils.log(log_type, {"Loss": format(eval_loss, ".4f"), "Acc": "{:.2f}%".format(eval_acc * 100)})
         return eval_loss, eval_acc

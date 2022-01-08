@@ -22,7 +22,9 @@ class Train(object):
         self.train_dataset, _ = self.initDataSet.get()
         self.train_dataloader, self.test_dataloader = self.initDataSet.get_dataloader()
         # init eval
-        self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader), Eval(self.args, self.test_dataloader)
+        self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils), Eval(self.args,
+                                                                                              self.test_dataloader,
+                                                                                              utils)
 
     def train(self, net, loss_f=nn.CrossEntropyLoss()):
         net.train()
@@ -76,7 +78,9 @@ class GlobalTrain(object):
         self.train_dataloader, self.test_dataloader = self.initDataSet.get_dataloader()
         self.user_dataidx = self.initDataSet.get_iid_user_dataidx(self.train_dataset)
         # init eval
-        self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader), Eval(self.args, self.test_dataloader)
+        self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils), Eval(self.args,
+                                                                                              self.test_dataloader,
+                                                                                              utils)
 
     def train(self, global_net):
         # global net

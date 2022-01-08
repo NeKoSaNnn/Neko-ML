@@ -55,6 +55,6 @@ if __name__ == "__main__":
         loss, eval_acc, best_acc, best_net = trainer.train(net)
 
     utils.save_model(best_net, save_name=name, save_path="./save/pt", full=False)
-    utils.draw(loss, "Epoch", "Loss", save=True, save_name=name + "-loss", save_path="./save/png")
-    print(eval_acc)
-    utils.draw(eval_acc, "Eval_Interval", "Acc", save=True, save_name=name + "-acc", save_path="./save/png")
+    acc_loss = {"loss": loss}
+    acc_loss.update(eval_acc)
+    utils.draw(args, acc_loss, "Epoch", "Acc-Loss", save=True, save_name=name, save_path="./save/png")
