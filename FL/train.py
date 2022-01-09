@@ -95,12 +95,15 @@ class GlobalTrain(object):
 
         if self.args.all_clients:
             utils.divide_line("aggregation over all clients")
+            # init all-local w for all clients
+            local_w = [global_w] * self.args.num_users
         for ep in range(1, self.args.epochs + 1):
             global_net.train()
             # init all-local loss
             all_local_loss = .0
-            # init all-local w
-            local_w = [global_w] * self.args.num_users if self.args.all_clients else []
+            # init all-local w for non-all clients
+            if not self.args.all_client:
+                local_w = []
             # args.epochs为全局epoch
             client_num = max(int(self.args.client_frac * self.args.num_users), 1)
             # 随机选取 client idx
