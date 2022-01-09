@@ -36,6 +36,7 @@ class Train(object):
         eval_acc = {"train": [], "test": []}
 
         for ep in range(1, self.args.epochs + 1):
+            net.train()
             iter_loss = []
             tmp_iter_loss = .0
             for iter, (imgs, labels) in enumerate(self.train_dataloader, start=1):
@@ -95,6 +96,7 @@ class GlobalTrain(object):
         if self.args.all_clients:
             utils.divide_line("aggregation over all clients")
         for ep in range(1, self.args.epochs + 1):
+            global_net.train()
             # init all-local loss
             all_local_loss = .0
             # init all-local w
