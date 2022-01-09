@@ -29,19 +29,25 @@ class utils(neko_utils.neko_utils):
         elif isinstance(vals, dict):
             for k, v in vals.items():
                 assert isinstance(v, list) or isinstance(v, tuple)
-                if k == "train":
+                if k == "train_acc":
                     plt.subplot(211)
                     plt.plot([i * args.eval_interval for i in range(len(v))], v, color="blue", label="train acc")
                     plt.ylabel("Acc")
                     plt.legend()
-                if k == "test":
+                if k == "test_acc":
                     plt.subplot(211)
                     plt.plot([i * args.eval_interval for i in range(len(v))], v, color="green", label="test acc")
                     plt.ylabel("Acc")
                     plt.legend()
-                if k == "loss":
+                if k == "train_loss":
                     plt.subplot(212)
-                    plt.plot(range(len(v)), v, color="red", label="loss")
+                    plt.plot([i * args.eval_interval for i in range(len(v))], v, color="orange", label="train loss")
+                    plt.xlabel(xLabel)
+                    plt.ylabel("Loss")
+                    plt.legend()
+                if k == "test_loss":
+                    plt.subplot(212)
+                    plt.plot([i * args.eval_interval for i in range(len(v))], v, color="red", label="test loss")
                     plt.xlabel(xLabel)
                     plt.ylabel("Loss")
                     plt.legend()

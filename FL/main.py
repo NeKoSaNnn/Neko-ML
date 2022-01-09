@@ -48,13 +48,12 @@ if __name__ == "__main__":
     if args.iid:
         # Fed i.i.d
         trainer = GlobalTrain(args, iniDataSet)
-        loss, eval_acc, best_acc, best_net = trainer.train(net)
+        loss, eval_res, best_acc, best_net = trainer.train(net)
     else:
         # non-Fed
         trainer = Train(args, iniDataSet)
-        loss, eval_acc, best_acc, best_net = trainer.train(net)
+        loss, eval_res, best_acc, best_net = trainer.train(net)
 
+    utils.log("Best_Acc:", {"Acc": best_acc})
     utils.save_model(best_net, save_name=name, save_path="./save/pt", full=False)
-    acc_loss = {"loss": loss}
-    acc_loss.update(eval_acc)
-    utils.draw(args, acc_loss, "Epoch", "Acc-Loss", save=True, save_name=name, save_path="./save/png")
+    utils.draw(args, eval_res, "Epoch", "Acc-Loss", save=True, save_name=name, save_path="./save/png")

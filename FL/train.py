@@ -33,7 +33,7 @@ class Train(object):
         best_net = None
         best_acc = .0
         ep_loss = []
-        eval_acc = {"train": [], "test": []}
+        eval_res = {"train_acc": [], "test_acc": [], "train_loss": [], "test_loss": []}
 
         for ep in range(1, self.args.epochs + 1):
             net.train()
@@ -60,14 +60,16 @@ class Train(object):
             # eval
             if ep % self.args.eval_interval == 0 or ep == self.args.epochs:
                 # eval train
-                _, train_acc = self.train_eval.eval(net, "Train")
+                train_loss, train_acc = self.train_eval.eval(net, "Train")
                 # eval test
                 test_loss, test_acc = self.test_eval.eval(net, "Test")
-                eval_acc["train"].append(train_acc)
-                eval_acc["test"].append(test_acc)
+                eval_res["train_acc"].append(train_acc)
+                eval_res["train_loss"].append(train_loss)
+                eval_res["test_acc"].append(test_acc)
+                eval_res["test_loss"].append(test_loss)
                 best_net = net if test_acc > best_acc else best_net
                 best_acc = test_acc if test_acc > best_acc else best_acc
-        return ep_loss, eval_acc, best_acc, best_net
+        return ep_loss, eval_res, best_acc, best_net
 
 
 class GlobalTrain(object):
@@ -91,18 +93,16 @@ class GlobalTrain(object):
         best_global_net = None
         best_global_acc = .0
         ep_global_loss = []
-        eval_global_acc = {"train": [], "test": []}
+        eval_global_res = {"train_acc": [], "test_acc": [], "train_loss": [], "test_loss": []}
 
-        if self.args.all_clients:
-            utils.divide_line("aggregation over all clients")
-            # init all-local w for all clients
-            local_w = [global_w] * self.args.num_users
+        # init all-local w
+        local_w = [global_w] * self.args.num_users if self.args.all_clients else []
         for ep in range(1, self.args.epochs + 1):
             global_net.train()
             # init all-local loss
             all_local_loss = .0
-            # init all-local w for non-all clients
-            if not self.args.all_client:
+            # re-init all-local w for non-all clients
+            if not self.args.all_clients:
                 local_w = []
             # args.epochs为全局epoch
             client_num = max(int(self.args.client_frac * self.args.num_users), 1)
@@ -128,14 +128,16 @@ class GlobalTrain(object):
             # eval
             if ep % self.args.eval_interval == 0 or ep == self.args.epochs:
                 # eval train
-                _, train_acc = self.train_eval.eval(global_net, "Train")
+                train_loss, train_acc = self.train_eval.eval(global_net, "Train")
                 # eval test
                 test_loss, test_acc = self.test_eval.eval(global_net, "Test")
-                eval_global_acc["train"].append(train_acc)
-                eval_global_acc["test"].append(test_acc)
+                eval_global_res["train_acc"].append(train_acc)
+                eval_global_res["train_loss"].append(train_loss)
+                eval_global_res["test_acc"].append(test_acc)
+                eval_global_res["test_loss"].append(test_loss)
                 best_global_net = global_net if test_acc > best_global_acc else best_global_net
                 best_global_acc = test_acc if test_acc > best_global_acc else best_global_acc
-        return ep_global_loss, eval_global_acc, best_global_acc, best_global_net
+        return ep_global_loss, eval_global_res, best_global_acc, best_global_net
 
 
 class LocalTrain(object):
