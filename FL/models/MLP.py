@@ -11,8 +11,8 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         self.fc1 = nn.Sequential(
             nn.Linear(dim_in, dim_hidden),
+            nn.ReLU(),
             nn.Dropout(),
-            nn.ReLU()
         )
         self.fc2 = nn.Linear(dim_hidden, dim_out)
 

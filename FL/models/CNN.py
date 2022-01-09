@@ -16,9 +16,9 @@ class MnistCNN(nn.Module):
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(10, 20, 5),
-            nn.Dropout2d(),
             nn.MaxPool2d(2),
             nn.ReLU(),
+            nn.Dropout2d(),
         )
         self.fc1 = nn.Sequential(
             nn.Linear(320, 50),
@@ -44,17 +44,19 @@ class CifarCNN(nn.Module):
         super(CifarCNN, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(args.num_channels, 6, 5),
-            nn.ReLU(),
             nn.MaxPool2d(2),
+            nn.ReLU(),
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(6, 16, 5),
+            nn.MaxPool2d(2),
             nn.ReLU(),
-            nn.MaxPool2d(2)
+            nn.Dropout2d(),
         )
         self.fc1 = nn.Sequential(
             nn.Linear(400, 120),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.Dropout2d(),
         )
         self.fc2 = nn.Sequential(
             nn.Linear(120, 84),
