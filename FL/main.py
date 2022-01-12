@@ -43,7 +43,6 @@ if __name__ == "__main__":
         iniDataSet.addTrans(transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))  # cifar
     elif args.dataset == "isic":
         iniDataSet.addTrans(transforms.Resize([256, 256]))  # isic
-
     # 初始化训练类
     if args.iid:
         # Fed i.i.d
