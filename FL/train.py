@@ -19,16 +19,17 @@ class Train(object):
     def __init__(self, args, initDataSet):
         self.args = args
         self.initDataSet = initDataSet
-        self.train_dataset, _ = self.initDataSet.get()
-        self.train_dataloader, self.test_dataloader = self.initDataSet.get_dataloader()
+        self.train_dataset, _, _ = self.initDataSet.get()
+        self.train_dataloader, _, self.test_dataloader = self.initDataSet.get_dataloader()
         # init eval
-        self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils), Eval(self.args,
-                                                                                              self.test_dataloader,
-                                                                                              utils)
+        self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils), \
+                                          Eval(self.args, self.test_dataloader, utils)
 
     def train(self, net, loss_f=nn.CrossEntropyLoss()):
         net.train()
-        optimizer = optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
+
+        # optimizer = optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
+        optimizer = optim.Adam(net.parameters(), lr=self.args.lr)
 
         best_net = None
         best_acc = .0
@@ -77,15 +78,15 @@ class GlobalTrain(object):
         assert args.iid
         self.args = args
         self.initDataSet = initDataSet
-        self.train_dataset, _ = self.initDataSet.get()
-        self.train_dataloader, self.test_dataloader = self.initDataSet.get_dataloader()
+        self.train_dataset, _, _ = self.initDataSet.get()
+        self.train_dataloader, _, self.test_dataloader = self.initDataSet.get_dataloader()
         self.user_dataidx = self.initDataSet.get_iid_user_dataidx(self.train_dataset)
         # init eval
         self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils), Eval(self.args,
                                                                                               self.test_dataloader,
                                                                                               utils)
 
-    def train(self, global_net):
+    def train(self, global_net, local_loss_f=nn.CrossEntropyLoss()):
         # global net
         global_net.train()
         global_w = global_net.state_dict()
@@ -111,7 +112,7 @@ class GlobalTrain(object):
             for c_id in client_idxs:
                 local = LocalTrain(self.args,
                                    self.initDataSet.get_iid_dataloader(self.train_dataset, self.user_dataidx[c_id]))
-                w, loss = local.train(copy.deepcopy(global_net).to(self.args.device))
+                w, loss = local.train(copy.deepcopy(global_net).to(self.args.device), loss_f=local_loss_f)
                 if self.args.all_clients:
                     local_w[c_id] = copy.deepcopy(w)
                 else:
@@ -149,7 +150,9 @@ class LocalTrain(object):
     def train(self, local_net, loss_f=nn.CrossEntropyLoss()):
         # local net
         local_net.train()
-        optimizer = optim.SGD(local_net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
+
+        # optimizer = optim.SGD(local_net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
+        optimizer = optim.Adam(local_net.parameters(), lr=self.args.lr)
 
         ep_loss = .0
         for ep in range(1, self.args.local_ep + 1):

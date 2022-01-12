@@ -4,9 +4,10 @@
 @author:mjx
 """
 from torchvision import transforms
+from torch import nn
 
 from datasets import InitDataSet
-from models import MLP, CNN
+from models import MLP, CNN, UNet
 from train import Train, GlobalTrain
 from utils.args import args
 from utils.utils import utils
@@ -31,10 +32,10 @@ if __name__ == "__main__":
             net = CNN.MnistCNN(args).to(args.device)
         elif args.dataset == "cifar10":
             net = CNN.CifarCNN(args).to(args.device)
-        else:
-            exit("dataset {} can't be identified".format(args.dataset))
-    else:
-        exit("model {} can't be identified".format(args.model))
+    elif args.model == "unet":
+        if args.dataset == "isic":
+            net = UNet.UNet(args.num_classes).to(args.device)
+    assert net is not None
     utils.log("Network", {"net": net})
 
     # 初始化数据集
@@ -43,16 +44,19 @@ if __name__ == "__main__":
         iniDataSet.addTrans(transforms.Normalize((0.1307,), (0.3081,)))  # mnist
     elif args.dataset == "cifar10":
         iniDataSet.addTrans(transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))  # cifar
+    elif args.dataset == "isic":
+        iniDataSet.addTrans(transform=transforms.Resize(512))
 
     # 初始化训练类
     if args.iid:
         # Fed i.i.d
         trainer = GlobalTrain(args, iniDataSet)
-        loss, eval_res, best_acc, best_net = trainer.train(net)
     else:
         # non-Fed
         trainer = Train(args, iniDataSet)
-        loss, eval_res, best_acc, best_net = trainer.train(net)
+
+    # loss, eval_res, best_acc, best_net = trainer.train(net)  # mnist ,cifar
+    loss, eval_res, best_acc, best_net = trainer.train(net, nn.BCEWithLogitsLoss())  # isic
 
     utils.log("Best_Acc:", {"Acc": best_acc})
     utils.save_model(best_net, save_name=name, save_path="./save/pt", full=False)
