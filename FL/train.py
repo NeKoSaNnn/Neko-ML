@@ -136,7 +136,7 @@ class LocalTrain(object):
         local_net.train()
 
         # optimizer = optim.SGD(local_net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
-        optimizer = optim.Adam(local_net.parameters(), lr=self.args.lr)
+        optimizer = optim.Adam(local_net.parameters())
 
         ep_loss = .0
         for ep in range(1, self.args.local_ep + 1):

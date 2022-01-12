@@ -17,7 +17,6 @@ class neko_args(object):
         self.parser.add_argument("--lr", type=float, default=0.01, help="learning rate")
         self.parser.add_argument("--train_bs", type=int, default=128, help="train batch size")
         self.parser.add_argument("--test_bs", type=int, default=128, help="test batch size")
-        self.parser.add_argument("--eval_interval", type=int, default=20, help="the interval of train epoch to eval")
         self.parser.add_argument("--momentum", type=float, default=0.5, help="SGD momentum (default: 0.5)")
 
         # model arguments
@@ -38,6 +37,7 @@ class neko_args(object):
         self.parser.add_argument("--num_channels", type=int, default=3, help="number of channels of imgs")
         self.parser.add_argument("--num_workers", type=int, default=1, help="number of workers")
         self.parser.add_argument("--gpu", type=int, default=0, help="GPU ID, -1 for CPU")
+        self.parser.add_argument("--eval_interval", type=int, default=10, help="the interval of train epoch to eval")
         self.parser.add_argument("--stopping_rounds", type=int, default=10, help="rounds of early stopping")
         self.parser.add_argument("--seed", type=int, default=1, help="random seed (default: 1)")
         self.parser.add_argument("--verbose", action="store_true", help="verbose print")
