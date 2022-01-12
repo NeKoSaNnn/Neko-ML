@@ -49,7 +49,7 @@ class decode_block(nn.Module):
 
     def forward(self, crop_input, upsampling_input):
         upsampling_output = self.up(upsampling_input)
-        crop_output = F.upsample(crop_input, size=upsampling_output.shape[2:], mode="bilinear")
+        crop_output = F.interpolate(crop_input, size=upsampling_output.shape[2:], mode="bilinear")
         return self.conv(torch.cat([crop_output, upsampling_output], 1))
 
 
@@ -102,7 +102,7 @@ class UNet(nn.Module):
         decode2 = self.decoder_block2(conv2, decode3)
         decode1 = self.decoder_block1(conv1, decode2)
 
-        final = F.upsample(self.final(decode1), size=input.shape[2:], mode="bilinear")
+        final = F.interpolate(self.final(decode1), size=input.shape[2:], mode="bilinear")
 
         return final
 
@@ -111,4 +111,4 @@ if __name__ == "__main__":
     unet = UNet(num_classes=1)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     unet.to(device)
-    summary(unet, (3, 512, 512))
+    summary(unet, (3, 192, 256))

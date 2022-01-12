@@ -3,12 +3,12 @@
 """
 @author:mjx
 """
+from os import path as osp
+
+import cv2 as cv
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
-import os
-from os import path as osp
-from PIL import Image
 
 
 class SplitDataSet(Dataset):
@@ -26,7 +26,7 @@ class SplitDataSet(Dataset):
 
 class ISICDataSet(Dataset):
     def __init__(self, root, dataset_type, dataset_list_txt, transforms):
-        assert dataset_type != "train" and dataset_type != "val" and dataset_type != "test"
+        assert dataset_type == "train" or dataset_type == "val" or dataset_type == "test"
         self.dataset_type = dataset_type
         self.data = []
         self.target = []
@@ -38,8 +38,9 @@ class ISICDataSet(Dataset):
 
         with open(osp.join(root, dataset_list_txt)) as f:
             for name in f.readlines():
-                self.data.append(Image.open(osp.join(data_path, name.strip() + ".jpg")))
-                self.target.append(Image.open(osp.join(target_path, name.strip() + "_segmentation.png")))
+                self.data.append(cv.imread(osp.join(data_path, name.strip() + ".jpg")))
+                self.target.append(
+                    cv.imread(osp.join(target_path, name.strip() + "_segmentation.png"), cv.IMREAD_GRAYSCALE))
 
         assert len(self.data) == len(self.target)
 
@@ -82,6 +83,9 @@ class InitDataSet(object):
                                             dataset_list_txt="test.txt", transforms=trans)
         else:
             exit("Unable to identify the dataset")
+        print("train dataset size:", None if self.train_dataset is None else len(self.train_dataset))
+        print("val dataset size:", None if self.val_dataset is None else len(self.val_dataset))
+        print("test dataset size:", None if self.test_dataset is None else len(self.test_dataset))
         return self.train_dataset, self.val_dataset, self.test_dataset
 
     def get_iid_user_dataidx(self, dataset):

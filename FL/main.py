@@ -3,8 +3,8 @@
 """
 @author:mjx
 """
-from torchvision import transforms
 from torch import nn
+from torchvision import transforms
 
 from datasets import InitDataSet
 from models import MLP, CNN, UNet
@@ -19,9 +19,6 @@ if __name__ == "__main__":
     # utils工具类初始化
     utils = utils(log_path="./log")
     utils.log("Config", {"args": args})
-
-    name = "{}{}".format("iid-" if args.iid else "", "u" + str(args.num_users) + "-" if args.iid else "") \
-           + "{}-{}-ep{}-{}".format(args.dataset, args.model, args.epochs, utils.get_now_time())
 
     # 初始化网络
     net = None
@@ -45,7 +42,7 @@ if __name__ == "__main__":
     elif args.dataset == "cifar10":
         iniDataSet.addTrans(transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))  # cifar
     elif args.dataset == "isic":
-        iniDataSet.addTrans(transform=transforms.Resize(512))
+        iniDataSet.addTrans(transforms.Resize([256, 256]))  # isic
 
     # 初始化训练类
     if args.iid:
@@ -55,9 +52,13 @@ if __name__ == "__main__":
         # non-Fed
         trainer = Train(args, iniDataSet)
 
-    # loss, eval_res, best_acc, best_net = trainer.train(net)  # mnist ,cifar
-    loss, eval_res, best_acc, best_net = trainer.train(net, nn.BCEWithLogitsLoss())  # isic
+    # train_eval, val_eval, test_eval = trainer.train(net)  # mnist ,cifar
+    train_eval, val_eval, test_eval = trainer.train(net, is_eval=True, loss_f=nn.BCEWithLogitsLoss())  # isic
 
-    utils.log("Best_Acc:", {"Acc": best_acc})
-    utils.save_model(best_net, save_name=name, save_path="./save/pt", full=False)
-    utils.draw(args, eval_res, "Epoch", "Acc-Loss", save=True, save_name=name, save_path="./save/png")
+    # utils.log("Best_Acc:", {"Train": train_eval.get_best()["acc"], "Val": val_eval.get_best()["acc"],
+    #                         "Test": test_eval.get_best()["acc"]})
+    utils.log("Best_loss:", {"Train": train_eval.get_best()["loss"], "Val": val_eval.get_best()["loss"],
+                             "Test": test_eval.get_best()["loss"]})
+    train_eval.save_best_model(only_weight=True)
+
+    # utils.draw(args, eval_res, "Epoch", "Acc-Loss", save=True, save_name=name, save_path="./save/png")

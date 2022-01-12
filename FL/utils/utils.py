@@ -5,6 +5,7 @@
 """
 import os.path as osp
 import sys
+
 import matplotlib
 import torch
 
@@ -56,9 +57,9 @@ class utils(neko_utils.neko_utils):
             plt.savefig(osp.join(save_path, save_name + sava_suffix))
         plt.show()
 
-    def save_model(self, net, save_name, save_path="../save/pt", full=False):
+    def save_model(self, net, save_name, save_path="../save/pt", only_weight=True):
         self.mkdir_nf(save_path)
         save_name = "{}.pt".format(save_name)
         save_path = osp.join(save_path, save_name)
-        torch.save(net if full else net.state_dict(), save_path)
+        torch.save(net.state_dict() if only_weight else net, save_path)
         self.log("Save", {save_path: "success"})

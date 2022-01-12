@@ -20,57 +20,50 @@ class Train(object):
         self.args = args
         self.initDataSet = initDataSet
         self.train_dataset, _, _ = self.initDataSet.get()
-        self.train_dataloader, _, self.test_dataloader = self.initDataSet.get_dataloader()
+        self.train_dataloader, self.val_dataloader, self.test_dataloader = self.initDataSet.get_dataloader()
         # init eval
-        self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils), \
-                                          Eval(self.args, self.test_dataloader, utils)
+        self.train_eval, self.val_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils, "Train"), \
+                                                         Eval(self.args, self.val_dataloader, utils, "Val"), \
+                                                         Eval(self.args, self.test_dataloader, utils, "Test")
 
-    def train(self, net, loss_f=nn.CrossEntropyLoss()):
+    def train(self, net, is_eval=True, loss_f=nn.CrossEntropyLoss()):
+        # train
         net.train()
 
         # optimizer = optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
-        optimizer = optim.Adam(net.parameters(), lr=self.args.lr)
-
-        best_net = None
-        best_acc = .0
-        ep_loss = []
-        eval_res = {"train_acc": [], "test_acc": [], "train_loss": [], "test_loss": []}
+        optimizer = optim.Adam(net.parameters())
 
         for ep in range(1, self.args.epochs + 1):
             net.train()
-            iter_loss = []
+            iter_loss = .0
             tmp_iter_loss = .0
-            for iter, (imgs, labels) in enumerate(self.train_dataloader, start=1):
-                imgs, labels = imgs.to(self.args.device), labels.to(self.args.device)
+            for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
+                imgs, targets = imgs.to(self.args.device), targets.to(self.args.device)
                 optimizer.zero_grad()
                 res = net(imgs)
-                loss = loss_f(res, labels)
+                loss = loss_f(res, targets)
                 loss.backward()
                 optimizer.step()
-                iter_loss.append(loss.item())
+                iter_loss += loss.item()
                 tmp_iter_loss += loss.item()
                 if self.args.verbose and iter % self.args.log_interval == 0:
                     utils.log(log_type="Train",
                               dict_val={"Epoch": ep, "Iter": iter,
                                         "Loss": format(tmp_iter_loss / self.args.log_interval, ".4f")})
                     tmp_iter_loss = .0
-            ep_loss.append(np.array(iter_loss).mean())
 
-            utils.log("Non_Fed", {"epoch": ep, "Loss": format(ep_loss[-1], ".4f")})
+            utils.log("Non_Fed", {"epoch": ep, "Loss": format(iter_loss / len(self.train_dataloader), ".4f")})
 
             # eval
-            if ep % self.args.eval_interval == 0 or ep == self.args.epochs:
+            if is_eval and (ep % self.args.eval_interval == 0 or ep == self.args.epochs):
                 # eval train
-                train_loss, train_acc = self.train_eval.eval(net, "Train")
+                self.train_eval.eval(net, get_best=True)
+                # eval val
+                self.val_eval.eval(net, get_best=True)
                 # eval test
-                test_loss, test_acc = self.test_eval.eval(net, "Test")
-                eval_res["train_acc"].append(train_acc)
-                eval_res["train_loss"].append(train_loss)
-                eval_res["test_acc"].append(test_acc)
-                eval_res["test_loss"].append(test_loss)
-                best_net = net if test_acc > best_acc else best_net
-                best_acc = test_acc if test_acc > best_acc else best_acc
-        return ep_loss, eval_res, best_acc, best_net
+                self.test_eval.eval(net, get_best=True)
+
+        return self.train_eval, self.val_eval, self.test_eval
 
 
 class GlobalTrain(object):
@@ -79,23 +72,18 @@ class GlobalTrain(object):
         self.args = args
         self.initDataSet = initDataSet
         self.train_dataset, _, _ = self.initDataSet.get()
-        self.train_dataloader, _, self.test_dataloader = self.initDataSet.get_dataloader()
+        self.train_dataloader, self.val_dataloader, self.test_dataloader = self.initDataSet.get_dataloader()
         self.user_dataidx = self.initDataSet.get_iid_user_dataidx(self.train_dataset)
         # init eval
-        self.train_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils), Eval(self.args,
-                                                                                              self.test_dataloader,
-                                                                                              utils)
+        self.train_eval, self.val_eval, self.test_eval = Eval(self.args, self.train_dataloader, utils, "Train"), \
+                                                         Eval(self.args, self.val_dataloader, utils, "Val"), \
+                                                         Eval(self.args, self.test_dataloader, utils, "Test")
 
-    def train(self, global_net, local_loss_f=nn.CrossEntropyLoss()):
+    def train(self, global_net, is_eval=True, local_loss_f=nn.CrossEntropyLoss()):
         # global net
         global_net.train()
+
         global_w = global_net.state_dict()
-
-        best_global_net = None
-        best_global_acc = .0
-        ep_global_loss = []
-        eval_global_res = {"train_acc": [], "test_acc": [], "train_loss": [], "test_loss": []}
-
         # init all-local w
         local_w = [global_w] * self.args.num_users if self.args.all_clients else []
         for ep in range(1, self.args.epochs + 1):
@@ -123,22 +111,18 @@ class GlobalTrain(object):
             global_w = fed.FedAvg(local_w)
             global_net.load_state_dict(global_w)
 
-            ep_global_loss.append(global_loss)
             utils.log("Fed I.I.D Global", {"epoch": ep, "Loss": format(global_loss, ".4f")})
 
             # eval
-            if ep % self.args.eval_interval == 0 or ep == self.args.epochs:
+            if is_eval and (ep % self.args.eval_interval == 0 or ep == self.args.epochs):
                 # eval train
-                train_loss, train_acc = self.train_eval.eval(global_net, "Train")
+                self.train_eval.eval(global_net, get_best=True)
+                # eval val
+                self.val_eval.eval(global_net, get_best=True)
                 # eval test
-                test_loss, test_acc = self.test_eval.eval(global_net, "Test")
-                eval_global_res["train_acc"].append(train_acc)
-                eval_global_res["train_loss"].append(train_loss)
-                eval_global_res["test_acc"].append(test_acc)
-                eval_global_res["test_loss"].append(test_loss)
-                best_global_net = global_net if test_acc > best_global_acc else best_global_net
-                best_global_acc = test_acc if test_acc > best_global_acc else best_global_acc
-        return ep_global_loss, eval_global_res, best_global_acc, best_global_net
+                self.test_eval.eval(global_net, get_best=True)
+
+        return self.train_eval, self.val_eval, self.test_eval
 
 
 class LocalTrain(object):
@@ -158,11 +142,11 @@ class LocalTrain(object):
         for ep in range(1, self.args.local_ep + 1):
             iter_loss = .0
             tmp_iter_loss = .0
-            for iter, (imgs, labels) in enumerate(self.train_dataloader, start=1):
-                imgs, labels = imgs.to(self.args.device), labels.to(self.args.device)
+            for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
+                imgs, targets = imgs.to(self.args.device), targets.to(self.args.device)
                 optimizer.zero_grad()
                 res = local_net(imgs)
-                loss = loss_f(res, labels)
+                loss = loss_f(res, targets)
                 loss.backward()
                 optimizer.step()
                 iter_loss += loss.item()
