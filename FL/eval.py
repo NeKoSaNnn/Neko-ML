@@ -76,7 +76,7 @@ class Eval(object):
     def evalISIC(self, net, get_best=False):  # 2分类
         net.eval()
         eval_loss = .0
-        loss_f = nn.BCEWithLogitsLoss()
+        loss_f = nn.BCELoss()
         with torch.no_grad():
             for _, (data, target) in enumerate(self.dataloader):
                 data, target = data.to(self.args.device), target.to(self.args.device)

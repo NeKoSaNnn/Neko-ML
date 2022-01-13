@@ -62,8 +62,11 @@ class InitDataSet(object):
         self.test_dataset = None
         # np.random.seed(self.args.seed)
 
-    def addTrans(self, transform):
-        self.trans.append(transform)
+    def addTrans(self, transform, index=None):
+        if index is None:
+            self.trans.append(transform)
+        else:
+            self.trans.insert(index, transform)
 
     def get(self):
         trans = transforms.Compose(self.trans)

@@ -80,7 +80,10 @@ class UNet(nn.Module):
         self.decoder_block1 = decode_block(128, 64)
 
         # final
-        self.final = nn.Conv2d(64, num_classes, kernel_size=1)
+        self.final = nn.Sequential(
+            nn.Conv2d(64, num_classes, kernel_size=1),
+            nn.Sigmoid(),
+        )
 
     def forward(self, input):
         # encoding

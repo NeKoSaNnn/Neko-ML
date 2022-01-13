@@ -42,7 +42,7 @@ if __name__ == "__main__":
     elif args.dataset == "cifar10":
         iniDataSet.addTrans(transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))  # cifar
     elif args.dataset == "isic":
-        iniDataSet.addTrans(transforms.Resize([256, 256]))  # isic
+        iniDataSet.addTrans(0, transforms.Resize([256, 256]))  # isic
     # 初始化训练类
     if args.iid:
         # Fed i.i.d
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         trainer = Train(args, iniDataSet)
 
     # train_eval, val_eval, test_eval = trainer.train(net)  # mnist ,cifar
-    train_eval, val_eval, test_eval = trainer.train(net, is_eval=True, loss_f=nn.BCEWithLogitsLoss())  # isic
+    train_eval, val_eval, test_eval = trainer.train(net, is_eval=True, loss_f=nn.BCELoss())  # isic
 
     # utils.log("Best_Acc:", {"Train": train_eval.get_best()["acc"], "Val": val_eval.get_best()["acc"],
     #                         "Test": test_eval.get_best()["acc"]})
