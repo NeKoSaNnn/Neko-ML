@@ -42,9 +42,10 @@ class ISICDataSet(Dataset):
                 self.dataset.append([cv.imread(osp.join(data_path, name.strip() + ".jpg")),
                                      cv.imread(osp.join(target_path, name.strip() + "_segmentation.png"),
                                                cv.IMREAD_GRAYSCALE)])
+        random.shuffle(self.dataset)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.dataset)
 
     def __getitem__(self, index):
         data, target = self.dataset[index]
