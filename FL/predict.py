@@ -8,18 +8,17 @@ from os import path as osp
 import cv2 as cv
 import torch
 from PIL import Image
+from matplotlib import pyplot as plt
+from torch import nn
 from torchvision import transforms
 
 from models import UNet
 from utils.utils import utils
-from matplotlib import pyplot as plt
-
-from torch import nn
 
 utils = utils(log_path="./log")
 
 
-def test(model, test_object):
+def predict(model, test_object):
     model.eval()
     utils.mkdir_nf(save_path)
     with torch.no_grad():
@@ -32,7 +31,7 @@ def test(model, test_object):
 
 
 if __name__ == "__main__":
-    save_path = "./save/test"
+    save_path = "./save/predict"
     model = UNet.UNet(num_classes=1)
     model.load_state_dict(torch.load("./save/pt/Train-isic-unet-ep200-2022-01-13-00-04-38.pt"))
     plt.figure()
@@ -56,4 +55,4 @@ if __name__ == "__main__":
     plt.xlabel("ground truth")
     plt.imshow(truth)
 
-    plt.savefig(osp.join(save_path, "test_res_" + utils.get_now_time() + ".png"))
+    plt.savefig(osp.join(save_path, "predict_res_" + utils.get_now_time() + ".png"))

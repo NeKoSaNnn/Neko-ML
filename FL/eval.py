@@ -54,8 +54,8 @@ class Eval(object):
         net.eval()
         eval_loss = .0
         correct = .0
-        loss_f = nn.CrossEntropyLoss()
         with torch.no_grad():
+            loss_f = nn.CrossEntropyLoss()
             for _, (data, target) in enumerate(self.dataloader):
                 data, target = data.to(self.args.device), target.to(self.args.device)
                 res = net(data)
@@ -76,8 +76,8 @@ class Eval(object):
     def evalISIC(self, net, get_best=False):  # 2分类
         net.eval()
         eval_loss = .0
-        loss_f = nn.BCELoss()
         with torch.no_grad():
+            loss_f = nn.BCELoss()
             for _, (data, target) in enumerate(self.dataloader):
                 data, target = data.to(self.args.device), target.to(self.args.device)
                 res = net(data)

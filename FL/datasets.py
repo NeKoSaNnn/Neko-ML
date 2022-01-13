@@ -3,9 +3,11 @@
 """
 @author:mjx
 """
+import random
 from os import path as osp
 
 import cv2 as cv
+from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
@@ -28,8 +30,7 @@ class ISICDataSet(Dataset):
     def __init__(self, root, dataset_type, dataset_list_txt, transforms):
         assert dataset_type == "train" or dataset_type == "val" or dataset_type == "test"
         self.dataset_type = dataset_type
-        self.data = []
-        self.target = []
+        self.dataset = []
         self.transforms = transforms
         path = osp.join(root, dataset_type)
 
@@ -38,17 +39,16 @@ class ISICDataSet(Dataset):
 
         with open(osp.join(root, dataset_list_txt)) as f:
             for name in f.readlines():
-                self.data.append(cv.imread(osp.join(data_path, name.strip() + ".jpg")))
-                self.target.append(
-                    cv.imread(osp.join(target_path, name.strip() + "_segmentation.png"), cv.IMREAD_GRAYSCALE))
-
-        assert len(self.data) == len(self.target)
+                self.dataset.append([cv.imread(osp.join(data_path, name.strip() + ".jpg")),
+                                     cv.imread(osp.join(target_path, name.strip() + "_segmentation.png"),
+                                               cv.IMREAD_GRAYSCALE)])
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, index):
-        data, target = self.transforms(self.data[index]), self.transforms(self.target[index])
+        data, target = self.dataset[index]
+        data, target = self.transforms(Image.fromarray(data)), self.transforms(Image.fromarray(target))
         return data, target
 
 
