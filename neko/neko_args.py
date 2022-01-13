@@ -21,13 +21,6 @@ class neko_args(object):
 
         # model arguments
         self.parser.add_argument("--model", type=str, default="mlp", help="model name")
-        self.parser.add_argument("--kernel_num", type=int, default=9, help="number of each kind of kernel")
-        self.parser.add_argument("--kernel_sizes", type=str, default="3,4,5",
-                                 help="comma-separated kernel size to use for convolution")
-        self.parser.add_argument("--norm", type=str, default="batch_norm", help="batch_norm, layer_norm, or None")
-        self.parser.add_argument("--num_filters", type=int, default=32, help="number of filters for conv nets")
-        self.parser.add_argument("--max_pool", type=str, default="True",
-                                 help="Whether use max pooling rather than strided convolutions")
 
         # other arguments
         self.parser.add_argument("--dataset", type=str, default="mnist", help="name of dataset")
