@@ -59,5 +59,6 @@ if __name__ == "__main__":
     utils.log("Best_loss:", {"Train": train_eval.get_best()["loss"], "Val": val_eval.get_best()["loss"],
                              "Test": test_eval.get_best()["loss"]})
     train_eval.save_best_model(only_weight=True)
-
+    val_eval.save_best_model(only_weight=True)
+    test_eval.save_best_model(only_weight=True)
     # utils.draw(args, eval_res, "Epoch", "Acc-Loss", save=True, save_name=name, save_path="./save/png")

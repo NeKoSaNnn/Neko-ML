@@ -62,15 +62,15 @@ class Eval(object):
                 eval_loss += loss_f(res, target).item()
                 _, pred_label = torch.max(res.data, 1)
                 correct += (pred_label == target).sum().item()
-        eval_loss /= len(self.dataloader)
-        eval_acc = correct / len(self.dataloader.dataset)
-        self.utils.log(self.eval_type, {"Loss": format(eval_loss, ".4f"), "Acc": "{:.2f}%".format(eval_acc * 100)})
-        self.loss.append(eval_loss)
-        self.acc.append(eval_acc)
-        if get_best:
-            self.best_net = copy.deepcopy(net) if eval_acc > self.best_acc else self.best_net
-            self.best_loss = eval_loss if eval_loss < self.best_loss else self.best_loss
-            self.best_acc = eval_acc if eval_acc > self.best_acc else self.best_acc
+            eval_loss /= len(self.dataloader)
+            eval_acc = correct / len(self.dataloader.dataset)
+            self.utils.log(self.eval_type, {"Loss": format(eval_loss, ".4f"), "Acc": "{:.2f}%".format(eval_acc * 100)})
+            self.loss.append(eval_loss)
+            self.acc.append(eval_acc)
+            if get_best:
+                self.best_net = copy.deepcopy(net) if eval_acc > self.best_acc else self.best_net
+                self.best_loss = eval_loss if eval_loss < self.best_loss else self.best_loss
+                self.best_acc = eval_acc if eval_acc > self.best_acc else self.best_acc
         return eval_loss, eval_acc
 
     def evalISIC(self, net, get_best=False):  # 2分类
@@ -82,10 +82,10 @@ class Eval(object):
                 data, target = data.to(self.args.device), target.to(self.args.device)
                 res = net(data)
                 eval_loss += loss_f(res, target).item()
-        eval_loss /= len(self.dataloader)
-        self.utils.log(self.eval_type, {"Loss": format(eval_loss, ".4f")})
-        self.loss.append(eval_loss)
-        if get_best:
-            self.best_net = copy.deepcopy(net) if eval_loss < self.best_loss else self.best_net
-            self.best_loss = eval_loss if eval_loss < self.best_loss else self.best_loss
+            eval_loss /= len(self.dataloader)
+            self.utils.log(self.eval_type, {"Loss": format(eval_loss, ".4f")})
+            self.loss.append(eval_loss)
+            if get_best:
+                self.best_net = copy.deepcopy(net) if eval_loss < self.best_loss else self.best_net
+                self.best_loss = eval_loss if eval_loss < self.best_loss else self.best_loss
         return eval_loss
