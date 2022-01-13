@@ -33,10 +33,13 @@ class Train(object):
         # optimizer = optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
         optimizer = optim.Adam(net.parameters())
 
+        lr_schedule = optim.lr_scheduler.StepLR(optimizer, 20, 0.1)  # 每20个epoch lr=lr*0.1
+
         for ep in range(1, self.args.epochs + 1):
             net.train()
             iter_loss = .0
             tmp_iter_loss = .0
+            lr_schedule.step()
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
                 imgs, targets = imgs.to(self.args.device), targets.to(self.args.device)
                 optimizer.zero_grad()
@@ -138,10 +141,13 @@ class LocalTrain(object):
         # optimizer = optim.SGD(local_net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
         optimizer = optim.Adam(local_net.parameters())
 
+        lr_schedule = optim.lr_scheduler.StepLR(optimizer, 20, 0.1)
+
         ep_loss = .0
         for ep in range(1, self.args.local_ep + 1):
             iter_loss = .0
             tmp_iter_loss = .0
+            lr_schedule.step()
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
                 imgs, targets = imgs.to(self.args.device), targets.to(self.args.device)
                 optimizer.zero_grad()
