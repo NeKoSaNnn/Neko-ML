@@ -6,5 +6,5 @@ cd ..
 #done
 
 #isic
-python3 main.py --dataset isic --model unet --epochs 500 --eval_interval 5 --gpu ${gpu} --train_bs 16 --test_bs 16 --num_classes 1
+python3 main.py --dataset isic --model unet --epochs 100 --eval_interval 5 --gpu ${gpu} --train_bs 16 --test_bs 32 --num_classes 1
 
