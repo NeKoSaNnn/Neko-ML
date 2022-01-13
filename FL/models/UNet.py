@@ -114,4 +114,4 @@ if __name__ == "__main__":
     unet = UNet(num_classes=1)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     unet.to(device)
-    summary(unet, (3, 192, 256))
+    summary(unet, (3, 256, 256))
