@@ -7,10 +7,16 @@ import random
 from os import path as osp
 
 import cv2 as cv
-from PIL import Image
 import numpy as np
+import torch
+from PIL import Image
+from torch import Tensor
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
+
+from utils.utils import utils
+
+utils = utils(log_path="./log")
 
 
 class SplitDataSet(Dataset):
@@ -27,50 +33,98 @@ class SplitDataSet(Dataset):
 
 
 class ISICDataSet(Dataset):
-    def __init__(self, root, dataset_type, dataset_list_txt, transforms):
+    def __init__(self, args, root, dataset_type, dataset_list_txt):
         assert dataset_type == "train" or dataset_type == "val" or dataset_type == "test"
+        self.args = args
         self.dataset_type = dataset_type
         self.dataset = []
-        self.transforms = transforms
         path = osp.join(root, dataset_type)
+
+        self.trans = transforms.ToTensor()
+        self.transTarget = transforms.ToTensor()
 
         data_path = osp.join(path, "image")
         target_path = osp.join(path, "mask")
 
         with open(osp.join(root, dataset_list_txt)) as f:
             for name in f.readlines():
-                self.dataset.append([cv.imread(osp.join(data_path, name.strip() + ".jpg")),
-                                     cv.imread(osp.join(target_path, name.strip() + "_segmentation.png"),
-                                               cv.IMREAD_GRAYSCALE)])
+                self.dataset.append([osp.join(data_path, name.strip() + ".jpg"),
+                                     osp.join(target_path, name.strip() + "_segmentation.png")])
         random.shuffle(self.dataset)
+
+    @classmethod
+    def preprocess(cls, data_path: str, to_gray=False):
+        ndimg = cv.imread(data_path)
+        if to_gray:
+            ndimg = cv.cvtColor(ndimg, cv.COLOR_BGR2GRAY)
+        newW, newH = 256, 256
+        ndimg = cv.resize(ndimg, (newW, newH), interpolation=cv.INTER_LINEAR)
+
+        if len(ndimg.shape) == 2:
+            ndimg = np.expand_dims(ndimg, axis=2)
+
+        # HWC to CHW
+        transimg = ndimg.transpose((2, 0, 1))
+        transimg = transimg / 255 if np.max(transimg) > 1 else transimg
+        return transimg
+
+    @classmethod
+    def data_preprocess(cls, data_path: str, tran=None):
+        data = cv.imread(data_path, flags=cv.IMREAD_COLOR)
+        data = cv.resize(data, [256, 256], interpolation=cv.INTER_LINEAR)
+        data = data / 255 if np.max(data) > 1 else data
+        # data = trans(data) if trans else data
+        # (H,W,C) to (C,H,W)
+        data = data.transpose((2, 0, 1))
+        return data
+
+    @classmethod
+    def target_preprocess(cls, target_path: str, transTarget=None, num_classes=1):
+        target = cv.imread(target_path, flags=cv.IMREAD_GRAYSCALE)
+        target = cv.resize(target, [256, 256], interpolation=cv.INTER_LINEAR)
+        # target = transTarget(target) if transTarget else target
+        target = target / 255 if np.max(target) > 1 else target
+        # (H,W,C) to (C,H,W)
+        target = target.transpose((2, 0, 1))
+        return target
+        # # isic数据集若两分类，以0.5为界分类
+        # if num_classes == 1:
+        #     # 分类后target为3维tensor
+        #     # 不需要one_hot
+        #     # return (target > 0.5).float()
+        #     return target
+        # elif num_classes == 2:
+        #     # 分类后target为2维tensor
+        #     # 方便one_hot计算
+        #     return (target.squeeze() > 0.5).long()
+        # return target
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, index):
-        data, target = self.dataset[index]
-        data, target = self.transforms(Image.fromarray(data)), self.transforms(Image.fromarray(target))
+        data_path, target_path = self.dataset[index]
+        data, target = ISICDataSet.preprocess(data_path), ISICDataSet.preprocess(target_path, to_gray=True)
+        # data, target = ISICDataSet.data_preprocess(data_path, self.trans), \
+        #                ISICDataSet.target_preprocess(target_path, self.transTarget, num_classes=self.args.num_classes)
+        data, target = torch.from_numpy(data), torch.from_numpy(target)
         return data, target
 
 
 class InitDataSet(object):
-    def __init__(self, args, dataset_path="/data", trans=transforms.ToTensor()):
+    def __init__(self, args, trans=None, transTarget=None, dataset_path="/data"):
         self.args = args
         self.dataset_path = dataset_path
-        self.trans = [trans]
+        self.trans = trans
+        self.transTarget = transTarget
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
         # np.random.seed(self.args.seed)
 
-    def addTrans(self, transform, index=None):
-        if index is None:
-            self.trans.append(transform)
-        else:
-            self.trans.insert(index, transform)
-
     def get(self):
-        trans = transforms.Compose(self.trans)
+        trans = self.trans
+        transTarget = self.transTarget
 
         if self.args.dataset == "mnist":
             self.train_dataset = datasets.MNIST(root=self.dataset_path, train=True, transform=trans, download=True)
@@ -79,17 +133,17 @@ class InitDataSet(object):
             self.train_dataset = datasets.CIFAR10(root=self.dataset_path, train=True, transform=trans, download=True)
             self.test_dataset = datasets.CIFAR10(root=self.dataset_path, train=False, transform=trans, download=True)
         elif self.args.dataset == "isic":
-            self.train_dataset = ISICDataSet(root=osp.join(self.dataset_path, "ISIC"), dataset_type="train",
-                                             dataset_list_txt="train.txt", transforms=trans)
-            self.val_dataset = ISICDataSet(root=osp.join(self.dataset_path, "ISIC"), dataset_type="val",
-                                           dataset_list_txt="val.txt", transforms=trans)
-            self.test_dataset = ISICDataSet(root=osp.join(self.dataset_path, "ISIC"), dataset_type="test",
-                                            dataset_list_txt="test.txt", transforms=trans)
+            self.train_dataset = ISICDataSet(args=self.args, root=osp.join(self.dataset_path, "ISIC"),
+                                             dataset_type="train", dataset_list_txt="train.txt")
+            self.val_dataset = ISICDataSet(args=self.args, root=osp.join(self.dataset_path, "ISIC"), dataset_type="val",
+                                           dataset_list_txt="val.txt")
+            self.test_dataset = ISICDataSet(args=self.args, root=osp.join(self.dataset_path, "ISIC"),
+                                            dataset_type="test", dataset_list_txt="test.txt")
         else:
             exit("Unable to identify the dataset")
-        print("train dataset size:", None if self.train_dataset is None else len(self.train_dataset))
-        print("val dataset size:", None if self.val_dataset is None else len(self.val_dataset))
-        print("test dataset size:", None if self.test_dataset is None else len(self.test_dataset))
+        utils.log("train dataset", {"size": None if self.train_dataset is None else len(self.train_dataset)})
+        utils.log("val dataset", {" size": None if self.val_dataset is None else len(self.val_dataset)})
+        utils.log("test dataset", {" size": None if self.test_dataset is None else len(self.test_dataset)})
         return self.train_dataset, self.val_dataset, self.test_dataset
 
     def get_iid_user_dataidx(self, dataset):

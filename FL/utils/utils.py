@@ -22,39 +22,23 @@ class utils(neko_utils.neko_utils):
 
     def draw(self, args, vals, xLabel="x", yLabel="y", save=True, save_name=None, sava_suffix=".png",
              save_path="../save"):
+        color_list = ["deepskyblue", "limegreen", "darkorange", "gold", "fuchsia", "red"]
         assert isinstance(vals, list) or isinstance(vals, tuple) or isinstance(vals, dict)
         self.mkdir_nf(save_path)
         plt.figure()
         if isinstance(vals, list) or isinstance(vals, tuple):
             plt.plot(range(len(vals)), vals)
         elif isinstance(vals, dict):
-            for k, v in vals.items():
+            for idx, (k, v) in enumerate(vals.items()):
                 assert isinstance(v, list) or isinstance(v, tuple)
-                if k == "train_acc":
-                    plt.subplot(211)
-                    plt.plot([i * args.eval_interval for i in range(len(v))], v, color="blue", label="train acc")
-                    plt.ylabel("Acc")
-                    plt.legend()
-                if k == "test_acc":
-                    plt.subplot(211)
-                    plt.plot([i * args.eval_interval for i in range(len(v))], v, color="green", label="test acc")
-                    plt.ylabel("Acc")
-                    plt.legend()
-                if k == "train_loss":
-                    plt.subplot(212)
-                    plt.plot([i * args.eval_interval for i in range(len(v))], v, color="orange", label="train loss")
-                    plt.xlabel(xLabel)
-                    plt.ylabel("Loss")
-                    plt.legend()
-                if k == "test_loss":
-                    plt.subplot(212)
-                    plt.plot([i * args.eval_interval for i in range(len(v))], v, color="red", label="test loss")
-                    plt.xlabel(xLabel)
-                    plt.ylabel("Loss")
-                    plt.legend()
+                plt.plot([i * args.eval_interval for i in range(len(v))], v, color=color_list[idx], label=k)
+            plt.xlabel(xLabel)
+            plt.ylabel(yLabel)
+            plt.legend()
         if save:
-            save_name = self.get_now_time() if save_name is None else save_name
+            save_name = self.get_now_time() if save_name is None else save_name + "_" + self.get_now_time()
             plt.savefig(osp.join(save_path, save_name + sava_suffix))
+            self.log("Save", {save_name + sava_suffix: "success"})
         plt.show()
 
     def save_model(self, net, save_name, save_path="../save/pt", only_weight=True):

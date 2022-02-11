@@ -6,11 +6,14 @@
 import copy
 
 import numpy as np
+import torch
 from torch import nn, optim
 
 import fed
 from eval import Eval
 from utils.utils import utils
+from torch.nn import functional as F
+from metrics import dice_loss
 
 utils = utils(log_path="./log")
 
@@ -26,27 +29,32 @@ class Train(object):
                                                          Eval(self.args, self.val_dataloader, utils, "Val"), \
                                                          Eval(self.args, self.test_dataloader, utils, "Test")
 
-    def train(self, net, is_eval=True, loss_f=nn.CrossEntropyLoss()):
+    def trainMultiClassifier(self, net, loss_f, is_eval=True):
         # train
         net.train()
 
-        # optimizer = optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
-        optimizer = optim.Adam(net.parameters())
+        optimizer = optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
+        # optimizer = optim.Adam(net.parameters())
+        # optimizer = optim.RMSprop(net.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay,
+        #                           momentum=self.args.momentum)
 
         lr_schedule = optim.lr_scheduler.StepLR(optimizer, 20, 0.1)  # 每20个epoch lr=lr*0.1
 
         for ep in range(1, self.args.epochs + 1):
             net.train()
-            iter_loss = .0
-            tmp_iter_loss = .0
-            lr_schedule.step()
+            iter_loss = 0
+            tmp_iter_loss = 0
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
+                assert imgs.shape[1] == self.args.num_channels
                 imgs, targets = imgs.to(self.args.device), targets.to(self.args.device)
+
+                preds = net(imgs)
+                loss = loss_f(preds, targets)
+                # + dice_loss(F.softmax(res, dim=1).float(),F.one_hot(targets, self.args.num_classes).permute(0, 3, 1, 2).float(), multiclass=True)
                 optimizer.zero_grad()
-                res = net(imgs)
-                loss = loss_f(res, targets)
                 loss.backward()
                 optimizer.step()
+
                 iter_loss += loss.item()
                 tmp_iter_loss += loss.item()
                 if self.args.verbose and iter % self.args.log_interval == 0:
@@ -54,8 +62,60 @@ class Train(object):
                               dict_val={"Epoch": ep, "Iter": iter,
                                         "Loss": format(tmp_iter_loss / self.args.log_interval, ".4f")})
                     tmp_iter_loss = .0
+            lr_schedule.step()
+            utils.log("Non_Fed", {"Epoch": ep, "Avg_Loss": format(iter_loss / len(self.train_dataloader), ".4f")})
 
-            utils.log("Non_Fed", {"epoch": ep, "Loss": format(iter_loss / len(self.train_dataloader), ".4f")})
+            # eval
+            if is_eval and (ep % self.args.eval_interval == 0 or ep == self.args.epochs):
+                # eval train
+                self.train_eval.eval(net, get_best=True)
+                # eval val
+                self.val_eval.eval(net, get_best=True)
+                # eval test
+                self.test_eval.eval(net, get_best=True)
+
+        return self.train_eval, self.val_eval, self.test_eval
+
+    def trainSegmentation(self, net, is_eval=True):
+        # train
+        net.train()
+
+        # optimizer = optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
+        optimizer = optim.Adam(net.parameters())
+        # optimizer = optim.RMSprop(net.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay,
+        #                           momentum=self.args.momentum)
+
+        # lr_schedule = optim.lr_scheduler.StepLR(optimizer, 20, 0.1)  # 每20个epoch lr=lr*0.1
+
+        loss_f = nn.CrossEntropyLoss() if self.args.num_classes > 1 else nn.BCEWithLogitsLoss()
+
+        for ep in range(1, self.args.epochs + 1):
+            net.train()
+            iter_loss = 0
+            tmp_iter_loss = 0
+            for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
+                assert imgs.shape[1] == self.args.num_channels, "imgs.shape[1]({})".format(
+                    imgs.shape[1]) + " != num_channels({})".format(self.args.num_channels)
+                imgs = imgs.to(self.args.device, dtype=torch.float32)
+                targets = targets.to(self.args.device,
+                                     dtype=torch.float32 if self.args.num_classes == 1 else torch.long)
+
+                preds = net(imgs)
+                loss = loss_f(preds, targets)
+                # + dice_loss(F.softmax(res, dim=1).float(),F.one_hot(targets, self.args.num_classes).permute(0, 3, 1, 2).float(), multiclass=True)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                iter_loss += loss.item()
+                tmp_iter_loss += loss.item()
+                if self.args.verbose and iter % self.args.log_interval == 0:
+                    utils.log(log_type="Train",
+                              dict_val={"Epoch": ep, "Iter": iter,
+                                        "Loss": format(tmp_iter_loss / self.args.log_interval, ".4f")})
+                    tmp_iter_loss = .0
+            # lr_schedule.step()
+            utils.log("Non_Fed", {"Epoch": ep, "Avg_Loss": format(iter_loss / len(self.train_dataloader), ".4f")})
 
             # eval
             if is_eval and (ep % self.args.eval_interval == 0 or ep == self.args.epochs):
@@ -82,7 +142,7 @@ class GlobalTrain(object):
                                                          Eval(self.args, self.val_dataloader, utils, "Val"), \
                                                          Eval(self.args, self.test_dataloader, utils, "Test")
 
-    def train(self, global_net, is_eval=True, local_loss_f=nn.CrossEntropyLoss()):
+    def train(self, global_net, is_eval=True):
         # global net
         global_net.train()
 
@@ -103,7 +163,7 @@ class GlobalTrain(object):
             for c_id in client_idxs:
                 local = LocalTrain(self.args,
                                    self.initDataSet.get_iid_dataloader(self.train_dataset, self.user_dataidx[c_id]))
-                w, loss = local.train(copy.deepcopy(global_net).to(self.args.device), loss_f=local_loss_f)
+                w, loss = local.train(copy.deepcopy(global_net).to(self.args.device))
                 if self.args.all_clients:
                     local_w[c_id] = copy.deepcopy(w)
                 else:
@@ -114,7 +174,7 @@ class GlobalTrain(object):
             global_w = fed.FedAvg(local_w)
             global_net.load_state_dict(global_w)
 
-            utils.log("Fed I.I.D Global", {"epoch": ep, "Loss": format(global_loss, ".4f")})
+            utils.log("Fed I.I.D Global", {"Epoch": ep, "Avg_Loss": format(global_loss, ".4f")})
 
             # eval
             if is_eval and (ep % self.args.eval_interval == 0 or ep == self.args.epochs):
@@ -134,14 +194,16 @@ class LocalTrain(object):
         self.args = args
         self.train_dataloader = train_dataloader
 
-    def train(self, local_net, loss_f=nn.CrossEntropyLoss()):
+    def train(self, local_net):
         # local net
         local_net.train()
+
+        loss_f = nn.CrossEntropyLoss() if self.args.num_classes > 1 else nn.BCEWithLogitsLoss()
 
         # optimizer = optim.SGD(local_net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
         optimizer = optim.Adam(local_net.parameters())
 
-        lr_schedule = optim.lr_scheduler.StepLR(optimizer, 20, 0.1)
+        lr_schedule = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 
         ep_loss = .0
         for ep in range(1, self.args.local_ep + 1):
@@ -151,8 +213,8 @@ class LocalTrain(object):
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
                 imgs, targets = imgs.to(self.args.device), targets.to(self.args.device)
                 optimizer.zero_grad()
-                res = local_net(imgs)
-                loss = loss_f(res, targets)
+                preds = local_net(imgs)
+                loss = loss_f(preds, targets)
                 loss.backward()
                 optimizer.step()
                 iter_loss += loss.item()

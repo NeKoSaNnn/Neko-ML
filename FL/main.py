@@ -3,7 +3,6 @@
 """
 @author:mjx
 """
-from torch import nn
 from torchvision import transforms
 
 from datasets import InitDataSet
@@ -31,18 +30,29 @@ if __name__ == "__main__":
             net = CNN.CifarCNN(args).to(args.device)
     elif args.model == "unet":
         if args.dataset == "isic":
-            net = UNet.UNet(args.num_classes).to(args.device)
+            net = UNet.UNet(args.num_channels, args.num_classes).to(args.device)
     assert net is not None
-    utils.log("Network", {"net": net})
+    utils.log("Network", {"net": net}, is_print=False)
 
     # 初始化数据集
-    iniDataSet = InitDataSet(args, dataset_path="./data")
     if args.dataset == "mnist":
-        iniDataSet.addTrans(transforms.Normalize((0.1307,), (0.3081,)))  # mnist
+        # mnist
+        iniDataSet = InitDataSet(args, dataset_path="./data",
+                                 trans=transforms.Compose([transforms.ToTensor(),
+                                                           transforms.Normalize((0.1307,), (0.3081,))]))
     elif args.dataset == "cifar10":
-        iniDataSet.addTrans(transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))  # cifar
+        # cifar
+        iniDataSet = InitDataSet(args, dataset_path="./data",
+                                 trans=transforms.Compose([transforms.ToTensor(),
+                                                           transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]))
     elif args.dataset == "isic":
-        iniDataSet.addTrans(transforms.Resize([256, 256]), 0)  # isic
+        # isic
+        iniDataSet = InitDataSet(args, dataset_path="./data", trans=transforms.ToTensor(),
+                                 transTarget=transforms.ToTensor())
+    else:
+        iniDataSet = None
+
+    assert iniDataSet is not None
     # 初始化训练类
     if args.iid:
         # Fed i.i.d
@@ -52,13 +62,20 @@ if __name__ == "__main__":
         trainer = Train(args, iniDataSet)
 
     # train_eval, val_eval, test_eval = trainer.train(net)  # mnist ,cifar
-    train_eval, val_eval, test_eval = trainer.train(net, is_eval=True, loss_f=nn.BCELoss())  # isic
+    train_eval, val_eval, test_eval = trainer.trainSegmentation(net, is_eval=True)  # isic
 
     # utils.log("Best_Acc:", {"Train": train_eval.get_best()["acc"], "Val": val_eval.get_best()["acc"],
     #                         "Test": test_eval.get_best()["acc"]})
+    # utils.draw(args, eval_res, "Epoch", "Acc-Loss", save=True, save_name=name, save_path="./save/png")
+
     utils.log("Best_loss:", {"Train": train_eval.get_best()["loss"], "Val": val_eval.get_best()["loss"],
                              "Test": test_eval.get_best()["loss"]})
     train_eval.save_best_model(only_weight=True)
     val_eval.save_best_model(only_weight=True)
     test_eval.save_best_model(only_weight=True)
-    # utils.draw(args, eval_res, "Epoch", "Acc-Loss", save=True, save_name=name, save_path="./save/png")
+    loss = {"train": train_eval.get_loss(), "val": val_eval.get_loss(), "test": test_eval.get_loss()}
+    acc = {"train": train_eval.get_acc(), "val": val_eval.get_acc(), "test": test_eval.get_acc()}
+    utils.draw(args, loss, xLabel="Epoch", yLabel="Loss", save_name="Loss_isic_unet_epoch_{}".format(args.epochs),
+               save_path="./save/loss")
+    utils.draw(args, acc, xLabel="Epoch", yLabel="Acc", save_name="Acc_isic_unet_epoch_{}".format(args.epochs),
+               save_path="./save/acc")

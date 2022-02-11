@@ -10,7 +10,7 @@ class MnistCNN(nn.Module):
     def __init__(self, args):
         super(MnistCNN, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(args.num_channels, 10, 5),
+            nn.Conv2d(args.in_channels, 10, 5),
             nn.MaxPool2d(2),
             nn.ReLU(),
         )
@@ -43,7 +43,7 @@ class CifarCNN(nn.Module):
     def __init__(self, args):
         super(CifarCNN, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(args.num_channels, 6, 5),
+            nn.Conv2d(args.in_channels, 6, 5),
             nn.MaxPool2d(2),
             nn.ReLU(),
         )

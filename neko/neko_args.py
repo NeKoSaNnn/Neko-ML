@@ -18,16 +18,19 @@ class neko_args(object):
         self.parser.add_argument("--train_bs", type=int, default=128, help="train batch size")
         self.parser.add_argument("--test_bs", type=int, default=128, help="test batch size")
         self.parser.add_argument("--momentum", type=float, default=0.5, help="SGD momentum (default: 0.5)")
+        self.parser.add_argument("--weight_decay", type=float, default=0,
+                                 help="weight decay (L2 penalty) (default: 0)")
 
         # model arguments
         self.parser.add_argument("--model", type=str, default="mlp", help="model name")
+        self.parser.add_argument("--amp", action="store_true", help="use amp or not")
 
         # other arguments
         self.parser.add_argument("--dataset", type=str, default="mnist", help="name of dataset")
         self.parser.add_argument("--input_size", type=int, default=28 * 28,
                                  help="the input size of dataset for fc-layer")
         self.parser.add_argument("--num_classes", type=int, default=10, help="number of classes")
-        self.parser.add_argument("--num_channels", type=int, default=3, help="number of channels of imgs")
+        self.parser.add_argument("--num_channels", type=int, default=3, help="number of channels of input imgs")
         self.parser.add_argument("--num_workers", type=int, default=1, help="number of workers")
         self.parser.add_argument("--gpu", type=int, default=0, help="GPU ID, -1 for CPU")
         self.parser.add_argument("--eval_interval", type=int, default=10, help="the interval of train epoch to eval")
