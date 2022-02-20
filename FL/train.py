@@ -92,7 +92,7 @@ class Train(object):
         for ep in range(1, self.args.epochs + 1):
             net.train()
             iter_loss = 0
-            tmp_iter_loss = 0
+            tmp_iter_loss = []
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
                 assert imgs.shape[1] == self.args.num_channels, "imgs.shape[1]({})".format(
                     imgs.shape[1]) + " != num_channels({})".format(self.args.num_channels)
@@ -108,12 +108,12 @@ class Train(object):
                 optimizer.step()
 
                 iter_loss += loss.item()
-                tmp_iter_loss += loss.item()
-                if self.args.verbose and iter % self.args.log_interval == 0:
+                tmp_iter_loss.append(loss.item())
+                if self.args.verbose and (iter % self.args.log_interval == 0 or iter == len(self.train_dataloader)):
                     utils.log(log_type="Train",
                               dict_val={"Epoch": ep, "Iter": iter,
-                                        "Loss": format(tmp_iter_loss / self.args.log_interval, ".4f")})
-                    tmp_iter_loss = .0
+                                        "Loss": format(np.mean(np.array(tmp_iter_loss)), ".4f")})
+                    tmp_iter_loss = []
             # lr_schedule.step()
             utils.log("Non_Fed", {"Epoch": ep, "Avg_Loss": format(iter_loss / len(self.train_dataloader), ".4f")})
 
@@ -163,7 +163,7 @@ class GlobalTrain(object):
             for c_id in client_idxs:
                 local = LocalTrain(self.args,
                                    self.initDataSet.get_iid_dataloader(self.train_dataset, self.user_dataidx[c_id]))
-                w, loss = local.train(copy.deepcopy(global_net).to(self.args.device))
+                w, loss = local.train(copy.deepcopy(global_net).to(self.args.device), now_global_epoch=ep)
                 if self.args.all_clients:
                     local_w[c_id] = copy.deepcopy(w)
                 else:
@@ -194,7 +194,7 @@ class LocalTrain(object):
         self.args = args
         self.train_dataloader = train_dataloader
 
-    def train(self, local_net):
+    def train(self, local_net, now_global_epoch):
         # local net
         local_net.train()
 
@@ -203,26 +203,36 @@ class LocalTrain(object):
         # optimizer = optim.SGD(local_net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
         optimizer = optim.Adam(local_net.parameters())
 
-        lr_schedule = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
+        # lr_schedule = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 
         ep_loss = .0
         for ep in range(1, self.args.local_ep + 1):
             iter_loss = .0
-            tmp_iter_loss = .0
-            lr_schedule.step()
+            tmp_iter_loss = []
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
-                imgs, targets = imgs.to(self.args.device), targets.to(self.args.device)
-                optimizer.zero_grad()
+                # multi classifier
+                # imgs, targets = imgs.to(self.args.device), targets.to(self.args.device)
+                # segmentation
+                assert imgs.shape[1] == self.args.num_channels, "imgs.shape[1]({})".format(
+                    imgs.shape[1]) + " != num_channels({})".format(self.args.num_channels)
+                imgs = imgs.to(self.args.device, dtype=torch.float32)
+                targets = targets.to(self.args.device,
+                                     dtype=torch.float32 if self.args.num_classes == 1 else torch.long)
+
                 preds = local_net(imgs)
                 loss = loss_f(preds, targets)
+
+                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+
                 iter_loss += loss.item()
-                tmp_iter_loss += loss.item()
-                if self.args.verbose and iter % self.args.log_interval == 0:
-                    utils.log(log_type="LocalTrain",
+                tmp_iter_loss.append(loss.item())
+                if self.args.verbose and (iter % self.args.log_interval == 0 or iter == len(self.train_dataloader)):
+                    utils.log(log_type="GlobalEpoch-{}-LocalTrain".format(now_global_epoch),
                               dict_val={"Epoch": ep, "Iter": iter,
-                                        "Loss": format(tmp_iter_loss / self.args.log_interval, ".4f")})
-                    tmp_iter_loss = .0
+                                        "Loss": format(np.mean(np.array(tmp_iter_loss)), ".4f")})
+                    tmp_iter_loss = []
             ep_loss += iter_loss / len(self.train_dataloader)
+            # lr_schedule.step()
         return local_net.state_dict(), ep_loss / self.args.local_ep

@@ -57,12 +57,12 @@ if __name__ == "__main__":
     if args.iid:
         # Fed i.i.d
         trainer = GlobalTrain(args, iniDataSet)
+        train_eval, val_eval, test_eval = trainer.train(net, is_eval=True)  # isic
     else:
         # non-Fed
         trainer = Train(args, iniDataSet)
-
-    # train_eval, val_eval, test_eval = trainer.train(net)  # mnist ,cifar
-    train_eval, val_eval, test_eval = trainer.trainSegmentation(net, is_eval=True)  # isic
+        # train_eval, val_eval, test_eval = trainer.trainMultiClassifier(net)  # mnist ,cifar
+        train_eval, val_eval, test_eval = trainer.trainSegmentation(net, is_eval=True)  # isic
 
     # utils.log("Best_Acc:", {"Train": train_eval.get_best()["acc"], "Val": val_eval.get_best()["acc"],
     #                         "Test": test_eval.get_best()["acc"]})

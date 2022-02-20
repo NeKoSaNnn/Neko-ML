@@ -162,10 +162,8 @@ class InitDataSet(object):
                DataLoader(self.val_dataset, self.args.test_bs, shuffle=False), \
                DataLoader(self.test_dataset, self.args.test_bs, shuffle=False)
 
+    def get_iid_dataloader(self, dataset, idx):
+        return DataLoader(SplitDataSet(dataset, idx), batch_size=self.args.local_bs, shuffle=True)
 
-def get_iid_dataloader(self, dataset, idx):
-    return DataLoader(SplitDataSet(dataset, idx), batch_size=self.args.local_bs, shuffle=True)
-
-
-def get_non_iid_user_dataidx(self, dataset):
-    return None
+    def get_non_iid_user_dataidx(self, dataset):
+        return None
