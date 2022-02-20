@@ -90,7 +90,7 @@ if __name__ == "__main__":
     args = args().get()
 
     net = UNet.UNet(args.num_channels, args.num_classes).to(args.device)
-    net.load_state_dict(torch.load("./save/pt/Test-isic-unet-ep1000-2022-01-17-13-15-26.pt", map_location=args.device))
+    net.load_state_dict(torch.load("./save/pt/Test-isic-unet-ep100-2022-02-20-17-19-21.pt", map_location=args.device))
 
     test_img_path = "./data/ISIC/val/image/ISIC_0000051.jpg"
     test_mask_path = "./data/ISIC/val/mask/ISIC_0000051_segmentation.png"

@@ -167,3 +167,27 @@ class InitDataSet(object):
 
     def get_non_iid_user_dataidx(self, dataset):
         return None
+
+
+if __name__ == "__main__":
+    img = Image.open("/home/maojingxin/workspace/Neko-ML/FL/data/ISIC/test/mask/ISIC_0000047_segmentation.png")
+    print(img.mode)
+    print(img.size)
+    print(img.getpixel((0, 0)))
+
+    tensor_img = transforms.ToTensor()(img)
+    print(tensor_img.shape)
+    print(tensor_img[0][0])
+
+    P_img = img.convert("P")
+    print(P_img.mode)
+    print(P_img.size)
+    print(P_img.getpixel((0, 0)))
+
+    tensor_P_img = transforms.ToTensor()(P_img)
+    print(tensor_P_img.shape)
+    print(tensor_P_img[0][0])
+
+    P_array = np.asarray(P_img)
+    print(P_array.shape)
+    print(P_array[0][0])
