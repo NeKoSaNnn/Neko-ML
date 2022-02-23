@@ -99,11 +99,12 @@ class Train(object):
                 imgs = imgs.to(self.args.device, dtype=torch.float32)
                 targets = targets.to(self.args.device,
                                      dtype=torch.float32 if self.args.num_classes == 1 else torch.long)
+                optimizer.zero_grad()
 
                 preds = net(imgs)
                 loss = loss_f(preds, targets)
                 # + dice_loss(F.softmax(res, dim=1).float(),F.one_hot(targets, self.args.num_classes).permute(0, 3, 1, 2).float(), multiclass=True)
-                optimizer.zero_grad()
+
                 loss.backward()
                 optimizer.step()
 
@@ -112,7 +113,7 @@ class Train(object):
                 if self.args.verbose and (iter % self.args.log_interval == 0 or iter == len(self.train_dataloader)):
                     utils.log(log_type="Train",
                               dict_val={"Epoch": ep, "Iter": iter,
-                                        "Loss": format(np.mean(np.array(tmp_iter_loss)), ".4f")})
+                                        "Loss": format(np.mean(tmp_iter_loss), ".4f")})
                     tmp_iter_loss = []
             # lr_schedule.step()
             utils.log("Non_Fed", {"Epoch": ep, "Avg_Loss": format(iter_loss / len(self.train_dataloader), ".4f")})
@@ -218,11 +219,11 @@ class LocalTrain(object):
                 imgs = imgs.to(self.args.device, dtype=torch.float32)
                 targets = targets.to(self.args.device,
                                      dtype=torch.float32 if self.args.num_classes == 1 else torch.long)
+                optimizer.zero_grad()
 
                 preds = local_net(imgs)
                 loss = loss_f(preds, targets)
 
-                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
@@ -231,7 +232,7 @@ class LocalTrain(object):
                 if self.args.verbose and (iter % self.args.log_interval == 0 or iter == len(self.train_dataloader)):
                     utils.log(log_type="GlobalEpoch-{}-LocalTrain".format(now_global_epoch),
                               dict_val={"Epoch": ep, "Iter": iter,
-                                        "Loss": format(np.mean(np.array(tmp_iter_loss)), ".4f")})
+                                        "Loss": format(np.mean(tmp_iter_loss), ".4f")})
                     tmp_iter_loss = []
             ep_loss += iter_loss / len(self.train_dataloader)
             # lr_schedule.step()

@@ -21,5 +21,4 @@ class args(neko_args.neko_args):
         self.parser.add_argument("--client_frac", type=float, default=0.1, help="the fraction of clients: C")
         self.parser.add_argument("--local_ep", type=int, default=5, help="the number of local epochs: E")
         self.parser.add_argument("--local_bs", type=int, default=10, help="the number of local batch size: B")
-        self.parser.add_argument("--split", type=str, default="user", help="train-test split type, user or sample")
         self.parser.add_argument("--all_clients", action="store_true", help="aggregation over all clients")
