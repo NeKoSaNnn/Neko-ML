@@ -49,6 +49,7 @@ class unet(object):
                                           num_workers=1)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.net = UNet(self.config["num_channels"], self.config["num_classes"]).to(self.device)
+        self.contribution = len(self.train_dataset)
         self.logger.info("model:{} construct complete".format(self.config["model_name"]))
         self.optimizer = torch.optim.Adam(self.net.parameters())
         self.loss_f = nn.CrossEntropyLoss() if self.config["num_classes"] > 1 else nn.BCEWithLogitsLoss()
@@ -84,20 +85,26 @@ class unet(object):
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
-                if iter % self.config["log_interval"] == 0 or iter == len(self.train_dataloader):
+                if iter % self.config["log_interval_iter"] == 0 or iter == len(self.train_dataloader):
                     self.logger.info("LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
             ep_losses.append(iter_losses / len(self.train_dataloader))
         return ep_losses
 
-    def eval(self):
+    def eval(self, eval_type):
         eval_loss = 0
         dice_score = 0
         self.net.eval()
-        for iter, (imgs, targets, _) in enumerate(self.val_dataloader, start=1):
+        if eval_type == "val":
+            eval_dataloader = self.val_dataloader
+        elif eval_type == "test":
+            eval_dataloader = self.test_dataloader
+        else:
+            self.logger.error("eval_type:{} error!".format(eval_type))
+            return eval_loss, dice_score
+
+        for iter, (imgs, targets, _) in enumerate(eval_dataloader, start=1):
             imgs, targets = Variable(imgs.to(self.device), requires_grad=False), \
                             Variable(targets.to(self.device), requires_grad=False)
-            # 梯度累计，实现不增大显存而增大batch_size
-
             with torch.no_grad():
                 preds = self.net(imgs)
                 loss = self.loss_f(preds, targets)
@@ -113,31 +120,6 @@ class unet(object):
         dice_score /= len(self.val_dataloader)
         self.net.train()
         return eval_loss, dice_score
-
-    def test(self):
-        test_loss = 0
-        dice_score = 0
-        self.net.eval()
-        for iter, (imgs, targets, _) in enumerate(self.test_dataloader, start=1):
-            imgs, targets = Variable(imgs.to(self.device), requires_grad=False), \
-                            Variable(targets.to(self.device), requires_grad=False)
-            # 梯度累计，实现不增大显存而增大batch_size
-
-            with torch.no_grad():
-                preds = self.net(imgs)
-                loss = self.loss_f(preds, targets)
-
-                test_loss += loss.item()
-                preds = (preds > 0.5).float()
-
-                if self.config["num_classes"] == 1:
-                    dice_score += metrics.dice_coeff(preds, targets).item()
-                else:
-                    dice_score += F.cross_entropy(preds, targets).item()
-        test_loss /= len(self.test_dataloader)
-        dice_score /= len(self.test_dataloader)
-        self.net.train()
-        return test_loss, dice_score
 
 
 class Models:

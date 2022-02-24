@@ -10,12 +10,21 @@ client:
   eval_batch_size: 16
   num_channels: 3
   num_classes: 1
-  log_interval: 10
+  log_interval_iter: 10
   gpu: "4,5"
+
+  ignore_loadavg: "false"
 
 #server
 server:
   epoch: 1000
   num_workers: 1
   num_clients: 5
-  log_interval: 10
+  num_tolerate: 5
+
+  log_interval_iter: 10
+  eval_interval_epoch:
+    val: 5
+    test: 5
+
+  per_client_max_loadavg: 0.4
