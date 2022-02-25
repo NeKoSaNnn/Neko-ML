@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
-from DRSegFL import metrics
+from DRSegFL import metrics, constants
 from DRSegFL.datasets import ListDataset
 from UNet import UNet
 
@@ -22,37 +22,43 @@ class unet(object):
         self.config = config
         self.logger = logger
         self.logger.info(self.config)
-        self.train_dataset = ListDataset(txt_path=self.config["train"],
+        self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN],
                                          img_type=".jpg",
                                          target_type=".jpg",
                                          img_size=256, is_augment=True)
         self.train_dataloader = DataLoader(self.train_dataset,
-                                           self.config["batch_size"],
+                                           self.config[constants.BATCH_SIZE],
                                            shuffle=True,
-                                           num_workers=self.config["num_workers"])
-        if "val" in self.config:
-            self.val_dataset = ListDataset(txt_path=self.config["val"],
+                                           num_workers=self.config[constants.NUM_WORKERS])
+        self.train_contribution = len(self.train_dataset)
+
+        if constants.VALIDATION in self.config:
+            self.val_dataset = ListDataset(txt_path=self.config[constants.VALIDATION],
                                            img_type=".jpg",
                                            target_type=".jpg",
                                            img_size=256)
             self.val_dataloader = DataLoader(self.val_dataset,
-                                             self.config["eval_batch_size"],
+                                             self.config[constants.EVAL_BATCH_SIZE],
                                              shuffle=False,
                                              num_workers=1)
-        self.test_dataset = ListDataset(txt_path=self.config["test"],
-                                        img_type=".jpg",
-                                        target_type=".jpg",
-                                        img_size=256)
-        self.test_dataloader = DataLoader(self.test_dataset,
-                                          self.config["eval_batch_size"],
-                                          shuffle=False,
-                                          num_workers=1)
+            self.val_contribution = len(self.val_dataset)
+
+        if constants.TEST in self.config:
+            self.test_dataset = ListDataset(txt_path=self.config[constants.TEST],
+                                            img_type=".jpg",
+                                            target_type=".jpg",
+                                            img_size=256)
+            self.test_dataloader = DataLoader(self.test_dataset,
+                                              self.config[constants.EVAL_BATCH_SIZE],
+                                              shuffle=False,
+                                              num_workers=1)
+            self.test_contribution = len(self.test_dataset)
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.net = UNet(self.config["num_channels"], self.config["num_classes"]).to(self.device)
-        self.contribution = len(self.train_dataset)
+        self.net = UNet(self.config[constants.NUM_CHANNELS], self.config[constants.NUM_CLASSES]).to(self.device)
         self.logger.info("model:{} construct complete".format(self.config["model_name"]))
         self.optimizer = torch.optim.Adam(self.net.parameters())
-        self.loss_f = nn.CrossEntropyLoss() if self.config["num_classes"] > 1 else nn.BCEWithLogitsLoss()
+        self.loss_f = nn.CrossEntropyLoss() if self.config[constants.NUM_CLASSES] > 1 else nn.BCEWithLogitsLoss()
 
     def get_weights(self):
         return [param.data.cpu().numpy() for param in self.net.parameters()]
@@ -86,7 +92,7 @@ class unet(object):
                     self.optimizer.zero_grad()
 
                 if iter % self.config["log_interval_iter"] == 0 or iter == len(self.train_dataloader):
-                    self.logger.info("LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
+                    self.logger.info("Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
             ep_losses.append(iter_losses / len(self.train_dataloader))
         return ep_losses
 
@@ -94,9 +100,9 @@ class unet(object):
         eval_loss = 0
         dice_score = 0
         self.net.eval()
-        if eval_type == "val":
+        if eval_type == constants.VALIDATION:
             eval_dataloader = self.val_dataloader
-        elif eval_type == "test":
+        elif eval_type == constants.TEST:
             eval_dataloader = self.test_dataloader
         else:
             self.logger.error("eval_type:{} error!".format(eval_type))
@@ -112,12 +118,13 @@ class unet(object):
                 eval_loss += loss.item()
                 preds = (preds > 0.5).float()
 
-                if self.config["num_classes"] == 1:
+                if self.config[constants.NUM_CLASSES] == 1:
                     dice_score += metrics.dice_coeff(preds, targets).item()
                 else:
                     dice_score += F.cross_entropy(preds, targets).item()
-        eval_loss /= len(self.val_dataloader)
-        dice_score /= len(self.val_dataloader)
+
+        eval_loss /= len(eval_dataloader)
+        dice_score /= len(eval_dataloader)
         self.net.train()
         return eval_loss, dice_score
 

@@ -2,6 +2,10 @@
 model:
   model_name: unet
   dataset_name: isic
+  dataset_txt:
+    train: "..."
+    val: "..."
+    test: ".."
 
 #client
 client:
@@ -20,10 +24,14 @@ server:
   epoch: 1000
   num_workers: 1
   num_clients: 5
+
   num_tolerate: 5
+  type_tolerate: "val"
 
   log_interval_iter: 10
-  eval_interval_epoch:
+
+  eval:
+    # eval_type : global epoch interval
     val: 5
     test: 5
 

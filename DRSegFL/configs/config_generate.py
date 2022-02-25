@@ -43,4 +43,7 @@ with open(server_config_path, "w+") as f:
 for i in range(config["server"]["num_clients"]):
     with open(client_configs_path[i], "w+") as f:
         config["client"]["logfile_path"] = osp.join(logfile_dir, "fed_client_{}.log".format(i))
+        config["client"]["train"] = "..."
+        config["client"]["val"] = "..."
+        config["client"]["test"] = "..."
         json.dump(config["client"], f, indent=4)
