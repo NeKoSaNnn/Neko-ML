@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 from DRSegFL import metrics, constants
 from DRSegFL.datasets import ListDataset
-from UNet import UNet
+from DRSegFL.models.UNet import UNet
 
 torch.set_num_threads(4)
 
@@ -22,21 +22,18 @@ class unet(object):
         self.config = config
         self.logger = logger
         self.logger.info(self.config)
-        self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN],
-                                         img_type=".jpg",
-                                         target_type=".jpg",
-                                         img_size=256, is_augment=True)
-        self.train_dataloader = DataLoader(self.train_dataset,
-                                           self.config[constants.BATCH_SIZE],
-                                           shuffle=True,
-                                           num_workers=self.config[constants.NUM_WORKERS])
-        self.train_contribution = len(self.train_dataset)
+        if constants.TRAIN in self.config:
+            self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN],
+                                             img_size=self.config[constants.IMG_SIZE], is_augment=True)
+            self.train_dataloader = DataLoader(self.train_dataset,
+                                               self.config[constants.BATCH_SIZE],
+                                               shuffle=True,
+                                               num_workers=self.config[constants.NUM_WORKERS])
+            self.train_contribution = len(self.train_dataset)
 
         if constants.VALIDATION in self.config:
             self.val_dataset = ListDataset(txt_path=self.config[constants.VALIDATION],
-                                           img_type=".jpg",
-                                           target_type=".jpg",
-                                           img_size=256)
+                                           img_size=self.config[constants.IMG_SIZE])
             self.val_dataloader = DataLoader(self.val_dataset,
                                              self.config[constants.EVAL_BATCH_SIZE],
                                              shuffle=False,
@@ -45,9 +42,7 @@ class unet(object):
 
         if constants.TEST in self.config:
             self.test_dataset = ListDataset(txt_path=self.config[constants.TEST],
-                                            img_type=".jpg",
-                                            target_type=".jpg",
-                                            img_size=256)
+                                            img_size=self.config[constants.IMG_SIZE])
             self.test_dataloader = DataLoader(self.test_dataset,
                                               self.config[constants.EVAL_BATCH_SIZE],
                                               shuffle=False,

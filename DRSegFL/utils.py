@@ -8,10 +8,17 @@ import json
 import pickle
 import time
 
+import yaml
 
-def load_json(f_name):
-    with open(f_name) as f:
+
+def load_json(f_path):
+    with open(f_path, "r") as f:
         return json.load(f)
+
+
+def load_yaml(f_path, encoding="UTF-8"):
+    with open(f_path, "r", encoding=encoding, ) as f:
+        return yaml.load(f, Loader=yaml.FullLoader)
 
 
 def get_now_day():

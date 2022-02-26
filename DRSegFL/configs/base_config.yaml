@@ -2,18 +2,22 @@
 model:
   model_name: unet
   dataset_name: isic
-  dataset_txt:
-    train: "..."
-    val: "..."
-    test: ".."
+  img_size: 256
+
+  dataset_dir:
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train"
+    val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/val"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/test"
+
+  num_channels: 3
+  num_classes: 1
 
 #client
 client:
   epoch: 5
   batch_size: 16
   eval_batch_size: 16
-  num_channels: 3
-  num_classes: 1
+
   log_interval_iter: 10
   gpu: "4,5"
 
@@ -21,6 +25,9 @@ client:
 
 #server
 server:
+  host: "127.0.0.1"
+  port: "9191"
+
   epoch: 1000
   num_workers: 1
   num_clients: 5
