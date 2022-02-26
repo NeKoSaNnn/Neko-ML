@@ -11,6 +11,7 @@ model:
 
   num_channels: 3
   num_classes: 1
+  gpu: "4,5"
 
 #client
 client:
@@ -19,14 +20,13 @@ client:
   eval_batch_size: 16
 
   log_interval_iter: 10
-  gpu: "4,5"
 
   ignore_loadavg: "false"
 
 #server
 server:
   host: "127.0.0.1"
-  port: "9191"
+  port: 9191
 
   epoch: 1000
   num_workers: 1

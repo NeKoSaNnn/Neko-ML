@@ -30,3 +30,4 @@ if __name__ == "__main__":
     for client_config_path in client_configs_path:
         assert osp.exists(client_config_path), "{} not exist".format(client_config_path)
         client = fl_client.FederatedClient(client_config_path, args.host, args.port)
+        client.wakeup()

@@ -85,9 +85,11 @@ class FederatedClient(object):
         self.local_model = None
         self.ignore_loadavg = True if self.client_config["ignore_loadavg"] == "true" else False
 
-        self.socketio = SocketIO(self.server_host, self.server_port, None, {"timeout": 1000})
-        self.logger.info("client start {}:{}".format(self.server_host, self.server_port))
+        self.socketio = SocketIO(self.server_host, self.server_port, None, {"timeout": 36000})
         self.register_handles()
+
+    def wakeup(self):
+        self.logger.info("client start {}:{}".format(self.server_host, self.server_port))
         self.socketio.emit("client_wakeup")
         self.socketio.wait()
 
@@ -232,13 +234,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--client_config_path", type=str, required=True, help="path of client config")
     parser.add_argument("--host", type=str, help="optional server host , 'configs/base_config.yaml' has inited host")
-    parser.add_argument("--port", type=str, help="optional server port , 'configs/base_config.yaml' has inited port")
+    parser.add_argument("--port", type=int, help="optional server port , 'configs/base_config.yaml' has inited port")
 
     args = parser.parse_args()
 
     assert osp.exists(args.client_config_path), "{} not exist".format(args.client_config_path)
 
     try:
-        FederatedClient(args.client_config_path, args.host, args.port)
+        client = FederatedClient(args.client_config_path, args.host, args.port)
+        client.wakeup()
     except ConnectionError:
         print("client connect to server error")

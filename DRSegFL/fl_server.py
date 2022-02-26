@@ -7,6 +7,7 @@ import argparse
 import json
 import logging
 import math
+import os
 import os.path as osp
 import sys
 import time
@@ -98,8 +99,11 @@ class FederatedServer(object):
         self.server_host = self.server_config[constants.HOST] if host is None else host
         self.server_port = self.server_config[constants.PORT] if port is None else port
 
+        os.environ["CUDA_VISIBLE_DEVICES"] = self.server_config["gpu"]
+
         self.app = Flask(__name__)
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        self.socketio = SocketIO(self.app, ping_timeout=3600000, ping_interval=3600000, max_http_buffer_size=int(1e32),
+                                 cors_allowed_origins="*")
 
         self.logger = logging.getLogger(constants.SERVER)
         fh = logging.FileHandler(self.server_config[constants.PATH_LOGFILE])
@@ -375,7 +379,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--server_config_path", type=str, required=True, help="path of server config")
     parser.add_argument("--host", type=str, help="optional server host , 'configs/base_config.yaml' has inited host")
-    parser.add_argument("--port", type=str, help="optional server port , 'configs/base_config.yaml' has inited port")
+    parser.add_argument("--port", type=int, help="optional server port , 'configs/base_config.yaml' has inited port")
 
     args = parser.parse_args()
 
