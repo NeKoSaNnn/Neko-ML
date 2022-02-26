@@ -66,10 +66,10 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
 
     server_config_path = osp.join(config_dir, "server_config_{}.json".format(now_time))
     client_configs_path = [osp.join(config_dir, "client_{}_config_{}.json".format(i, now_time)) for i in
-                           range(config[constants.SERVER][constants.NUM_CLIENTS])]
+                           range(1, config[constants.SERVER][constants.NUM_CLIENTS] + 1)]
 
     iid_train_dataset_txt_path = [osp.join(generate_dataset_txt_dir, "client_{}_train.txt".format(i)) for i in
-                                  range(config[constants.SERVER][constants.NUM_CLIENTS])]
+                                  range(1, config[constants.SERVER][constants.NUM_CLIENTS] + 1)]
     val_dataset_txt_path = osp.join(generate_dataset_txt_dir,
                                     "{}.txt".format(constants.VALIDATION)) if val_dataset_dir is not None else None
     test_dataset_txt_path = osp.join(generate_dataset_txt_dir,
@@ -116,7 +116,7 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
     print("Generate completed ~")
     print("server_config_path:{}".format(server_config_path))
     print("num_client_configs:{}".format(len(client_configs_path)))
-    [print("client_config_{}_path:{}".format(i, client_configs_path[i])) for i in range(len(client_configs_path))]
+    [print("client_config_{}_path:{}".format(i + 1, client_configs_path[i])) for i in range(len(client_configs_path))]
     return server_config_path, client_configs_path
 
 
