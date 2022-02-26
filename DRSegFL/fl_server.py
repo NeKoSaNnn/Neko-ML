@@ -202,8 +202,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_wakeup")
         def client_wakeup_handle():
-            self.logger.info(request.args, "wake up")
-            self.logger.info(request.sid, "wake up")
+            self.logger.info("{} wake up".format(request.args))
             emit("client_init")
 
         @self.socketio.on("client_ready")
