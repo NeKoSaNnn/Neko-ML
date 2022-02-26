@@ -3,6 +3,7 @@
 """
 @author:mjx
 """
+import copy
 
 import torch
 import torch.nn as nn
@@ -56,12 +57,10 @@ class unet(object):
         self.loss_f = nn.CrossEntropyLoss() if self.config[constants.NUM_CLASSES] > 1 else nn.BCEWithLogitsLoss()
 
     def get_weights(self):
-        return [param.data.cpu().numpy() for param in self.net.parameters()]
+        return self.net.state_dict()
 
-    def set_weights(self, params):
-        for i, param in enumerate(self.net.parameters()):
-            new_param = torch.from_numpy(params[i]).cuda() if torch.cuda.is_available() else torch.from_numpy(params[i])
-            param.data.copy_(new_param)
+    def set_weights(self, weights):
+        self.net.load_state_dict(copy.deepcopy(weights))
 
     def train(self, epoch=1):
         self.net.train()
@@ -79,10 +78,12 @@ class unet(object):
 
                 loss.backward()
 
-                if "accumulate_grad" in self.config and self.config["accumulate_grad"] > 0 and iter % self.config[
-                    "accumulate_grad"] == 0 \
-                        or "accumulate_grad" not in self.config \
-                        or self.config["accumulate_grad"] <= 0:
+                if constants.GRAD_ACCUMULATE in self.config and self.config[constants.GRAD_ACCUMULATE] > 0 and iter % \
+                        self.config[constants.GRAD_ACCUMULATE] == 0 or constants.GRAD_ACCUMULATE not in self.config or \
+                        self.config[constants.GRAD_ACCUMULATE] <= 0:
+                    if constants.GRAD_ACCUMULATE in self.config and self.config[constants.GRAD_ACCUMULATE] > 0:
+                        self.logger.info(
+                            "accumulate grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 

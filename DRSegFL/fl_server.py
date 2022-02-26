@@ -23,12 +23,14 @@ sys.path.append(root_dir_name)
 from DRSegFL import utils, constants, fed
 from DRSegFL.models.Models import Models
 
+DEBUG = True
+
 
 class GlobalModel(object):
     def __init__(self, config: dict, logger):
         self.config = config
         self.logger = logger
-        self.global_weights = self.get_init_parameter()
+        self.global_weights = self.get_init_weights()
         self.weights_path = self.config["weights_path"]
 
         self.global_train_loss = []
@@ -53,12 +55,12 @@ class GlobalModel(object):
     def update_global_weights(self, clients_weights, clients_contribution):
         self.global_weights = fed.FedAvg(clients_weights, clients_contribution)
 
-    def get_init_parameter(self):
+    def get_init_weights(self):
         model = getattr(Models, self.config["model_name"])(self.config, self.logger)
-        init_parameters = model.get_weights()
-        self.logger.info("init parameter loader complete")
+        init_weights = model.get_weights()
+        self.logger.info("init weights loader complete")
         del model
-        return init_parameters
+        return init_weights
 
     def get_global_loss_acc(self, now_global_epoch: int, eval_type: str, client_losses: list, client_acc: list or None,
                             client_contributions: list):
@@ -70,17 +72,17 @@ class GlobalModel(object):
         now_global_acc = np.sum(client_acc[i] * (client_contributions[i] / total_contributions) for i in
                                 range(len(client_contributions))) if client_acc is not None else None
 
-        if eval_type == "train":
+        if eval_type == constants.TRAIN:
             self.global_train_loss.append([now_global_epoch, now_global_loss])
             self.global_train_acc.append([now_global_epoch, now_global_acc])
-        elif eval_type == "val":
+        elif eval_type == constants.VALIDATION:
             self.global_val_loss.append([now_global_epoch, now_global_loss])
             self.global_val_acc.append([now_global_epoch, now_global_acc])
-        elif eval_type == "test":
+        elif eval_type == constants.TEST:
             self.global_test_loss.append([now_global_epoch, now_global_loss])
             self.global_test_acc.append([now_global_epoch, now_global_acc])
         else:
-            logging.error("get eval loss and acc error ! error eval_type :", eval_type)
+            self.logger.error("get eval loss and acc error ! error eval_type :{}".format(eval_type))
         return now_global_loss, now_global_acc
 
     def get_global_stats(self):
@@ -107,13 +109,13 @@ class FederatedServer(object):
 
         self.logger = logging.getLogger(constants.SERVER)
         fh = logging.FileHandler(self.server_config[constants.PATH_LOGFILE])
-        fh.setLevel(logging.INFO)
+        fh.setLevel(logging.DEBUG) if DEBUG else fh.setLevel(logging.INFO)
         fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         self.logger.addHandler(fh)
         # attention!!!
         # logger has its own level ,default is WARNING
         # set the lowest level to make handle level come into effect
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG) if DEBUG else self.logger.setLevel(logging.INFO)
 
         sh = logging.StreamHandler()
         sh.setLevel(logging.WARNING)
@@ -122,7 +124,6 @@ class FederatedServer(object):
 
         self.logger.info(self.server_config)
 
-        self.NUM_WORKERS = self.server_config[constants.NUM_WORKERS]
         self.NUM_CLIENTS = self.server_config[constants.NUM_CLIENTS]
         self.NUM_GLOBAL_EPOCH = self.server_config[constants.EPOCH]
         self.NUM_TOLERATE = self.server_config["num_tolerate"]
@@ -153,7 +154,7 @@ class FederatedServer(object):
 
     def clients_check_resource(self):
         self.client_resource = dict()
-        check_client_sids = np.random.choice(self.ready_client_sids, self.NUM_CLIENTS, replace=False)
+        check_client_sids = np.random.choice(list(self.ready_client_sids), self.NUM_CLIENTS, replace=False)
         for sid in check_client_sids:
             emit("client_check_resource", {"now_global_epoch": self.now_global_epoch}, room=sid)
 
@@ -187,32 +188,35 @@ class FederatedServer(object):
     def register_handles(self):
         @self.socketio.on("connect")
         def connect_handle():
-            self.logger.info(request.sid, "connect")
+            self.logger.info("{} connect".format_map(request.sid))
 
         @self.socketio.on("reconnect")
         def reconnect_handle():
-            self.logger.info(request.sid, "re connect")
+            self.logger.info("{} re connect".format_map(request.sid))
 
         @self.socketio.on("disconnect")
         def disconnect_handle():
-            self.logger.info(request.sid, "close connect")
+            self.logger.info("{} close connect".format_map(request.sid))
             if request.sid in self.ready_client_sids:
                 self.ready_client_sids.remove(request.sid)
 
         @self.socketio.on("client_wakeup")
         def client_wakeup_handle():
+            self.logger.info(request.args, "wake up")
             self.logger.info(request.sid, "wake up")
             emit("client_init")
 
         @self.socketio.on("client_ready")
         def client_ready_handle():
-            self.logger.info(request.sid, "ready for training")
+            self.logger.info("{} ready for training".format(request.sid))
             self.ready_client_sids.add(request.sid)
-            if len(self.ready_client_sids) >= self.NUM_WORKERS and self.now_global_epoch == -1:
-                self.logger.info("{} client(s) ready , federated train start ~".format(len(self.ready_client_sids)))
+            if len(self.ready_client_sids) >= self.NUM_CLIENTS and self.now_global_epoch == -1:
+                self.logger.info(
+                    "{} client(s) ready , federated train start ~".format(len(self.ready_client_sids)))
                 self.clients_check_resource()
-            elif len(self.ready_client_sids) < self.NUM_WORKERS:
-                self.logger.info("now get {} ready client(s) , waiting ...".format(len(self.ready_client_sids)))
+            elif len(self.ready_client_sids) < self.NUM_CLIENTS:
+                self.logger.info(
+                    "{} ready client(s), waiting enough clients to run...".format(len(self.ready_client_sids)))
             else:
                 self.logger.error("now global epoch != -1 , please restart server")
 

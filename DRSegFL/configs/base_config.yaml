@@ -8,6 +8,7 @@ model:
     train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train"
     val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/val"
     test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/test"
+  num_workers: 1
 
   num_channels: 3
   num_classes: 1
@@ -29,7 +30,6 @@ server:
   port: 9191
 
   epoch: 1000
-  num_workers: 1
   num_clients: 5
 
   num_tolerate: 5

@@ -3,7 +3,10 @@
 """
 @author:mjx
 """
+import copy
+
 import numpy as np
+import torch
 
 
 def FedAvg(clients_weights, clients_contribution=None):
@@ -13,9 +16,11 @@ def FedAvg(clients_weights, clients_contribution=None):
     if clients_contribution:
         assert len(clients_weights) == len(clients_contribution), "len(weights)!=len(contributions)"
     total_size = len(clients_weights) if clients_contribution is None else np.sum(clients_contribution)
-    avg_weights = [np.zeros(param.shape) for param in clients_weights[0]]
-    for c_index in range(len(clients_weights)):
-        for w_index in range(len(avg_weights)):
-            avg_weights[w_index] += clients_weights[c_index][w_index] / total_size if clients_contribution is None \
-                else clients_weights[c_index][w_index] * clients_contribution[c_index] / total_size
+    avg_weights = copy.deepcopy(clients_weights[0])
+    for k in avg_weights.keys():
+        for i in range(1, len(clients_weights)):
+            avg_weights[k] += clients_weights[i][k] if clients_contribution is None \
+                else torch.mul(clients_weights[i][k], clients_contribution[i] / clients_contribution[0])
+    avg_weights = torch.div(avg_weights, total_size) if clients_contribution is None \
+        else torch.div(avg_weights, total_size / clients_contribution[0])
     return avg_weights

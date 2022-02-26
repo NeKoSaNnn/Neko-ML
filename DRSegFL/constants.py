@@ -37,6 +37,8 @@ ACC = "acc"
 CONTRIB = "contribution"
 EVAL_BATCH_SIZE = "eval_batch_size"
 
+GRAD_ACCUMULATE = "accumulate_grad"
+
 NUM_WORKERS = "num_workers"
 NUM_CHANNELS = "num_channels"
 NUM_CLASSES = "num_classes"

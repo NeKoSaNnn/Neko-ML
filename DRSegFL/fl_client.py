@@ -11,6 +11,7 @@ import sys
 
 import numpy as np
 from socketIO_client import SocketIO
+import socketio
 
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
 now_dir_name = sys.path[0]  # ...DRSegFL/
@@ -18,6 +19,8 @@ sys.path.append(root_dir_name)
 
 from DRSegFL import utils, constants
 from DRSegFL.models.Models import Models
+
+DEBUG = True
 
 
 class LocalModel(object):
@@ -67,13 +70,13 @@ class FederatedClient(object):
 
         self.logger = logging.getLogger(constants.CLIENT)
         fh = logging.FileHandler(self.client_config[constants.PATH_LOGFILE])
-        fh.setLevel(logging.INFO)
+        fh.setLevel(logging.DEBUG) if DEBUG else fh.setLevel(logging.INFO)
         fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         self.logger.addHandler(fh)
         # attention!!!
         # logger has its own level ,default is WARNING
         # set the lowest level to make handle level come into effect
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG) if DEBUG else self.logger.setLevel(logging.INFO)
 
         sh = logging.StreamHandler()
         sh.setLevel(logging.WARNING)
@@ -85,8 +88,10 @@ class FederatedClient(object):
         self.local_model = None
         self.ignore_loadavg = True if self.client_config["ignore_loadavg"] == "true" else False
 
-        self.socketio = SocketIO(self.server_host, self.server_port, None, {"timeout": 36000})
+        # self.socketio = SocketIO(self.server_host, self.server_port, None, {"timeout": 36000})
+        self.socketio = socketio.Client()
         self.register_handles()
+        self.socketio.connect("http://{}:{}".format(self.server_host, self.server_port))
 
     def wakeup(self):
         self.logger.info("client start {}:{}".format(self.server_host, self.server_port))
@@ -94,27 +99,32 @@ class FederatedClient(object):
         self.socketio.wait()
 
     def register_handles(self):
+        @self.socketio.on("connect")
         def connect():
-            logging.info("connect")
+            self.logger.info("connect")
 
+        @self.socketio.on("reconnect")
         def reconnect():
-            logging.info("reconnect")
+            self.logger.info("reconnect")
 
+        @self.socketio.on("disconnect")
         def disconnect():
-            logging.info("disconnect")
+            self.logger.info("disconnect")
 
+        @self.socketio.on("client_init")
         def client_init():
-            logging.info("on init")
+            self.logger.info("on init")
             self.local_model = LocalModel(self.client_config, self.logger)
-            logging.info("local model init complete")
+            self.logger.info("local model init complete")
 
             self.socketio.emit("client_ready")
 
+        @self.socketio.on("client_check_resource")
         def client_check_resource(*args):
-            logging.info("start check resource ...")
+            self.logger.info("start check resource ...")
             data = args[0]
             if self.ignore_loadavg:
-                logging.info("ignore loadavg")
+                self.logger.info("ignore loadavg")
                 loadavg = 0.15
             else:
                 loadavg_data = {}
@@ -127,20 +137,30 @@ class FederatedClient(object):
                     loadavg_data["last_pid"] = loadavg_raw_data[4]
 
                 loadavg = loadavg_data["loadavg_15min"]
-                logging.info("loadavg : ", loadavg)
+                self.logger.info("loadavg : {}".format(loadavg))
 
             self.socketio.emit("client_check_resource_complete", {"now_global_epoch": data["now_global_epoch"],
                                                                   "loadavg": loadavg})
+            self.logger.info("check resource complete")
 
+        @self.socketio.on("local_update")
         def local_update(*args):
-            logging.info("local update ...")
+            self.logger.info("local update receiving ...")
+
+            self.logger.debug("args={}".format(args))
+
             data = args[0]
             sid = args[1]["room"]
 
+            self.logger.debug("receive_data={}".format(data))
+            self.logger.debug("sid={}".format(sid))
+
             now_global_epoch = data["now_global_epoch"]
 
+            self.logger.info("local update start")
+
             if now_global_epoch == 0:
-                logging.info("receive init weights")
+                self.logger.info("receive init weights")
                 now_weights = utils.pickle2obj(data["now_weights"])
                 self.local_model.set_weights(now_weights)
 
@@ -178,14 +198,19 @@ class FederatedClient(object):
                     "Test with local_weights -- Global Epoch:{} -- Client:{}-- Loss:{.4f} , Acc:{.3f}".format(
                         now_global_epoch, sid, test_loss, test_acc))
 
+            self.logger.info("local update complete")
             self.logger.info("emit local update to server ...")
             self.socketio.emit("client_update_complete", emit_data)
             self.logger.info("emit local update to server complete")
 
+        @self.socketio.on("eval_with_global_weights")
         def eval_with_global_weights(*args):
-            self.logger.info("receive federated weights from server")
+            self.logger.info("receive federated weights from server ...")
             data = args[0]
             sid = args[1]["room"]
+
+            self.logger.debug("receive_data={}".format(data))
+            self.logger.debug("sid={}".format(sid))
 
             now_global_epoch = data["now_global_epoch"]
 
@@ -215,19 +240,19 @@ class FederatedClient(object):
                     constants.LOSS: test_loss, constants.ACC: test_acc,
                     constants.CONTRIB: self.local_model.get_contribution(constants.TEST)}
 
-            self.socketio.emit("eval_with_global_weights_complete", emit_data)
+            self.socketio.emit("eval with global_weights complete", emit_data)
 
             if data[constants.FIN]:
                 self.logger.info("federated learning fin.")
                 exit(0)
 
-        self.socketio.on("connect", connect)
-        self.socketio.on("reconnect", reconnect)
-        self.socketio.on("disconnect", disconnect)
-        self.socketio.on("client_init", client_init)
-        self.socketio.on("client_check_resource", client_check_resource)
-        self.socketio.on("local_update", local_update)
-        self.socketio.on("eval_with_global_weights", eval_with_global_weights)
+        # self.socketio.on("connect", connect)
+        # self.socketio.on("reconnect", reconnect)
+        # self.socketio.on("disconnect", disconnect)
+        # self.socketio.on("client_init", client_init)
+        # self.socketio.on("client_check_resource", client_check_resource)
+        # self.socketio.on("local_update", local_update)
+        # self.socketio.on("eval_with_global_weights", eval_with_global_weights)
 
 
 if __name__ == "__main__":
