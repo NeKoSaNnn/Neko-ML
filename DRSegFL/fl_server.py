@@ -188,15 +188,15 @@ class FederatedServer(object):
     def register_handles(self):
         @self.socketio.on("connect")
         def connect_handle():
-            self.logger.info("{} connect".format_map(request.sid))
+            self.logger.info("{} connect".format(request.sid))
 
         @self.socketio.on("reconnect")
         def reconnect_handle():
-            self.logger.info("{} re connect".format_map(request.sid))
+            self.logger.info("{} re connect".format(request.sid))
 
         @self.socketio.on("disconnect")
         def disconnect_handle():
-            self.logger.info("{} close connect".format_map(request.sid))
+            self.logger.info("{} close connect".format(request.sid))
             if request.sid in self.ready_client_sids:
                 self.ready_client_sids.remove(request.sid)
 

@@ -3,6 +3,7 @@
 """
 @author:mjx
 """
+import argparse
 import json
 import os
 import os.path as osp
@@ -17,12 +18,14 @@ sys.path.append(root_dir_name)
 from DRSegFL import utils, constants, datasets
 
 
-def generate():
-    if not osp.exists("./base_config.yaml"):
-        print("please make sure base_config.yaml in now dir")
+def generate(base_config_path="./base_config.yaml", num_clients=None):
+    if not osp.exists(base_config_path):
+        print("please make sure base_config.yaml in {}".format(base_config_path))
         exit(-1)
 
-    config = utils.load_yaml("./base_config.yaml")
+    config = utils.load_yaml(base_config_path)
+    config[constants.SERVER][constants.NUM_CLIENTS] = config[constants.SERVER][constants.NUM_CLIENTS] \
+        if num_clients is None else num_clients
 
     now_time = utils.get_now_time()
     now_day = utils.get_now_day()
@@ -110,7 +113,7 @@ def generate():
             config[constants.CLIENT][constants.TEST] = test_dataset_txt_path
             json.dump(config[constants.CLIENT], f, indent=4)
 
-    print("Generate complete ...")
+    print("Generate completed ~")
     print("server_config_path:{}".format(server_config_path))
     print("num_client_configs:{}".format(len(client_configs_path)))
     [print("client_config_{}_path:{}".format(i, client_configs_path[i])) for i in range(len(client_configs_path))]
@@ -118,4 +121,11 @@ def generate():
 
 
 if __name__ == "__main__":
-    generate()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base_config_path", type=str, default="./base_config.yaml",
+                        help="optional base_config_path,default is ./base_config.yaml")
+    parser.add_argument("--num_clients", type=int,
+                        help="optional clients_num,'configs/base_config.yaml' has inited clients_num")
+    args = parser.parse_args()
+
+    generate(base_config_path=args.base_config_path, num_clients=args.num_clients)

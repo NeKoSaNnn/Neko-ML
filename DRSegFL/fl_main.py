@@ -21,13 +21,20 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=str, help="optional server port , 'configs/base_config.yaml' has inited port")
     args = parser.parse_args()
 
-    server_config_path, client_configs_path = config_generate.generate()
+    server_config_path, client_configs_path = config_generate.generate(
+        osp.join(now_dir_name, "configs", "base_config.yaml"))
 
     assert osp.exists(server_config_path), "{} not exist".format(server_config_path)
 
-    server = fl_server.FederatedServer(server_config_path, args.host, args.port)
-    server.start()
+    try:
+        server = fl_server.FederatedServer(server_config_path, args.host, args.port)
+        server.start()
+    except ConnectionError:
+        print("server connect error")
     for client_config_path in client_configs_path:
         assert osp.exists(client_config_path), "{} not exist".format(client_config_path)
-        client = fl_client.FederatedClient(client_config_path, args.host, args.port)
-        client.wakeup()
+        try:
+            client = fl_client.FederatedClient(client_config_path, args.host, args.port)
+            client.wakeup()
+        except ConnectionError:
+            print("client connect error")
