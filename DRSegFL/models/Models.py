@@ -52,9 +52,14 @@ class unet(object):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.net = UNet(self.config[constants.NUM_CHANNELS], self.config[constants.NUM_CLASSES]).to(self.device)
-        self.logger.info("model:{} construct complete".format(self.config["model_name"]))
+        self.logger.info("Model:{} Construct Completed.".format(self.config["model_name"]))
+        self.optimizer = None
+        self.loss_f = None
+
+    def init(self):
         self.optimizer = torch.optim.Adam(self.net.parameters())
         self.loss_f = nn.CrossEntropyLoss() if self.config[constants.NUM_CLASSES] > 1 else nn.BCEWithLogitsLoss()
+        self.logger.info("Model:{} Init Completed.".format(self.config["model_name"]))
 
     def get_weights(self):
         return copy.deepcopy(self.net.state_dict())
@@ -84,7 +89,7 @@ class unet(object):
                         self.config[constants.GRAD_ACCUMULATE] <= 0:
                     if constants.GRAD_ACCUMULATE in self.config and self.config[constants.GRAD_ACCUMULATE] > 0:
                         self.logger.info(
-                            "accumulate grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
+                            "Accumulate Grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
@@ -102,7 +107,7 @@ class unet(object):
         elif eval_type == constants.TEST:
             eval_dataloader = self.test_dataloader
         else:
-            self.logger.error("eval_type:{} error!".format(eval_type))
+            self.logger.error("Error Eval_type:{}".format(eval_type))
             return eval_loss, dice_score
 
         for iter, (imgs, targets, _, _) in enumerate(eval_dataloader, start=1):

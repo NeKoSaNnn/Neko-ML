@@ -110,9 +110,10 @@ class FederatedServer(object):
                                  cors_allowed_origins="*")
 
         self.logger = logging.getLogger(constants.SERVER)
+        log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
         fh = logging.FileHandler(self.server_config[constants.PATH_LOGFILE])
         fh.setLevel(logging.DEBUG) if DEBUG else fh.setLevel(logging.INFO)
-        fh.setFormatter(logging.Formatter("%(asctime)s|%(name)s|%(levelname)s|%(message)s"))
+        fh.setFormatter(log_formatter)
         self.logger.addHandler(fh)
         # attention!!!
         # logger has its own level ,default is WARNING
@@ -121,7 +122,7 @@ class FederatedServer(object):
 
         sh = logging.StreamHandler()
         sh.setLevel(logging.WARNING)
-        sh.setFormatter(logging.Formatter("%(asctime)s|%(name)s|%(levelname)s|%(message)s"))
+        sh.setFormatter(log_formatter)
         self.logger.addHandler(sh)
 
         self.logger.info(self.server_config)
@@ -164,7 +165,7 @@ class FederatedServer(object):
         self.now_global_epoch += 1
         self.client_update_datas = []
         self.logger.info("GlobalEpoch : {}".format(self.now_global_epoch))
-        self.logger.info("Clients-sids : {}".format(",".join(runnable_client_sids)))
+        self.logger.info("Clients-sids : [{}]".format(",".join(runnable_client_sids)))
         now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)
 
         emit_data = {"now_global_epoch": self.now_global_epoch}
@@ -180,7 +181,7 @@ class FederatedServer(object):
         for sid in runnable_client_sids:
             # first global epoch
             if self.now_global_epoch == 1:
-                self.logger.info("First GlobalEpoch , Send Init Weights To Client-sid:{}".format(sid))
+                self.logger.info("First GlobalEpoch , Send Init Weights To Client-sid:[{}]".format(sid))
             emit_data["sid"] = sid
             emit("local_update", emit_data, room=sid)
 
@@ -191,15 +192,15 @@ class FederatedServer(object):
     def register_handles(self):
         @self.socketio.on("connect")
         def connect_handle():
-            self.logger.info("{} Connect".format(request.sid))
+            self.logger.info("[{}] Connect".format(request.sid))
 
         @self.socketio.on("reconnect")
         def reconnect_handle():
-            self.logger.info("{} Re Connect".format(request.sid))
+            self.logger.info("[{}] Re Connect".format(request.sid))
 
         @self.socketio.on("disconnect")
         def disconnect_handle():
-            self.logger.info("{} Close Connect.".format(request.sid))
+            self.logger.info("[{}] Close Connect.".format(request.sid))
             if request.sid in self.ready_client_sids:
                 self.ready_client_sids.remove(request.sid)
 
@@ -210,7 +211,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_ready")
         def client_ready_handle():
-            self.logger.info("Client-sid:{} Ready For Training".format(request.sid))
+            self.logger.info("Client-sid:[{}] Ready For Training".format(request.sid))
             self.ready_client_sids.add(request.sid)
             if len(self.ready_client_sids) >= self.NUM_CLIENTS and self.now_global_epoch == 0:
                 self.logger.info(
@@ -230,12 +231,12 @@ class FederatedServer(object):
                 if len(self.client_resource) == self.NUM_CLIENTS:
                     runnable_client_sids = []
                     for sid, loadavg in self.client_resource.items():
-                        self.logger.info("Client-sid : {} , Loadavg : {}".format(sid, loadavg))
+                        self.logger.info("Client-sid:[{}] , Loadavg : {}".format(sid, loadavg))
                         if float(loadavg) < self.CLIENT_SINGLE_MAX_LOADAVG:
                             runnable_client_sids.append(sid)
-                            self.logger.info("Client-sid : {} Runnable".format(sid))
+                            self.logger.info("Client-sid:[{}] Runnable".format(sid))
                         else:
-                            self.logger.info("Client-sid : {} Over-loadavg".format(sid))
+                            self.logger.info("Client-sid:[{}] Over-loadavg".format(sid))
 
                     # over half clients runnable
                     if len(runnable_client_sids) / len(self.client_resource) > 0.5:
@@ -249,7 +250,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_update_complete")
         def client_update_complete_handle(data):
-            self.logger.info("Received Client-sid : {} Update-Data:{} ".format(request.sid, data))
+            self.logger.info("Received Client-sid:[{}] Update-Data:{} ".format(request.sid, data))
 
             if self.now_global_epoch == data["now_global_epoch"]:
                 data["now_weights"] = copy.deepcopy(utils.pickle2obj(data["now_weights"]))
@@ -324,13 +325,13 @@ class FederatedServer(object):
                     for sid in self.ready_client_sids:
                         emit_data["sid"] = sid
                         emit("eval_with_global_weights", emit_data, room=sid)
-                        self.logger.info("Server Send Federated Weights To Client:{}".format(sid))
+                        self.logger.info("Server Send Federated Weights To Client-sid:[{}]".format(sid))
 
         @self.socketio.on("eval_with_global_weights_complete")
         def eval_with_global_weights_complete_handle(data):
-            self.logger.info("Receive Client-sid : {} Eval Datas".format(request.sid))
+            self.logger.info("Receive Client-sid:[{}] Eval Datas".format(request.sid))
             if self.client_eval_datas is None:
-                self.logger.error("Client-sid :{} Task Over".format(request.sid))
+                self.logger.error("Client-sid:[{}] Task Over".format(request.sid))
                 return
 
             self.client_eval_datas.append(data)

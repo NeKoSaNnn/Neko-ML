@@ -28,6 +28,7 @@ class LocalModel(object):
         self.config = config
         self.local_epoch = self.config[constants.EPOCH]
         self.model = getattr(Models, self.config[constants.NAME_MODEL])(config, logger)
+        self.model.init()
         self.weights_path = self.config[constants.PATH_WEIGHTS]
 
     def get_weights(self):
@@ -74,9 +75,10 @@ class FederatedClient(object):
         self.local_epoch = self.client_config[constants.EPOCH]
 
         self.logger = logging.getLogger(constants.CLIENT)
+        log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
         fh = logging.FileHandler(self.client_config[constants.PATH_LOGFILE])
         fh.setLevel(logging.DEBUG) if DEBUG else fh.setLevel(logging.INFO)
-        fh.setFormatter(logging.Formatter("%(asctime)s|%(name)s|%(levelname)s|%(message)s"))
+        fh.setFormatter(log_formatter)
         self.logger.addHandler(fh)
         # attention!!!
         # logger has its own level ,default is WARNING
@@ -85,7 +87,7 @@ class FederatedClient(object):
 
         sh = logging.StreamHandler()
         sh.setLevel(logging.WARNING)
-        sh.setFormatter(logging.Formatter("%(asctime)s|%(name)s|%(levelname)s|%(message)s"))
+        sh.setFormatter(log_formatter)
         self.logger.addHandler(sh)
 
         self.logger.info(self.client_config)
@@ -158,7 +160,7 @@ class FederatedClient(object):
             sid = data["sid"]
 
             self.logger.debug("receive_data={}".format(data))
-            self.logger.debug("sid={}".format(sid))
+            self.logger.debug("sid=[{}]".format(sid))
 
             now_global_epoch = data["now_global_epoch"]
 
@@ -186,7 +188,7 @@ class FederatedClient(object):
             }
 
             self.logger.info(
-                "Train with_local_weights -- GlobalEpoch:{} -- Client:{} -- AvgLoss:{:.4f}".format(
+                "Train with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- AvgLoss:{:.4f}".format(
                     now_global_epoch, sid, loss))
 
             if constants.VALIDATION in data and data[constants.VALIDATION]:
@@ -195,7 +197,7 @@ class FederatedClient(object):
                 emit_data[constants.VALIDATION_ACC] = val_acc
                 emit_data[constants.VALIDATION_CONTRIB] = self.local_model.get_contribution(constants.VALIDATION)
                 self.logger.info(
-                    "Val with_local_weights -- GlobalEpoch:{} -- Client:{} --  Loss:{:.4f} , Acc:{:.3f}".format(
+                    "Val with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] --  Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, val_loss, val_acc))
 
             if constants.TEST in data and data[constants.TEST]:
@@ -204,7 +206,7 @@ class FederatedClient(object):
                 emit_data[constants.TEST_ACC] = test_acc
                 emit_data[constants.TEST_CONTRIB] = self.local_model.get_contribution(constants.TEST)
                 self.logger.info(
-                    "Test with_local_weights -- GlobalEpoch:{} -- Client:{} -- Loss:{:.4f} , Acc:{:.3f}".format(
+                    "Test with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, test_loss, test_acc))
 
             self.logger.info("Local Update Complete.")
@@ -219,7 +221,7 @@ class FederatedClient(object):
             sid = data["sid"]
 
             self.logger.debug("receive_data={}".format(data))
-            self.logger.debug("sid={}".format(sid))
+            self.logger.debug("sid=[{}]".format(sid))
 
             now_global_epoch = data["now_global_epoch"]
 
@@ -236,7 +238,7 @@ class FederatedClient(object):
             if constants.VALIDATION in eval_type:
                 val_loss, val_acc = self.local_model.val()
                 self.logger.info(
-                    "Val with_global_weights -- GlobalEpoch:{} -- Client:{} -- Loss:{:.4f} , Acc:{:.3f}".format(
+                    "Val with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, val_loss, val_acc))
                 emit_data[constants.VALIDATION] = {
                     constants.LOSS: val_loss, constants.ACC: val_acc,
@@ -245,7 +247,7 @@ class FederatedClient(object):
             if constants.TEST in eval_type:
                 test_loss, test_acc = self.local_model.test()
                 self.logger.info(
-                    "Test with_global_weights -- GlobalEpoch:{} -- Client:{} -- Loss:{:.4f} , Acc:{:.3f}".format(
+                    "Test with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, test_loss, test_acc))
                 emit_data[constants.TEST] = {
                     constants.LOSS: test_loss, constants.ACC: test_acc,
