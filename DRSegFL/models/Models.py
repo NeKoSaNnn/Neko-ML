@@ -67,6 +67,8 @@ class unet(object):
         self.net.train()
         ep_losses = []
         for ep in range(1, epoch + 1):
+            self.logger.info("Epoch:{} train ...".format(ep))
+            self.logger.info("train_dataloader size = {}".format(len(self.train_dataloader)))
             iter_losses = 0
             for iter, (imgs, targets, _, _) in enumerate(self.train_dataloader, start=1):
                 imgs, targets = Variable(imgs.to(self.device)), Variable(targets.to(self.device), requires_grad=False)

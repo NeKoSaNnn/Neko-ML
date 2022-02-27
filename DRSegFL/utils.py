@@ -33,9 +33,12 @@ def get_now_time():
     return time.strftime("%H%M%S", time.localtime())
 
 
-def is_img(obj_type):
-    img_type = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tga", ".svg", ".raw"}
-    return obj_type in img_type
+def is_img(path):
+    img_types = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tga", ".svg", ".raw"}
+    for img_type in img_types:
+        if img_type in path:
+            return True
+    return False
 
 
 def split_dataset_with_client_nums():
