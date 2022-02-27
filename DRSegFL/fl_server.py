@@ -14,7 +14,6 @@ import sys
 import time
 
 import numpy as np
-import torch.cuda
 from flask import Flask, request, render_template
 from flask_socketio import SocketIO, emit
 
@@ -206,7 +205,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_wakeup")
         def client_wakeup_handle():
-            self.logger.info("{} Wake Up".format(request.args))
+            self.logger.info("[{}] Wake Up".format(request.sid))
             emit("client_init")
 
         @self.socketio.on("client_ready")
@@ -231,12 +230,12 @@ class FederatedServer(object):
                 if len(self.client_resource) == self.NUM_CLIENTS:
                     runnable_client_sids = []
                     for sid, loadavg in self.client_resource.items():
-                        self.logger.info("Client-sid:[{}] , Loadavg : {}".format(sid, loadavg))
+                        self.logger.debug("Client-sid:[{}] , Loadavg : {}".format(sid, loadavg))
                         if float(loadavg) < self.CLIENT_SINGLE_MAX_LOADAVG:
                             runnable_client_sids.append(sid)
                             self.logger.info("Client-sid:[{}] Runnable".format(sid))
                         else:
-                            self.logger.info("Client-sid:[{}] Over-loadavg".format(sid))
+                            self.logger.warning("Client-sid:[{}] Over-loadavg".format(sid))
 
                     # over half clients runnable
                     if len(runnable_client_sids) / len(self.client_resource) > 0.5:
@@ -250,7 +249,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_update_complete")
         def client_update_complete_handle(data):
-            self.logger.info("Received Client-sid:[{}] Update-Data:{} ".format(request.sid, data))
+            self.logger.debug("Received Client-sid:[{}] Update-Data:{} ".format(request.sid, data))
 
             if self.now_global_epoch == data["now_global_epoch"]:
                 data["now_weights"] = copy.deepcopy(utils.pickle2obj(data["now_weights"]))
