@@ -4,6 +4,7 @@
 @author:mjx
 """
 import argparse
+import copy
 import json
 import logging
 import math
@@ -249,7 +250,7 @@ class FederatedServer(object):
             self.logger.info("receive client:{} update data:{} ".format(request.sid, data))
 
             if self.now_global_epoch == data["now_global_epoch"]:
-                data["now_weights"] = utils.pickle2obj(data["now_weights"])
+                data["now_weights"] = copy.deepcopy(utils.pickle2obj(data["now_weights"]))
                 self.client_update_datas.append(data)
                 # all clients upload complete
                 if self.NUM_CLIENTS == len(self.client_update_datas):
@@ -265,7 +266,7 @@ class FederatedServer(object):
 
                     self.logger.info(
                         "Train -- Global Epoch:{} -- AvgLoss:{:.4f}".format(self.now_global_epoch,
-                                                                           global_train_loss))
+                                                                            global_train_loss))
 
                     if constants.VALIDATION_LOSS in self.client_update_datas[0]:
                         avg_val_loss, avg_val_acc = self.global_model.get_global_loss_acc(
@@ -312,7 +313,7 @@ class FederatedServer(object):
                                                           self.global_model.weights_path)  # weights path
                     emit_data = {"now_global_epoch": self.now_global_epoch,
                                  "now_weights": now_weights_pickle,
-                                 "eval_type": self.EVAL.keys(),
+                                 "eval_type": list(self.EVAL.keys()),
                                  constants.FIN: self.fin}
 
                     for sid in self.ready_client_sids:

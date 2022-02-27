@@ -17,7 +17,7 @@ model:
 #client
 client:
   epoch: 2
-  batch_size: 8
+  batch_size: 16
   eval_batch_size: 16
 
   log_interval_iter: 10
@@ -30,7 +30,7 @@ server:
   port: 9191
 
   epoch: 100
-  num_clients: 5
+  num_clients: 2
 
   num_tolerate: 5
   type_tolerate: "val"

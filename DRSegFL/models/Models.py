@@ -71,7 +71,8 @@ class unet(object):
             self.logger.info("train_dataloader size = {}".format(len(self.train_dataloader)))
             iter_losses = 0
             for iter, (imgs, targets, _, _) in enumerate(self.train_dataloader, start=1):
-                imgs, targets = Variable(imgs.to(self.device)), Variable(targets.to(self.device), requires_grad=False)
+                imgs, targets = Variable(imgs.to(self.device, torch.float32)), Variable(
+                    targets.to(self.device, torch.float32), requires_grad=False)
                 # 梯度累计，实现不增大显存而增大batch_size
 
                 preds = self.net(imgs)
@@ -108,8 +109,8 @@ class unet(object):
             return eval_loss, dice_score
 
         for iter, (imgs, targets, _, _) in enumerate(eval_dataloader, start=1):
-            imgs, targets = Variable(imgs.to(self.device), requires_grad=False), \
-                            Variable(targets.to(self.device), requires_grad=False)
+            imgs, targets = Variable(imgs.to(self.device, torch.float32), requires_grad=False), \
+                            Variable(targets.to(self.device, torch.float32), requires_grad=False)
             with torch.no_grad():
                 preds = self.net(imgs)
                 loss = self.loss_f(preds, targets)

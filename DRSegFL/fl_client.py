@@ -249,7 +249,7 @@ class FederatedClient(object):
                     constants.LOSS: test_loss, constants.ACC: test_acc,
                     constants.CONTRIB: self.local_model.get_contribution(constants.TEST)}
 
-            self.socketio.emit("eval with global_weights complete", emit_data)
+            self.socketio.emit("eval_with_global_weights_complete", emit_data)
 
             if data[constants.FIN]:
                 self.logger.info("federated learning fin.")

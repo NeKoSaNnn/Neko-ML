@@ -5,7 +5,6 @@
 """
 import copy
 
-import numpy as np
 import torch
 
 
@@ -15,12 +14,14 @@ def FedAvg(clients_weights, clients_contribution=None):
     # clients_contribution 在这里用数据集的数量表征
     if clients_contribution:
         assert len(clients_weights) == len(clients_contribution), "len(weights)!=len(contributions)"
-    total_size = len(clients_weights) if clients_contribution is None else np.sum(clients_contribution)
+    total_size = len(clients_weights) if clients_contribution is None else sum(clients_contribution)
     avg_weights = copy.deepcopy(clients_weights[0])
+
     for k in avg_weights.keys():
+        if clients_contribution is not None:
+            avg_weights[k] = torch.mul(avg_weights[k], clients_contribution[0])
         for i in range(1, len(clients_weights)):
-            avg_weights[k] += clients_weights[i][k] if clients_contribution is None \
-                else torch.mul(clients_weights[i][k], clients_contribution[i] / clients_contribution[0])
-    avg_weights = torch.div(avg_weights, total_size) if clients_contribution is None \
-        else torch.div(avg_weights, total_size / clients_contribution[0])
+            avg_weights[k] += clients_weights[i][k] if clients_contribution is None else torch.mul(
+                clients_weights[i][k], clients_contribution[i])
+        avg_weights[k] = torch.div(avg_weights[k], total_size)
     return avg_weights
