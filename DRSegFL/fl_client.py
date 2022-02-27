@@ -184,7 +184,7 @@ class FederatedClient(object):
             }
 
             self.logger.info(
-                "Train with local_weights -- Global Epoch:{} -- Client:{} -- Local Epoch:{} AvgLoss:{.4f}".format(
+                "Train with local_weights -- Global Epoch:{} -- Client:{} -- Local Epoch:{} AvgLoss:{:.4f}".format(
                     now_global_epoch, sid, self.local_epoch, loss))
 
             if constants.VALIDATION in data and data[constants.VALIDATION]:
@@ -193,7 +193,7 @@ class FederatedClient(object):
                 emit_data[constants.VALIDATION_ACC] = val_acc
                 emit_data[constants.VALIDATION_CONTRIB] = self.local_model.get_contribution(constants.VALIDATION)
                 self.logger.info(
-                    "Val with local_weights -- Global Epoch:{} -- Client:{} --  Loss:{.4f} , Acc:{.3f}".format(
+                    "Val with local_weights -- Global Epoch:{} -- Client:{} --  Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, val_loss, val_acc))
 
             if constants.TEST in data and data[constants.TEST]:
@@ -202,7 +202,7 @@ class FederatedClient(object):
                 emit_data[constants.TEST_ACC] = test_acc
                 emit_data[constants.TEST_CONTRIB] = self.local_model.get_contribution(constants.TEST)
                 self.logger.info(
-                    "Test with local_weights -- Global Epoch:{} -- Client:{}-- Loss:{.4f} , Acc:{.3f}".format(
+                    "Test with local_weights -- Global Epoch:{} -- Client:{}-- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, test_loss, test_acc))
 
             self.logger.info("local update complete")
@@ -234,7 +234,7 @@ class FederatedClient(object):
             if constants.VALIDATION in eval_type:
                 val_loss, val_acc = self.local_model.val()
                 self.logger.info(
-                    "Val with global_weights -- Global Epoch:{} -- Client:{}--  Loss:{.4f} , Acc:{.3f}".format(
+                    "Val with global_weights -- Global Epoch:{} -- Client:{}--  Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, val_loss, val_acc))
                 emit_data[constants.VALIDATION] = {
                     constants.LOSS: val_loss, constants.ACC: val_acc,
@@ -243,7 +243,7 @@ class FederatedClient(object):
             if constants.TEST in eval_type:
                 test_loss, test_acc = self.local_model.test()
                 self.logger.info(
-                    "Test with global_weights -- Global Epoch:{} -- Client:{}--  Loss:{.4f} , Acc:{.3f}".format(
+                    "Test with global_weights -- Global Epoch:{} -- Client:{}--  Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, test_loss, test_acc))
                 emit_data[constants.TEST] = {
                     constants.LOSS: test_loss, constants.ACC: test_acc,

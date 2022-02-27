@@ -264,7 +264,7 @@ class FederatedServer(object):
                         [client_data[constants.TRAIN_CONTRIB] for client_data in self.client_update_datas])
 
                     self.logger.info(
-                        "Train -- Global Epoch:{} -- AvgLoss:{.4f}".format(self.now_global_epoch,
+                        "Train -- Global Epoch:{} -- AvgLoss:{:.4f}".format(self.now_global_epoch,
                                                                            global_train_loss))
 
                     if constants.VALIDATION_LOSS in self.client_update_datas[0]:
@@ -275,7 +275,7 @@ class FederatedServer(object):
                             [client_data[constants.VALIDATION_CONTRIB] for client_data in self.client_update_datas])
 
                         self.logger.info(
-                            "Val with locals_weights -- Global Epoch:{} -- AvgLoss:{.4f} , AvgAcc:{.3f}".format(
+                            "Val with locals_weights -- Global Epoch:{} -- AvgLoss:{:.4f} , AvgAcc:{:.3f}".format(
                                 self.now_global_epoch, avg_val_loss, avg_val_acc))
 
                         if self.TYPE_TOLERATE == constants.VALIDATION and self.global_model.prev_val_loss is not None and self.global_model.prev_val_loss < avg_val_loss:
@@ -296,7 +296,7 @@ class FederatedServer(object):
                             [client_data[constants.TEST_CONTRIB] for client_data in self.client_update_datas])
 
                         self.logger.info(
-                            "Test with locals_weights -- Global Epoch:{} -- AvgLoss:{.4f} ,AvgAcc:{.3f}".format(
+                            "Test with locals_weights -- Global Epoch:{} -- AvgLoss:{:.4f} ,AvgAcc:{:.3f}".format(
                                 self.now_global_epoch, avg_test_loss, avg_test_acc))
                         if self.TYPE_TOLERATE == constants.TEST and self.global_model.prev_test_loss is not None and self.global_model.prev_test_loss < avg_test_loss:
                             self.now_tolerate += 1
@@ -339,7 +339,7 @@ class FederatedServer(object):
                         [client_data[constants.VALIDATION][constants.CONTRIB] for client_data in
                          self.client_eval_datas])
                     self.logger.info(
-                        "Val with global_weights -- Global Epoch:{} -- AvgLoss:{.4f} , AvgAcc:{.3f}".format(
+                        "Val with global_weights -- Global Epoch:{} -- AvgLoss:{:.4f} , AvgAcc:{:.3f}".format(
                             self.now_global_epoch, global_val_loss, global_val_acc))
                     # Get Best according to Acc
                     if self.global_model.best_val_acc < global_val_acc:
@@ -355,7 +355,7 @@ class FederatedServer(object):
                         [client_data[constants.TEST][constants.ACC] for client_data in self.client_eval_datas],
                         [client_data[constants.TEST][constants.CONTRIB] for client_data in self.client_eval_datas])
                     self.logger.info(
-                        "Test with global_weights -- Global Epoch:{} -- AvgLoss:{.4f} , AvgAcc:{.3f}".format(
+                        "Test with global_weights -- Global Epoch:{} -- AvgLoss:{:.4f} , AvgAcc:{:.3f}".format(
                             self.now_global_epoch, global_test_loss, global_test_acc))
                     # Get Best according to Acc
                     if self.global_model.best_test_acc < global_test_acc:
@@ -370,14 +370,14 @@ class FederatedServer(object):
                     self.clients_check_resource()
                 else:
                     self.logger.info("federated learning fin.")
-                    self.logger.info("Best Global -- Val -- Loss : {.4f}".format(self.global_model.best_val_loss))
-                    self.logger.info("Best Global -- Val -- Acc : {.4f}".format(self.global_model.best_val_acc))
+                    self.logger.info("Best Global -- Val -- Loss : {:.4f}".format(self.global_model.best_val_loss))
+                    self.logger.info("Best Global -- Val -- Acc : {:.4f}".format(self.global_model.best_val_acc))
                     self.logger.info(
-                        "Best Global -- Val -- Epoch : {.4f}".format(self.global_model.best_val_global_epoch))
-                    self.logger.info("Best Global -- Test -- Loss : {.4f}".format(self.global_model.best_test_loss))
-                    self.logger.info("Best Global -- Test -- Acc : {.4f}".format(self.global_model.best_test_acc))
+                        "Best Global -- Val -- Epoch : {:.4f}".format(self.global_model.best_val_global_epoch))
+                    self.logger.info("Best Global -- Test -- Loss : {:.4f}".format(self.global_model.best_test_loss))
+                    self.logger.info("Best Global -- Test -- Acc : {:.4f}".format(self.global_model.best_test_acc))
                     self.logger.info(
-                        "Best Global -- Test -- Epoch : {.4f}".format(self.global_model.best_test_global_epoch))
+                        "Best Global -- Test -- Epoch : {:.4f}".format(self.global_model.best_test_global_epoch))
 
 
 if __name__ == "__main__":
