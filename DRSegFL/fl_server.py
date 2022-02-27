@@ -316,6 +316,7 @@ class FederatedServer(object):
                                  "eval_type": list(self.EVAL.keys()),
                                  constants.FIN: self.fin}
 
+                    self.client_eval_datas = []  # empty eval datas for next eval epoch
                     for sid in self.ready_client_sids:
                         emit_data["sid"] = sid
                         emit("eval_with_global_weights", emit_data, room=sid)
@@ -325,6 +326,7 @@ class FederatedServer(object):
         def eval_with_global_weights_complete_handle(data):
             self.logger.info("receive client:{} eval datas".format(request.sid))
             if self.client_eval_datas is None:
+                self.logger.error("client eval datas init fail")
                 return
 
             self.client_eval_datas.append(data)
@@ -370,6 +372,7 @@ class FederatedServer(object):
                     self.logger.info("start next global-epoch training ...")
                     self.clients_check_resource()
                 else:
+                    self.client_eval_datas = None
                     self.logger.info("federated learning fin.")
                     self.logger.info("Best Global -- Val -- Loss : {:.4f}".format(self.global_model.best_val_loss))
                     self.logger.info("Best Global -- Val -- Acc : {:.4f}".format(self.global_model.best_val_acc))
