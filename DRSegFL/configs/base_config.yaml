@@ -22,7 +22,7 @@ client:
 
   log_interval_iter: 10
 
-  ignore_loadavg: "false"
+  ignore_loadavg: "true"
 
 #server
 server:
@@ -42,4 +42,4 @@ server:
     val: 5
     test: 5
 
-  per_client_max_loadavg: 0.5
+  per_client_max_loadavg: 0.8

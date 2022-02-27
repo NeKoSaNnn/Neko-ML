@@ -172,9 +172,9 @@ class FederatedServer(object):
             emit_data["now_weights"] = now_weights_pickle
         else:
             if constants.VALIDATION in self.EVAL:
-                emit_data[constants.VALIDATION] = self.EVAL[constants.VALIDATION] % self.now_global_epoch == 0
+                emit_data[constants.VALIDATION] = self.now_global_epoch % self.EVAL[constants.VALIDATION] == 0
             if constants.TEST in self.EVAL:
-                emit_data[constants.TEST] = self.EVAL[constants.TEST] % self.now_global_epoch == 0
+                emit_data[constants.TEST] = self.now_global_epoch % self.EVAL[constants.TEST] == 0
 
         for sid in runnable_client_sids:
             if self.now_global_epoch == 0:
