@@ -57,13 +57,12 @@ class unet(object):
         self.loss_f = nn.CrossEntropyLoss() if self.config[constants.NUM_CLASSES] > 1 else nn.BCEWithLogitsLoss()
 
     def get_weights(self):
-        return self.net.state_dict()
+        return copy.deepcopy(self.net.state_dict())
 
     def set_weights(self, weights):
         self.net.load_state_dict(copy.deepcopy(weights))
 
     def train(self, epoch=1):
-        self.logger.info("local train start ...")
         self.net.train()
         ep_losses = []
         for ep in range(1, epoch + 1):

@@ -76,7 +76,7 @@ class FederatedClient(object):
         self.logger = logging.getLogger(constants.CLIENT)
         fh = logging.FileHandler(self.client_config[constants.PATH_LOGFILE])
         fh.setLevel(logging.DEBUG) if DEBUG else fh.setLevel(logging.INFO)
-        fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        fh.setFormatter(logging.Formatter("%(asctime)s|%(name)s|%(levelname)s|%(message)s"))
         self.logger.addHandler(fh)
         # attention!!!
         # logger has its own level ,default is WARNING
@@ -85,7 +85,7 @@ class FederatedClient(object):
 
         sh = logging.StreamHandler()
         sh.setLevel(logging.WARNING)
-        sh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        sh.setFormatter(logging.Formatter("%(asctime)s|%(name)s|%(levelname)s|%(message)s"))
         self.logger.addHandler(sh)
 
         self.logger.info(self.client_config)
@@ -99,37 +99,37 @@ class FederatedClient(object):
         self.socketio.connect("http://{}:{}".format(self.server_host, self.server_port))
 
     def wakeup(self):
-        self.logger.info("client start {}:{}".format(self.server_host, self.server_port))
+        self.logger.info("Client Start {}:{}".format(self.server_host, self.server_port))
         self.socketio.emit("client_wakeup")
         self.socketio.wait()
 
     def register_handles(self):
         @self.socketio.on("connect")
         def connect():
-            self.logger.info("connect")
+            self.logger.info("Connect")
 
         @self.socketio.on("reconnect")
         def reconnect():
-            self.logger.info("reconnect")
+            self.logger.info("Re Connect")
 
         @self.socketio.on("disconnect")
         def disconnect():
-            self.logger.info("disconnect")
+            self.logger.info("Close Connect.")
 
         @self.socketio.on("client_init")
         def client_init():
-            self.logger.info("on init")
+            self.logger.info("Init ...")
             self.local_model = LocalModel(self.client_config, self.logger)
-            self.logger.info("local model init complete")
+            self.logger.info("Local Model Init Completed.")
 
             self.socketio.emit("client_ready")
 
         @self.socketio.on("client_check_resource")
         def client_check_resource(*args):
-            self.logger.info("start check resource ...")
+            self.logger.info("Start Check Resource ...")
             data = args[0]
             if self.ignore_loadavg:
-                self.logger.info("ignore loadavg")
+                self.logger.info("Ignore Loadavg")
                 loadavg = 0.15
             else:
                 loadavg_data = {}
@@ -142,15 +142,15 @@ class FederatedClient(object):
                     loadavg_data["last_pid"] = loadavg_raw_data[4]
 
                 loadavg = loadavg_data["loadavg_15min"]
-                self.logger.info("loadavg : {}".format(loadavg))
+                self.logger.info("Loadavg : {}".format(loadavg))
 
             self.socketio.emit("client_check_resource_complete", {"now_global_epoch": data["now_global_epoch"],
                                                                   "loadavg": loadavg})
-            self.logger.info("check resource complete")
+            self.logger.info("Check Resource Completed.")
 
         @self.socketio.on("local_update")
         def local_update(*args):
-            self.logger.info("local update receiving ...")
+            self.logger.info("Local Update Receiving ...")
 
             self.logger.debug("args={}".format(args))
 
@@ -162,16 +162,18 @@ class FederatedClient(object):
 
             now_global_epoch = data["now_global_epoch"]
 
-            self.logger.info("local update start")
+            self.logger.info("Local Update Start ...")
 
-            if now_global_epoch == 0:
-                self.logger.info("receive init weights")
+            # first global epoch
+            if now_global_epoch == 1:
+                self.logger.info("Receive Init Weights ...")
                 now_weights = utils.pickle2obj(data["now_weights"])
                 utils.obj2pickle(now_weights, self.local_model.weights_path)  # init local weights
                 self.local_model.set_weights(now_weights)
-                self.logger.info("init local weights completed")
+                self.logger.info("Init Local Weights Completed")
 
             # train local_epoch
+            self.logger.info("GlobalEpoch:{} -- Local Train Start ...".format(now_global_epoch))
             weights, loss = self.local_model.train(self.local_epoch)
 
             pickle_weights = utils.obj2pickle(weights, self.local_model.weights_path)  # pickle weights path
@@ -184,8 +186,8 @@ class FederatedClient(object):
             }
 
             self.logger.info(
-                "Train with local_weights -- Global Epoch:{} -- Client:{} -- Local Epoch:{} AvgLoss:{:.4f}".format(
-                    now_global_epoch, sid, self.local_epoch, loss))
+                "Train with_local_weights -- GlobalEpoch:{} -- Client:{} -- AvgLoss:{:.4f}".format(
+                    now_global_epoch, sid, loss))
 
             if constants.VALIDATION in data and data[constants.VALIDATION]:
                 val_loss, val_acc = self.local_model.val()
@@ -193,7 +195,7 @@ class FederatedClient(object):
                 emit_data[constants.VALIDATION_ACC] = val_acc
                 emit_data[constants.VALIDATION_CONTRIB] = self.local_model.get_contribution(constants.VALIDATION)
                 self.logger.info(
-                    "Val with local_weights -- Global Epoch:{} -- Client:{} --  Loss:{:.4f} , Acc:{:.3f}".format(
+                    "Val with_local_weights -- GlobalEpoch:{} -- Client:{} --  Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, val_loss, val_acc))
 
             if constants.TEST in data and data[constants.TEST]:
@@ -202,17 +204,17 @@ class FederatedClient(object):
                 emit_data[constants.TEST_ACC] = test_acc
                 emit_data[constants.TEST_CONTRIB] = self.local_model.get_contribution(constants.TEST)
                 self.logger.info(
-                    "Test with local_weights -- Global Epoch:{} -- Client:{}-- Loss:{:.4f} , Acc:{:.3f}".format(
+                    "Test with_local_weights -- GlobalEpoch:{} -- Client:{} -- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, test_loss, test_acc))
 
-            self.logger.info("local update complete")
-            self.logger.info("emit local update to server ...")
+            self.logger.info("Local Update Complete.")
+            self.logger.info("Emit Local Update To Server ...")
             self.socketio.emit("client_update_complete", emit_data)
-            self.logger.info("emit local update to server complete")
+            self.logger.info("Emit Local Update Completed.")
 
         @self.socketio.on("eval_with_global_weights")
         def eval_with_global_weights(*args):
-            self.logger.info("receive federated weights from server ...")
+            self.logger.info("Receive Global Weights From Server ...")
             data = args[0]
             sid = data["sid"]
 
@@ -225,7 +227,7 @@ class FederatedClient(object):
             utils.obj2pickle(global_weights, self.local_model.weights_path)  # save global weights to local weights path
 
             self.local_model.set_weights(global_weights)
-            self.logger.info("set federated weights complete")
+            self.logger.info("Update Local Weights Completed.")
 
             eval_type = data["eval_type"]
 
@@ -234,7 +236,7 @@ class FederatedClient(object):
             if constants.VALIDATION in eval_type:
                 val_loss, val_acc = self.local_model.val()
                 self.logger.info(
-                    "Val with global_weights -- Global Epoch:{} -- Client:{}--  Loss:{:.4f} , Acc:{:.3f}".format(
+                    "Val with_global_weights -- GlobalEpoch:{} -- Client:{} -- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, val_loss, val_acc))
                 emit_data[constants.VALIDATION] = {
                     constants.LOSS: val_loss, constants.ACC: val_acc,
@@ -243,7 +245,7 @@ class FederatedClient(object):
             if constants.TEST in eval_type:
                 test_loss, test_acc = self.local_model.test()
                 self.logger.info(
-                    "Test with global_weights -- Global Epoch:{} -- Client:{}--  Loss:{:.4f} , Acc:{:.3f}".format(
+                    "Test with_global_weights -- GlobalEpoch:{} -- Client:{} -- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, test_loss, test_acc))
                 emit_data[constants.TEST] = {
                     constants.LOSS: test_loss, constants.ACC: test_acc,
@@ -252,7 +254,7 @@ class FederatedClient(object):
             self.socketio.emit("eval_with_global_weights_complete", emit_data)
 
             if data[constants.FIN]:
-                self.logger.info("federated learning fin.")
+                self.logger.info("Federated Learning Fin.")
                 exit(0)
 
         # self.socketio.on("connect", connect)
