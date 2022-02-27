@@ -178,6 +178,7 @@ class FederatedServer(object):
         for sid in runnable_client_sids:
             if self.now_global_epoch == 0:
                 self.logger.info("first global epoch , send init weights to client-sid:{}".format(sid))
+            emit_data["sid"] = sid
             emit("local_update", emit_data, room=sid)
 
     def start(self):
@@ -315,6 +316,7 @@ class FederatedServer(object):
                                  constants.FIN: self.fin}
 
                     for sid in self.ready_client_sids:
+                        emit_data["sid"] = sid
                         emit("eval_with_global_weights", emit_data, room=sid)
                         self.logger.info("server send federated weights to clients")
 

@@ -33,6 +33,10 @@ class LocalModel(object):
     def get_weights(self):
         return self.model.get_weights()
 
+    def auto_set_weights(self):
+        weights = utils.pickle2obj(self.weights_path)
+        self.model.set_weights(weights)
+
     def set_weights(self, params):
         self.model.set_weights(params)
 
@@ -151,7 +155,7 @@ class FederatedClient(object):
             self.logger.debug("args={}".format(args))
 
             data = args[0]
-            sid = args[1]["room"]
+            sid = data["sid"]
 
             self.logger.debug("receive_data={}".format(data))
             self.logger.debug("sid={}".format(sid))
@@ -209,7 +213,7 @@ class FederatedClient(object):
         def eval_with_global_weights(*args):
             self.logger.info("receive federated weights from server ...")
             data = args[0]
-            sid = args[1]["room"]
+            sid = data["sid"]
 
             self.logger.debug("receive_data={}".format(data))
             self.logger.debug("sid={}".format(sid))
@@ -217,6 +221,8 @@ class FederatedClient(object):
             now_global_epoch = data["now_global_epoch"]
 
             global_weights = utils.pickle2obj(data["now_weights"])
+            utils.obj2pickle(global_weights, self.local_model.weights_path)  # save global weights to local weights path
+
             self.local_model.set_weights(global_weights)
             self.logger.info("set federated weights complete")
 

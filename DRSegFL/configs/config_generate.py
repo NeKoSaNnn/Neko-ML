@@ -109,7 +109,7 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
     for i in range(config[constants.SERVER][constants.NUM_CLIENTS]):
         with open(client_configs_path[i], "w+") as f:
             config[constants.CLIENT][constants.PATH_LOGFILE] = osp.join(logfile_dir, "fed_client_{}.log".format(i + 1))
-            config[constants.SERVER][constants.PATH_WEIGHTS] = osp.join(client_weights_dir,
+            config[constants.CLIENT][constants.PATH_WEIGHTS] = osp.join(client_weights_dir,
                                                                         "local_c{}_{}.pkl".format(i, now_time))
             # Todo: change dataset , modify below
             config[constants.CLIENT][constants.TRAIN] = iid_train_dataset_txt_path[i]
