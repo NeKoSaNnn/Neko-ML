@@ -8,10 +8,12 @@ import glob
 import os.path as osp
 
 import numpy as np
+import torch
 import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
+import cv2 as cv
 
 from DRSegFL import utils
 
@@ -56,22 +58,68 @@ class ListDataset(Dataset):
         self.img_size = img_size
         self.is_augment = is_augment
 
+    @classmethod
+    def to_tensor_use_pil(cls, img_path, img_size=None, to_gray=False):
+        pil_img = Image.open(img_path).convert("L") if to_gray else Image.open(img_path).convert("RGB")
+        print(pil_img.size)
+        print(np.asarray(pil_img).shape)
+        tensor_img = transforms.ToTensor()(pil_img)
+        if img_size is not None:
+            tensor_img = F.interpolate(tensor_img.unsqueeze(0), img_size, mode="nearest").squeeze(0)
+        print(tensor_img.shape)
+        return pil_img, tensor_img
+
+    @classmethod
+    def to_tensor_use_cv(cls, img_path, img_size=None, to_gray=False):
+        cv_img = cv.imread(img_path, cv.IMREAD_GRAYSCALE) if to_gray else cv.cvtColor(
+            cv.imread(img_path, cv.IMREAD_COLOR), cv.COLOR_BGR2RGB)
+        print(cv_img.shape)
+        if img_size is not None:
+            cv_img = cv.resize(cv_img, (img_size, img_size), interpolation=cv.INTER_LINEAR)
+        if len(cv_img.shape) == 2:
+            cv_img = np.expand_dims(cv_img, axis=2)
+
+        print(cv_img.shape)
+        # HWC to CHW
+        np_img = cv_img.transpose((2, 0, 1))
+        np_img = np_img / 255 if np.max(np_img) > 1 else np_img
+        tensor_img = torch.from_numpy(np_img)
+        print(tensor_img.shape)
+        return cv_img, tensor_img
+
     def __getitem__(self, index):
         img_path = self.datas_and_targets_path[index][0].strip()
         target_path = self.datas_and_targets_path[index][1].strip()
 
-        img = Image.open(img_path).convert("RGB")
-        tensor_img = transforms.ToTensor()(img)
-        tensor_img = F.interpolate(tensor_img.unsqueeze(0), self.img_size, mode="nearest").squeeze(0)
+        tensor_img = self.to_tensor_use_pil(img_path, self.img_size)
 
         if utils.is_img(target_path):
-            target = Image.open(target_path)
-            tensor_target = transforms.ToTensor()(target)
-            tensor_target = F.interpolate(tensor_target.unsqueeze(0), self.img_size, mode="nearest").squeeze(0)
+            tensor_target = self.to_tensor_use_pil(target_path, self.img_size, to_gray=True)
         else:
             raise InterruptedError("标签数据非图片数据，需要额外处理")
 
-        return tensor_img, tensor_target, img_path
+        return tensor_img, tensor_target, img_path, target_path
 
     def __len__(self):
         return len(self.datas_and_targets_path)
+
+
+if __name__ == "__main__":
+    print("compare PIL with cv2")
+    pilimg1, img1 = ListDataset.to_tensor_use_pil(
+        "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/image/ISIC_0001126.jpg")
+    cvimg1, img2 = ListDataset.to_tensor_use_cv(
+        "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/image/ISIC_0001126.jpg")
+    pilimg2, target1 = ListDataset.to_tensor_use_pil(
+        "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/mask/ISIC_0001126_segmentation.png", to_gray=True)
+    cvimg2, target2 = ListDataset.to_tensor_use_cv(
+        "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/mask/ISIC_0001126_segmentation.png", to_gray=True)
+    print(torch.sum(abs(img1 - img2)))
+    print(torch.sum(abs(target1 - target2)))
+
+    print(np.asarray(pilimg1).shape)
+    print(cvimg1.shape)
+    print(np.asarray(pilimg2).shape)
+    print(cvimg2.shape)
+    print(np.sum(abs(np.asarray(pilimg1) - cvimg1)))
+    print(np.sum(abs(np.asarray(pilimg2) - np.squeeze(cvimg2, 2))))

@@ -169,7 +169,6 @@ class FederatedServer(object):
         # first global epoch
         if self.now_global_epoch == 0:
             emit_data["now_weights"] = now_weights_pickle
-            emit_data["weights_path"] = self.global_model.weights_path
         else:
             if constants.VALIDATION in self.EVAL:
                 emit_data[constants.VALIDATION] = self.EVAL[constants.VALIDATION] % self.now_global_epoch == 0
@@ -246,7 +245,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_update_complete")
         def client_update_complete_handle(data):
-            self.logger.info("receive client:{} update data:{} bytes".format(request.sid, sys.getsizeof(data)))
+            self.logger.info("receive client:{} update data:{} ".format(request.sid, data))
 
             if self.now_global_epoch == data["now_global_epoch"]:
                 data["now_weights"] = utils.pickle2obj(data["now_weights"])
@@ -308,7 +307,8 @@ class FederatedServer(object):
                             self.fin = True
                             self.logger.info("Test tending to convergence")
 
-                    now_weights_pickle = utils.obj2pickle(self.global_model.global_weights)
+                    now_weights_pickle = utils.obj2pickle(self.global_model.global_weights,
+                                                          self.global_model.weights_path)  # weights path
                     emit_data = {"now_global_epoch": self.now_global_epoch,
                                  "now_weights": now_weights_pickle,
                                  "eval_type": self.EVAL.keys(),

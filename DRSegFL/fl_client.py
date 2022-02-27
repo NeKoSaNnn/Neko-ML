@@ -28,6 +28,7 @@ class LocalModel(object):
         self.config = config
         self.local_epoch = self.config[constants.EPOCH]
         self.model = getattr(Models, self.config[constants.NAME_MODEL])(config, logger)
+        self.weights_path = self.config[constants.PATH_WEIGHTS]
 
     def get_weights(self):
         return self.model.get_weights()
@@ -162,12 +163,13 @@ class FederatedClient(object):
             if now_global_epoch == 0:
                 self.logger.info("receive init weights")
                 now_weights = utils.pickle2obj(data["now_weights"])
+                utils.obj2pickle(now_weights, self.local_model.weights_path)  # init local weights
                 self.local_model.set_weights(now_weights)
 
             # train local_epoch
             weights, loss = self.local_model.train(self.local_epoch)
 
-            pickle_weights = utils.obj2pickle(weights)
+            pickle_weights = utils.obj2pickle(weights, self.local_model.weights_path)  # pickle weights path
 
             emit_data = {
                 "now_global_epoch": now_global_epoch,
