@@ -63,11 +63,12 @@ class unet(object):
         self.net.load_state_dict(copy.deepcopy(weights))
 
     def train(self, epoch=1):
+        self.logger.info("local train start ...")
         self.net.train()
         ep_losses = []
         for ep in range(1, epoch + 1):
             iter_losses = 0
-            for iter, (imgs, targets, _) in enumerate(self.train_dataloader, start=1):
+            for iter, (imgs, targets, _, _) in enumerate(self.train_dataloader, start=1):
                 imgs, targets = Variable(imgs.to(self.device)), Variable(targets.to(self.device), requires_grad=False)
                 # 梯度累计，实现不增大显存而增大batch_size
 
@@ -104,7 +105,7 @@ class unet(object):
             self.logger.error("eval_type:{} error!".format(eval_type))
             return eval_loss, dice_score
 
-        for iter, (imgs, targets, _) in enumerate(eval_dataloader, start=1):
+        for iter, (imgs, targets, _, _) in enumerate(eval_dataloader, start=1):
             imgs, targets = Variable(imgs.to(self.device), requires_grad=False), \
                             Variable(targets.to(self.device), requires_grad=False)
             with torch.no_grad():

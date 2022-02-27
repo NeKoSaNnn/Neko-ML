@@ -169,6 +169,7 @@ class FederatedClient(object):
                 now_weights = utils.pickle2obj(data["now_weights"])
                 utils.obj2pickle(now_weights, self.local_model.weights_path)  # init local weights
                 self.local_model.set_weights(now_weights)
+                self.logger.info("init local weights completed")
 
             # train local_epoch
             weights, loss = self.local_model.train(self.local_epoch)
