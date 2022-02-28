@@ -32,13 +32,13 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
 
     config_dir = osp.join(sub_root_dir_name, "generates", "configs",
                           config[constants.MODEL][constants.NAME_MODEL],
-                          config[constants.MODEL][constants.NAME_DATASET], now_day)
+                          config[constants.MODEL][constants.NAME_DATASET], now_day, now_time)
     logfile_dir = osp.join(sub_root_dir_name, "logs",
                            config[constants.MODEL][constants.NAME_MODEL],
-                           config[constants.MODEL][constants.NAME_DATASET], now_day)
+                           config[constants.MODEL][constants.NAME_DATASET], now_day, now_time)
     weights_dir = osp.join(sub_root_dir_name, "saves", "weights",
                            config[constants.MODEL][constants.NAME_MODEL],
-                           config[constants.MODEL][constants.NAME_DATASET], now_day)
+                           config[constants.MODEL][constants.NAME_DATASET], now_day, now_time)
     client_weights_dir = osp.join(weights_dir, "clients")
 
     train_dataset_dir = config[constants.MODEL][constants.DIR_DATASET][constants.TRAIN]
@@ -66,8 +66,8 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
         print("please put test dataset in {}".format(test_dataset_dir))
         exit(-1)
 
-    server_config_path = osp.join(config_dir, "server_config_{}.json".format(now_time))
-    client_configs_path = [osp.join(config_dir, "client_{}_config_{}.json".format(i, now_time)) for i in
+    server_config_path = osp.join(config_dir, "server_config.json")
+    client_configs_path = [osp.join(config_dir, "client_{}_config.json".format(i)) for i in
                            range(1, config[constants.SERVER][constants.NUM_CLIENTS] + 1)]
 
     iid_train_dataset_txt_path = [osp.join(generate_dataset_txt_dir, "client_{}_train.txt".format(i)) for i in
@@ -98,21 +98,22 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
     config[constants.CLIENT][constants.PORT] = config[constants.SERVER][constants.PORT]
 
     with open(server_config_path, "w+") as f:
-        config[constants.SERVER][constants.PATH_LOGFILE] = osp.join(logfile_dir, "fed_server.log")
-        config[constants.SERVER][constants.PATH_WEIGHTS] = osp.join(weights_dir, "fed_c{}_ep{}_{}.pkl".format(
-            config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH], now_time))
+        config[constants.SERVER][constants.PATH_LOGFILE] = osp.join(logfile_dir, "server.log")
+        config[constants.SERVER][constants.PATH_WEIGHTS] = osp.join(weights_dir, "fed_c{}_ep{}.pkl".format(
+            config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH]))
         config[constants.SERVER][constants.PATH_BEST_WEIGHTS] = {
-            "val": osp.join(weights_dir, "best_fed_val_c{}_ep{}_{}.pt".format(
-                config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH], now_time)),
-            "test": osp.join(weights_dir, "best_fed_test_c{}_ep{}_{}.pt".format(
-                config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH], now_time))}
+            "val": osp.join(weights_dir, "best_fed_val_c{}_ep{}.pt".format(
+                config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH])),
+            "test": osp.join(weights_dir, "best_fed_test_c{}_ep{}.pt".format(
+                config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH]))}
         json.dump(config[constants.SERVER], f, indent=4)
 
     for i in range(config[constants.SERVER][constants.NUM_CLIENTS]):
         with open(client_configs_path[i], "w+") as f:
-            config[constants.CLIENT][constants.PATH_LOGFILE] = osp.join(logfile_dir, "fed_client_{}.log".format(i + 1))
+            config[constants.CLIENT][constants.PATH_LOGFILE] = osp.join(logfile_dir,
+                                                                        "client_{}.log".format(i + 1))
             config[constants.CLIENT][constants.PATH_WEIGHTS] = osp.join(client_weights_dir,
-                                                                        "local_c{}_{}.pkl".format(i + 1, now_time))
+                                                                        "local_c{}.pkl".format(i + 1))
             # Todo: change dataset , modify below
             config[constants.CLIENT][constants.TRAIN] = iid_train_dataset_txt_path[i]
             config[constants.CLIENT][constants.VALIDATION] = val_dataset_txt_path

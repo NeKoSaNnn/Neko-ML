@@ -14,8 +14,9 @@ import sys
 import time
 
 import numpy as np
+import torch.cuda
 from flask import Flask, request, render_template
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, disconnect
 
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
 now_dir_name = sys.path[0]  # ...DRSegFL/
@@ -410,10 +411,12 @@ class FederatedServer(object):
         def handle_client_fin(data):
             sid = data["sid"]
             self.fin_client_sids.add(sid)
+            disconnect(sid)
             self.logger.info("Federated Learning Client-sid:[{}] Fin.".format(sid))
             if len(list(self.fin_client_sids)) == len(self.ready_client_sids):
                 self.logger.info("All Clients Fin . Federated Learning Server Fin.")
                 exit(0)
+                torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":

@@ -261,6 +261,7 @@ class FederatedClient(object):
             if data[constants.FIN]:
                 self.logger.info("Federated Learning Client Fin.")
                 self.socketio.emit("client_fin", {"sid": data["sid"]})
+                self.socketio.disconnect()
                 exit(0)
 
         # self.socketio.on("connect", connect)
