@@ -387,11 +387,11 @@ class FederatedServer(object):
                     self.logger.info("Best Global -- Val -- Loss : {:.4f}".format(self.global_model.best_val_loss))
                     self.logger.info("Best Global -- Val -- Acc  : {:.4f}".format(self.global_model.best_val_acc))
                     self.logger.info(
-                        "Best Global -- Val -- Epoch : {:.4f}".format(self.global_model.best_val_global_epoch))
+                        "Best Global -- Val -- Epoch : {}".format(self.global_model.best_val_global_epoch))
                     self.logger.info("Best Global -- Test -- Loss : {:.4f}".format(self.global_model.best_test_loss))
                     self.logger.info("Best Global -- Test -- Acc  : {:.4f}".format(self.global_model.best_test_acc))
                     self.logger.info(
-                        "Best Global -- Test -- Epoch : {:.4f}".format(self.global_model.best_test_global_epoch))
+                        "Best Global -- Test -- Epoch : {}".format(self.global_model.best_test_global_epoch))
                     if self.global_model.best_val_weights:
                         self.logger.info("Save Best GlobalWeights -- Val : {}".format(
                             self.global_model.best_weights_path[constants.VALIDATION]))
@@ -412,6 +412,7 @@ class FederatedServer(object):
             self.logger.info("Federated Learning Client-sid:[{}] Fin.".format(sid))
             if len(list(self.fin_client_sids)) == len(self.ready_client_sids):
                 self.logger.info("All Clients Fin . Federated Learning Server Fin.")
+                self.socketio.stop()
                 exit(0)
 
 
