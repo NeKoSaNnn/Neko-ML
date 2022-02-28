@@ -11,7 +11,6 @@ import random
 import sys
 
 import numpy as np
-from socketIO_client import SocketIO
 import socketio
 
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
