@@ -31,7 +31,7 @@ if __name__ == "__main__":
     elif args.model == "unet":
         if args.dataset == "isic":
             net = UNet.UNet(args.num_channels, args.num_classes).to(args.device)
-    assert net is not None
+    assert net
     utils.log("Network", {"net": net}, is_print=False)
 
     # 初始化数据集
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     else:
         iniDataSet = None
 
-    assert iniDataSet is not None
+    assert iniDataSet
     # 初始化训练类
     if args.iid:
         # Fed i.i.d

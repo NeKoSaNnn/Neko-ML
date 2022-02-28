@@ -29,7 +29,7 @@ server:
   host: "127.0.0.1"
   port: 9191
 
-  epoch: 500
+  epoch: 10
   num_clients: 4
 
   num_tolerate: 5

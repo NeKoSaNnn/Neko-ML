@@ -14,7 +14,6 @@ import sys
 import time
 
 import numpy as np
-import torch.cuda
 from flask import Flask, request, render_template
 from flask_socketio import SocketIO, emit, disconnect
 
@@ -70,10 +69,10 @@ class GlobalModel(object):
         total_contributions = sum(client_contributions)
 
         now_global_loss = sum(client_losses[i] * (client_contributions[i] / total_contributions) for i in
-                              range(len(client_contributions))) if client_losses is not None else None
+                              range(len(client_contributions))) if client_losses else None
 
         now_global_acc = sum(client_acc[i] * (client_contributions[i] / total_contributions) for i in
-                             range(len(client_contributions))) if client_acc is not None else None
+                             range(len(client_contributions))) if client_acc else None
 
         if eval_type == constants.TRAIN:
             self.global_train_loss.append([now_global_epoch, now_global_loss])
@@ -107,8 +106,7 @@ class FederatedServer(object):
         os.environ["CUDA_VISIBLE_DEVICES"] = self.server_config["gpu"]
 
         self.app = Flask(__name__)
-        self.socketio = SocketIO(self.app, ping_timeout=3600000, ping_interval=3600000, max_http_buffer_size=int(1e32),
-                                 cors_allowed_origins="*")
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
 
         self.logger = logging.getLogger(constants.SERVER)
         log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
@@ -314,7 +312,6 @@ class FederatedServer(object):
         @self.socketio.on("eval_with_global_weights_complete")
         def eval_with_global_weights_complete_handle(data):
             self.logger.info("Receive Client-sid:[{}] Eval Datas".format(request.sid))
-            assert self.client_eval_datas is not None
 
             self.client_eval_datas.append(data)
 
@@ -333,7 +330,7 @@ class FederatedServer(object):
                             self.now_global_epoch, global_val_loss, global_val_acc))
 
                     if self.TYPE_TOLERATE == constants.VALIDATION:
-                        if self.global_model.prev_val_loss is not None and global_val_loss > self.global_model.prev_val_loss:
+                        if self.global_model.prev_val_loss and global_val_loss > self.global_model.prev_val_loss:
                             self.now_tolerate += 1
                         else:
                             self.now_tolerate = 0
@@ -361,7 +358,7 @@ class FederatedServer(object):
                             self.now_global_epoch, global_test_loss, global_test_acc))
 
                     if self.TYPE_TOLERATE == constants.TEST:
-                        if self.global_model.prev_test_loss is not None and global_test_loss > self.global_model.prev_test_loss:
+                        if self.global_model.prev_test_loss and global_test_loss > self.global_model.prev_test_loss:
                             self.now_tolerate += 1
                         else:
                             self.now_tolerate = 0
@@ -395,12 +392,12 @@ class FederatedServer(object):
                     self.logger.info("Best Global -- Test -- Acc  : {:.4f}".format(self.global_model.best_test_acc))
                     self.logger.info(
                         "Best Global -- Test -- Epoch : {:.4f}".format(self.global_model.best_test_global_epoch))
-                    if self.global_model.best_val_weights is not None:
+                    if self.global_model.best_val_weights:
                         self.logger.info("Save Best GlobalWeights -- Val : {}".format(
                             self.global_model.best_weights_path[constants.VALIDATION]))
                         utils.save_weights(self.global_model.best_val_weights,
                                            self.global_model.best_weights_path[constants.VALIDATION])
-                    if self.global_model.best_test_weights is not None:
+                    if self.global_model.best_test_weights:
                         self.logger.info("Save Best GlobalWeights -- Test : {}".format(
                             self.global_model.best_weights_path[constants.TEST]))
                         utils.save_weights(self.global_model.best_test_weights,
@@ -416,7 +413,6 @@ class FederatedServer(object):
             if len(list(self.fin_client_sids)) == len(self.ready_client_sids):
                 self.logger.info("All Clients Fin . Federated Learning Server Fin.")
                 exit(0)
-                torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ def FedAvg(clients_weights, clients_contribution=None):
     avg_weights = copy.deepcopy(clients_weights[0])
 
     for k in avg_weights.keys():
-        if clients_contribution is not None:
+        if clients_contribution:
             avg_weights[k] = torch.mul(avg_weights[k], clients_contribution[0])
         for i in range(1, len(clients_weights)):
             avg_weights[k] += clients_weights[i][k] if clients_contribution is None else torch.mul(

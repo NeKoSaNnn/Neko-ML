@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 import os.path as osp
+import random
 import sys
 
 import numpy as np
@@ -28,7 +29,6 @@ class LocalModel(object):
         self.config = config
         self.local_epoch = self.config[constants.EPOCH]
         self.model = getattr(Models, self.config[constants.NAME_MODEL])(config, logger)
-        self.model.init()
         self.weights_path = self.config[constants.PATH_WEIGHTS]
 
     def get_weights(self):
@@ -261,6 +261,7 @@ class FederatedClient(object):
             if data[constants.FIN]:
                 self.logger.info("Federated Learning Client Fin.")
                 self.socketio.emit("client_fin", {"sid": data["sid"]})
+                self.socketio.sleep(random.randint(0, 2))
                 self.socketio.disconnect()
                 exit(0)
 

@@ -47,7 +47,7 @@ class Eval(object):
         return self.acc
 
     def save_best_model(self, only_weight=True):
-        assert self.best_net is not None
+        assert self.best_net
         fed_name = "{}{}".format("iid-" if self.args.iid else "",
                                  "u" + str(self.args.num_users) + "-" if self.args.iid else "")
         norm_name = "{}-{}-{}-ep{}-{}".format(self.eval_type, self.args.dataset, self.args.model, self.args.epochs,

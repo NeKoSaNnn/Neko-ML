@@ -49,5 +49,6 @@ PATH_WEIGHTS = "weights_path"
 PATH_BEST_WEIGHTS = "best_weights_path"
 
 DIR_DATASET = "dataset_dir"
+DIR_PREDICT = "predict_dir"
 
 FIN = "fin."

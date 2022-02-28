@@ -18,11 +18,13 @@ from DRSegFL.models.UNet import UNet
 torch.set_num_threads(4)
 
 
-class unet(object):
-    def __init__(self, config: dict, logger):
+class BaseModel(object):
+    def __init__(self, config: dict, logger=None):
         self.config = config
         self.logger = logger
-        self.logger.info(self.config)
+
+        self.logger.info(self.config) if self.logger else print(self.config)
+
         if constants.TRAIN in self.config:
             self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN],
                                              img_size=self.config[constants.IMG_SIZE], is_augment=True)
@@ -51,29 +53,63 @@ class unet(object):
             self.test_contribution = len(self.test_dataset)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.net = UNet(self.config[constants.NUM_CHANNELS], self.config[constants.NUM_CLASSES]).to(self.device)
-        self.logger.info("Model:{} Construct Completed.".format(self.config["model_name"]))
+
+        self.net = None
         self.optimizer = None
         self.loss_f = None
 
-    def init(self):
-        self.optimizer = torch.optim.Adam(self.net.parameters())
-        self.loss_f = nn.CrossEntropyLoss() if self.config[constants.NUM_CLASSES] > 1 else nn.BCEWithLogitsLoss()
-        self.logger.info("Model:{} Init Completed.".format(self.config["model_name"]))
+        self.model_init()
+
+        if self.logger:
+            self.logger.info("Model:{} Construct and Init Completed.".format(self.config["model_name"]))
+        else:
+            print("Model:{} Construct and Init Completed.".format(self.config["model_name"]))
 
     def __del__(self):
-        del self.optimizer
         self.optimizer = None
-        del self.net
+        del self.optimizer
         self.net = None
-        del self.loss_f
+        del self.net
         self.loss_f = None
+        del self.loss_f
+        torch.cuda.empty_cache()
 
     def get_weights(self):
         return copy.deepcopy(self.net.state_dict())
 
     def set_weights(self, weights):
-        self.net.load_state_dict(copy.deepcopy(weights))
+        if isinstance(weights, str) and ".pt" in weights:
+            # .pt file
+            weights = torch.load(weights)
+            self.net.load_state_dict(weights)
+        else:
+            # state_dict file
+            self.net.load_state_dict(copy.deepcopy(weights))
+
+    def model_init(self):
+        """
+        init belows:
+        self.net
+        self.optimizer
+        self.loss_f
+        """
+        raise NotImplementedError
+
+    def train(self):
+        raise NotImplementedError
+
+    def eval(self, eval_type):
+        raise NotImplementedError
+
+
+class unet(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(unet, self).__init__(config, logger)
+
+    def model_init(self):
+        self.net = UNet(self.config[constants.NUM_CHANNELS], self.config[constants.NUM_CLASSES]).to(self.device)
+        self.optimizer = torch.optim.Adam(self.net.parameters())
+        self.loss_f = nn.CrossEntropyLoss() if self.config[constants.NUM_CLASSES] > 1 else nn.BCEWithLogitsLoss()
 
     def train(self, epoch=1):
         self.net.train()
@@ -96,13 +132,20 @@ class unet(object):
                         self.config[constants.GRAD_ACCUMULATE] == 0 or constants.GRAD_ACCUMULATE not in self.config or \
                         self.config[constants.GRAD_ACCUMULATE] <= 0:
                     if constants.GRAD_ACCUMULATE in self.config and self.config[constants.GRAD_ACCUMULATE] > 0:
-                        self.logger.info(
-                            "Accumulate Grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
+                        if self.logger:
+                            self.logger.info(
+                                "Accumulate Grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
+                        else:
+                            print("Accumulate Grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
                 if iter % self.config["log_interval_iter"] == 0 or iter == len(self.train_dataloader):
-                    self.logger.info("Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
+                    if self.logger:
+                        self.logger.info(
+                            "Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
+                    else:
+                        print("Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
             ep_losses.append(iter_losses / len(self.train_dataloader))
         return ep_losses
 
@@ -115,7 +158,10 @@ class unet(object):
         elif eval_type == constants.TEST:
             eval_dataloader = self.test_dataloader
         else:
-            self.logger.error("Error Eval_type:{}".format(eval_type))
+            if self.logger:
+                self.logger.error("Error Eval_type:{}".format(eval_type))
+            else:
+                print("Error Eval_type:{}".format(eval_type))
             return eval_loss, dice_score
 
         with torch.no_grad():

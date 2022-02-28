@@ -39,16 +39,13 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
     weights_dir = osp.join(sub_root_dir_name, "saves", "weights",
                            config[constants.MODEL][constants.NAME_MODEL],
                            config[constants.MODEL][constants.NAME_DATASET], now_day, now_time)
+    predict_dir = osp.join(sub_root_dir_name, "saves", "predict", config[constants.MODEL][constants.NAME_MODEL],
+                           config[constants.MODEL][constants.NAME_DATASET])
+
     client_weights_dir = osp.join(weights_dir, "clients")
 
-    train_dataset_dir = config[constants.MODEL][constants.DIR_DATASET][constants.TRAIN]
-    val_dataset_dir = config[constants.MODEL][constants.DIR_DATASET][constants.VALIDATION] \
-        if constants.VALIDATION in config[constants.MODEL][constants.DIR_DATASET] else None
-    test_dataset_dir = config[constants.MODEL][constants.DIR_DATASET][constants.TEST] \
-        if constants.TEST in config[constants.MODEL][constants.DIR_DATASET] else None
-
     generate_dataset_txt_dir = osp.join(sub_root_dir_name, "generates", "datasets",
-                                        config[constants.MODEL][constants.NAME_DATASET], now_day)
+                                        config[constants.MODEL][constants.NAME_DATASET], now_day, now_time)
 
     os.makedirs(config_dir, exist_ok=True)
     os.makedirs(logfile_dir, exist_ok=True)
@@ -56,13 +53,19 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
     os.makedirs(client_weights_dir, exist_ok=True)
     os.makedirs(generate_dataset_txt_dir, exist_ok=True)
 
+    train_dataset_dir = config[constants.MODEL][constants.DIR_DATASET][constants.TRAIN]
+    val_dataset_dir = config[constants.MODEL][constants.DIR_DATASET][constants.VALIDATION] \
+        if constants.VALIDATION in config[constants.MODEL][constants.DIR_DATASET] else None
+    test_dataset_dir = config[constants.MODEL][constants.DIR_DATASET][constants.TEST] \
+        if constants.TEST in config[constants.MODEL][constants.DIR_DATASET] else None
+
     if not osp.exists(train_dataset_dir):
         print("please put train dataset in {}".format(train_dataset_dir))
         exit(-1)
-    if val_dataset_dir is not None and not osp.exists(val_dataset_dir):
+    if val_dataset_dir and not osp.exists(val_dataset_dir):
         print("please put val dataset in {}".format(val_dataset_dir))
         exit(-1)
-    if test_dataset_dir is not None and not osp.exists(test_dataset_dir):
+    if test_dataset_dir and not osp.exists(test_dataset_dir):
         print("please put test dataset in {}".format(test_dataset_dir))
         exit(-1)
 
@@ -73,17 +76,17 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
     iid_train_dataset_txt_path = [osp.join(generate_dataset_txt_dir, "client_{}_train.txt".format(i)) for i in
                                   range(1, config[constants.SERVER][constants.NUM_CLIENTS] + 1)]
     val_dataset_txt_path = osp.join(generate_dataset_txt_dir,
-                                    "{}.txt".format(constants.VALIDATION)) if val_dataset_dir is not None else None
+                                    "{}.txt".format(constants.VALIDATION)) if val_dataset_dir else None
     test_dataset_txt_path = osp.join(generate_dataset_txt_dir,
-                                     "{}.txt".format(constants.TEST)) if test_dataset_dir is not None else None
+                                     "{}.txt".format(constants.TEST)) if test_dataset_dir else None
 
     # Todo: change dataset , modify below
     datasets.iid_dataset_txt_generate(osp.join(train_dataset_dir, "image"), "jpg", osp.join(train_dataset_dir, "mask"),
                                       "png", iid_train_dataset_txt_path)
-    if val_dataset_txt_path is not None:
+    if val_dataset_txt_path:
         datasets.dataset_txt_generate(osp.join(val_dataset_dir, "image"), "jpg", osp.join(val_dataset_dir, "mask"),
                                       "png", val_dataset_txt_path)
-    if test_dataset_txt_path is not None:
+    if test_dataset_txt_path:
         datasets.dataset_txt_generate(osp.join(test_dataset_dir, "image"), "jpg", osp.join(test_dataset_dir, "mask"),
                                       "png", test_dataset_txt_path)
 
@@ -101,6 +104,7 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
         config[constants.SERVER][constants.PATH_LOGFILE] = osp.join(logfile_dir, "server.log")
         config[constants.SERVER][constants.PATH_WEIGHTS] = osp.join(weights_dir, "fed_c{}_ep{}.pkl".format(
             config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH]))
+        config[constants.SERVER][constants.DIR_PREDICT] = predict_dir
         config[constants.SERVER][constants.PATH_BEST_WEIGHTS] = {
             "val": osp.join(weights_dir, "best_fed_val_c{}_ep{}.pt".format(
                 config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH])),
