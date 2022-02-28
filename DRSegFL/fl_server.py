@@ -410,7 +410,7 @@ class FederatedServer(object):
             self.fin_client_sids.add(sid)
             disconnect(sid)
             self.logger.info("Federated Learning Client-sid:[{}] Fin.".format(sid))
-            if len(list(self.fin_client_sids)) == len(self.ready_client_sids):
+            if len(list(self.fin_client_sids)) == len(self.NUM_CLIENTS):
                 self.logger.info("All Clients Fin . Federated Learning Server Fin.")
                 self.socketio.stop()
                 exit(0)
