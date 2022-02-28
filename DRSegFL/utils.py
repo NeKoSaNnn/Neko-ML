@@ -8,6 +8,7 @@ import json
 import pickle
 import time
 
+import torch
 import yaml
 
 
@@ -63,3 +64,7 @@ def pickle2obj(pickle_or_filepath):
     else:
         obj = pickle.loads(codecs.decode(pickle_or_filepath.encode(), "base64"))
     return obj
+
+
+def save_weights(weights, path):
+    torch.save(weights, path)

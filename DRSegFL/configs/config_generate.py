@@ -99,11 +99,13 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
 
     with open(server_config_path, "w+") as f:
         config[constants.SERVER][constants.PATH_LOGFILE] = osp.join(logfile_dir, "fed_server.log")
-        config[constants.SERVER][constants.PATH_WEIGHTS] = osp.join(weights_dir,
-                                                                    "fed_c{}_ep{}_{}.pkl".format(
-                                                                        config[constants.SERVER][constants.NUM_CLIENTS],
-                                                                        config[constants.SERVER][constants.EPOCH],
-                                                                        now_time))
+        config[constants.SERVER][constants.PATH_WEIGHTS] = osp.join(weights_dir, "fed_c{}_ep{}_{}.pkl".format(
+            config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH], now_time))
+        config[constants.SERVER][constants.PATH_BEST_WEIGHTS] = {
+            "val": osp.join(weights_dir, "best_fed_val_c{}_ep{}_{}.pt".format(
+                config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH], now_time)),
+            "test": osp.join(weights_dir, "best_fed_test_c{}_ep{}_{}.pt".format(
+                config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH], now_time))}
         json.dump(config[constants.SERVER], f, indent=4)
 
     for i in range(config[constants.SERVER][constants.NUM_CLIENTS]):

@@ -61,6 +61,14 @@ class unet(object):
         self.loss_f = nn.CrossEntropyLoss() if self.config[constants.NUM_CLASSES] > 1 else nn.BCEWithLogitsLoss()
         self.logger.info("Model:{} Init Completed.".format(self.config["model_name"]))
 
+    def __del__(self):
+        del self.optimizer
+        self.optimizer = None
+        del self.net
+        self.net = None
+        del self.loss_f
+        self.loss_f = None
+
     def get_weights(self):
         return copy.deepcopy(self.net.state_dict())
 
@@ -110,10 +118,10 @@ class unet(object):
             self.logger.error("Error Eval_type:{}".format(eval_type))
             return eval_loss, dice_score
 
-        for iter, (imgs, targets, _, _) in enumerate(eval_dataloader, start=1):
-            imgs, targets = Variable(imgs.to(self.device, torch.float32), requires_grad=False), \
-                            Variable(targets.to(self.device, torch.float32), requires_grad=False)
-            with torch.no_grad():
+        with torch.no_grad():
+            for iter, (imgs, targets, _, _) in enumerate(eval_dataloader, start=1):
+                imgs, targets = Variable(imgs.to(self.device, torch.float32), requires_grad=False), \
+                                Variable(targets.to(self.device, torch.float32), requires_grad=False)
                 preds = self.net(imgs)
                 loss = self.loss_f(preds, targets)
 
@@ -125,8 +133,8 @@ class unet(object):
                 else:
                     dice_score += F.cross_entropy(preds, targets).item()
 
-        eval_loss /= len(eval_dataloader)
-        dice_score /= len(eval_dataloader)
+            eval_loss /= len(eval_dataloader)
+            dice_score /= len(eval_dataloader)
         self.net.train()
         return eval_loss, dice_score
 

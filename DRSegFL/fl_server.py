@@ -32,7 +32,8 @@ class GlobalModel(object):
         self.config = config
         self.logger = logger
         self.global_weights = self.get_init_weights()
-        self.weights_path = self.config["weights_path"]
+        self.weights_path = self.config[constants.PATH_WEIGHTS]
+        self.best_weights_path = self.config[constants.PATH_BEST_WEIGHTS]
 
         self.global_train_loss = []
         self.global_train_acc = []
@@ -140,6 +141,7 @@ class FederatedServer(object):
         self.now_tolerate = 0
         self.fin = False
         self.ready_client_sids = set()
+        self.fin_client_sids = set()
         self.client_resource = dict()
         self.client_update_datas = []  # now global epoch , all client-update datas
         self.client_eval_datas = []  # now global epoch , all client-eval datas
@@ -156,9 +158,13 @@ class FederatedServer(object):
 
     def clients_check_resource(self):
         self.client_resource = dict()
-        check_client_sids = np.random.choice(list(self.ready_client_sids), self.NUM_CLIENTS, replace=False)
-        for sid in check_client_sids:
-            emit("client_check_resource", {"now_global_epoch": self.now_global_epoch}, room=sid)
+        if self.fin:
+            for sid in self.ready_client_sids:
+                emit("fin", {constants.FIN: self.fin, "sid": sid}, room=sid)
+        else:
+            check_client_sids = np.random.choice(list(self.ready_client_sids), self.NUM_CLIENTS, replace=False)
+            for sid in check_client_sids:
+                emit("client_check_resource", {"now_global_epoch": self.now_global_epoch}, room=sid)
 
     def global_train_next_epoch(self, runnable_client_sids):
         self.now_global_epoch += 1
@@ -281,17 +287,6 @@ class FederatedServer(object):
                             "Val with_locals_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , AvgAcc:{:.3f}".format(
                                 self.now_global_epoch, avg_val_loss, avg_val_acc))
 
-                        if self.TYPE_TOLERATE == constants.VALIDATION:
-                            if self.global_model.prev_val_loss is not None and avg_val_loss > self.global_model.prev_val_loss:
-                                self.now_tolerate += 1
-                            else:
-                                self.now_tolerate = 0
-                        self.global_model.prev_val_loss = avg_val_loss
-
-                        if self.now_tolerate > self.NUM_TOLERATE > 0:
-                            self.fin = True
-                            self.logger.info("Val Tending To Convergence")
-
                     if constants.TEST_LOSS in self.client_update_datas[0]:
                         avg_test_loss, avg_test_acc = self.global_model.get_global_loss_acc(
                             self.now_global_epoch, constants.TEST,
@@ -302,23 +297,12 @@ class FederatedServer(object):
                         self.logger.info(
                             "Test with_locals_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , AvgAcc:{:.3f}".format(
                                 self.now_global_epoch, avg_test_loss, avg_test_acc))
-                        if self.TYPE_TOLERATE == constants.TEST:
-                            if self.global_model.prev_test_loss is not None and avg_test_loss > self.global_model.prev_test_loss:
-                                self.now_tolerate += 1
-                            else:
-                                self.now_tolerate = 0
-                        self.global_model.prev_test_loss = avg_test_loss
-
-                        if self.now_tolerate > self.NUM_TOLERATE > 0:
-                            self.fin = True
-                            self.logger.info("Test Tending To Convergence")
 
                     now_weights_pickle = utils.obj2pickle(self.global_model.global_weights,
                                                           self.global_model.weights_path)  # weights path
                     emit_data = {"now_global_epoch": self.now_global_epoch,
                                  "now_weights": now_weights_pickle,
-                                 "eval_type": list(self.EVAL.keys()),
-                                 constants.FIN: self.fin}
+                                 "eval_type": list(self.EVAL.keys())}
 
                     self.client_eval_datas = []  # empty eval datas for next eval epoch
                     for sid in self.ready_client_sids:
@@ -329,9 +313,7 @@ class FederatedServer(object):
         @self.socketio.on("eval_with_global_weights_complete")
         def eval_with_global_weights_complete_handle(data):
             self.logger.info("Receive Client-sid:[{}] Eval Datas".format(request.sid))
-            if self.client_eval_datas is None:
-                self.logger.error("Client-sid:[{}] Task Over".format(request.sid))
-                return
+            assert self.client_eval_datas is not None
 
             self.client_eval_datas.append(data)
 
@@ -348,6 +330,18 @@ class FederatedServer(object):
                     self.logger.info(
                         "Val with_global_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , AvgAcc:{:.3f}".format(
                             self.now_global_epoch, global_val_loss, global_val_acc))
+
+                    if self.TYPE_TOLERATE == constants.VALIDATION:
+                        if self.global_model.prev_val_loss is not None and global_val_loss > self.global_model.prev_val_loss:
+                            self.now_tolerate += 1
+                        else:
+                            self.now_tolerate = 0
+                    self.global_model.prev_val_loss = global_val_loss
+
+                    if self.now_tolerate > self.NUM_TOLERATE > 0:
+                        self.fin = True
+                        self.logger.info("Val Tending To Convergence")
+
                     # Get Best according to Acc
                     if self.global_model.best_val_acc < global_val_acc:
                         self.global_model.best_val_loss = global_val_loss
@@ -364,6 +358,18 @@ class FederatedServer(object):
                     self.logger.info(
                         "Test with_global_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , AvgAcc:{:.3f}".format(
                             self.now_global_epoch, global_test_loss, global_test_acc))
+
+                    if self.TYPE_TOLERATE == constants.TEST:
+                        if self.global_model.prev_test_loss is not None and global_test_loss > self.global_model.prev_test_loss:
+                            self.now_tolerate += 1
+                        else:
+                            self.now_tolerate = 0
+                    self.global_model.prev_test_loss = global_test_loss
+
+                    if self.now_tolerate > self.NUM_TOLERATE > 0:
+                        self.fin = True
+                        self.logger.info("Test Tending To Convergence")
+
                     # Get Best according to Acc
                     if self.global_model.best_test_acc < global_test_acc:
                         self.global_model.best_test_loss = global_test_loss
@@ -371,13 +377,15 @@ class FederatedServer(object):
                         self.global_model.best_test_weights = copy.deepcopy(self.global_model.global_weights)
                         self.global_model.best_test_global_epoch = self.now_global_epoch
 
+                if self.now_global_epoch >= self.NUM_GLOBAL_EPOCH > 0:
+                    self.fin = True
+                    self.logger.info("Go to NUM_GLOBAL_EPOCH:{}".format(self.NUM_GLOBAL_EPOCH))
+
                 if not self.fin:
                     # next global epoch
                     self.logger.info("Start Next Global-Epoch Training ...")
-                    self.clients_check_resource()
                 else:
-                    self.client_eval_datas = None
-                    self.logger.info("Federated Learning Fin.")
+                    self.logger.info("Federated Learning Summary ...")
                     self.logger.info("Best Global -- Val -- Loss : {:.4f}".format(self.global_model.best_val_loss))
                     self.logger.info("Best Global -- Val -- Acc  : {:.4f}".format(self.global_model.best_val_acc))
                     self.logger.info(
@@ -386,6 +394,26 @@ class FederatedServer(object):
                     self.logger.info("Best Global -- Test -- Acc  : {:.4f}".format(self.global_model.best_test_acc))
                     self.logger.info(
                         "Best Global -- Test -- Epoch : {:.4f}".format(self.global_model.best_test_global_epoch))
+                    if self.global_model.best_val_weights is not None:
+                        self.logger.info("Save Best GlobalWeights -- Val : {}".format(
+                            self.global_model.best_weights_path[constants.VALIDATION]))
+                        utils.save_weights(self.global_model.best_val_weights,
+                                           self.global_model.best_weights_path[constants.VALIDATION])
+                    if self.global_model.best_test_weights is not None:
+                        self.logger.info("Save Best GlobalWeights -- Test : {}".format(
+                            self.global_model.best_weights_path[constants.TEST]))
+                        utils.save_weights(self.global_model.best_test_weights,
+                                           self.global_model.best_weights_path[constants.TEST])
+                self.clients_check_resource()
+
+        @self.socketio.on("client_fin")
+        def handle_client_fin(data):
+            sid = data["sid"]
+            self.fin_client_sids.add(sid)
+            self.logger.info("Federated Learning Client-sid:[{}] Fin.".format(sid))
+            if len(list(self.fin_client_sids)) == len(self.ready_client_sids):
+                self.logger.info("All Clients Fin . Federated Learning Server Fin.")
+                exit(0)
 
 
 if __name__ == "__main__":

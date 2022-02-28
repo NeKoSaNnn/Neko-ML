@@ -255,8 +255,12 @@ class FederatedClient(object):
 
             self.socketio.emit("eval_with_global_weights_complete", emit_data)
 
+        @self.socketio.on("fin")
+        def fin(*args):
+            data = args[0]
             if data[constants.FIN]:
-                self.logger.info("Federated Learning Fin.")
+                self.logger.info("Federated Learning Client Fin.")
+                self.socketio.emit("client_fin", {"sid": data["sid"]})
                 exit(0)
 
         # self.socketio.on("connect", connect)

@@ -46,6 +46,7 @@ NUM_CLIENTS = "num_clients"
 
 PATH_LOGFILE = "logfile_path"
 PATH_WEIGHTS = "weights_path"
+PATH_BEST_WEIGHTS = "best_weights_path"
 
 DIR_DATASET = "dataset_dir"
 
