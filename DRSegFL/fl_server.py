@@ -66,13 +66,13 @@ class GlobalModel(object):
 
     def get_global_loss_acc(self, now_global_epoch: int, eval_type: str, client_losses: list, client_acc: list or None,
                             client_contributions: list):
-        total_contributions = np.sum(client_contributions)
+        total_contributions = sum(client_contributions)
 
-        now_global_loss = np.sum(client_losses[i] * (client_contributions[i] / total_contributions) for i in
-                                 range(len(client_contributions))) if client_losses is not None else None
+        now_global_loss = sum(client_losses[i] * (client_contributions[i] / total_contributions) for i in
+                              range(len(client_contributions))) if client_losses is not None else None
 
-        now_global_acc = np.sum(client_acc[i] * (client_contributions[i] / total_contributions) for i in
-                                range(len(client_contributions))) if client_acc is not None else None
+        now_global_acc = sum(client_acc[i] * (client_contributions[i] / total_contributions) for i in
+                             range(len(client_contributions))) if client_acc is not None else None
 
         if eval_type == constants.TRAIN:
             self.global_train_loss.append([now_global_epoch, now_global_loss])
@@ -343,9 +343,9 @@ class FederatedServer(object):
                         self.logger.info("Val Tending To Convergence")
 
                     # Get Best according to Acc
-                    if self.global_model.best_val_acc < global_val_acc:
+                    if global_val_acc > self.global_model.best_val_acc:
                         self.global_model.best_val_loss = global_val_loss
-                        self.global_model.best_val_acc = global_val_loss
+                        self.global_model.best_val_acc = global_val_acc
                         self.global_model.best_val_weights = self.global_model.global_weights
                         self.global_model.best_val_global_epoch = self.now_global_epoch
 
@@ -371,9 +371,9 @@ class FederatedServer(object):
                         self.logger.info("Test Tending To Convergence")
 
                     # Get Best according to Acc
-                    if self.global_model.best_test_acc < global_test_acc:
+                    if global_test_acc > self.global_model.best_test_acc:
                         self.global_model.best_test_loss = global_test_loss
-                        self.global_model.best_test_acc = global_test_loss
+                        self.global_model.best_test_acc = global_test_acc
                         self.global_model.best_test_weights = copy.deepcopy(self.global_model.global_weights)
                         self.global_model.best_test_global_epoch = self.now_global_epoch
 
