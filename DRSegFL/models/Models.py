@@ -153,7 +153,10 @@ class unet(BaseModel):
         eval_loss = 0
         dice_score = 0
         self.net.eval()
-        if eval_type == constants.VALIDATION:
+        if eval_type == constants.TRAIN:
+            eval_dataloader = DataLoader(self.train_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False,
+                                         num_workers=1)
+        elif eval_type == constants.VALIDATION:
             eval_dataloader = self.val_dataloader
         elif eval_type == constants.TEST:
             eval_dataloader = self.test_dataloader

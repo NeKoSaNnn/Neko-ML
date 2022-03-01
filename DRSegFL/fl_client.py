@@ -54,12 +54,8 @@ class LocalModel(object):
         losses = self.model.train(local_epoch)
         return self.get_weights(), np.mean(losses)
 
-    def val(self):
-        loss, acc = self.model.eval(constants.VALIDATION)
-        return loss, acc
-
-    def test(self):
-        loss, acc = self.model.eval(constants.TEST)
+    def eval(self, eval_type):
+        loss, acc = self.model.eval(eval_type)
         return loss, acc
 
 
@@ -191,7 +187,7 @@ class FederatedClient(object):
                     now_global_epoch, sid, loss))
 
             if constants.VALIDATION in data and data[constants.VALIDATION]:
-                val_loss, val_acc = self.local_model.val()
+                val_loss, val_acc = self.local_model.eval(constants.VALIDATION)
                 emit_data[constants.VALIDATION_LOSS] = val_loss
                 emit_data[constants.VALIDATION_ACC] = val_acc
                 emit_data[constants.VALIDATION_CONTRIB] = self.local_model.get_contribution(constants.VALIDATION)
@@ -200,7 +196,7 @@ class FederatedClient(object):
                         now_global_epoch, sid, val_loss, val_acc))
 
             if constants.TEST in data and data[constants.TEST]:
-                test_loss, test_acc = self.local_model.test()
+                test_loss, test_acc = self.local_model.eval(constants.TEST)
                 emit_data[constants.TEST_LOSS] = test_loss
                 emit_data[constants.TEST_ACC] = test_acc
                 emit_data[constants.TEST_CONTRIB] = self.local_model.get_contribution(constants.TEST)
@@ -234,8 +230,17 @@ class FederatedClient(object):
 
             emit_data = {}
 
+            if constants.TRAIN in eval_type:
+                train_loss, train_acc = self.local_model.eval(constants.TRAIN)
+                self.logger.info(
+                    "Train with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
+                        now_global_epoch, sid, train_loss, train_acc))
+                emit_data[constants.TRAIN] = {
+                    constants.LOSS: train_loss, constants.ACC: train_acc,
+                    constants.CONTRIB: self.local_model.get_contribution(constants.TRAIN)}
+
             if constants.VALIDATION in eval_type:
-                val_loss, val_acc = self.local_model.val()
+                val_loss, val_acc = self.local_model.eval(constants.VALIDATION)
                 self.logger.info(
                     "Val with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, val_loss, val_acc))
@@ -244,7 +249,7 @@ class FederatedClient(object):
                     constants.CONTRIB: self.local_model.get_contribution(constants.VALIDATION)}
 
             if constants.TEST in eval_type:
-                test_loss, test_acc = self.local_model.test()
+                test_loss, test_acc = self.local_model.eval(constants.TEST)
                 self.logger.info(
                     "Test with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
                         now_global_epoch, sid, test_loss, test_acc))
@@ -260,17 +265,6 @@ class FederatedClient(object):
             if data[constants.FIN]:
                 self.logger.info("Federated Learning Client Fin.")
                 self.socketio.emit("client_fin", {"sid": data["sid"]})
-                self.socketio.sleep(random.randint(0, 2))
-                self.socketio.disconnect()
-                exit(0)
-
-        # self.socketio.on("connect", connect)
-        # self.socketio.on("reconnect", reconnect)
-        # self.socketio.on("disconnect", disconnect)
-        # self.socketio.on("client_init", client_init)
-        # self.socketio.on("client_check_resource", client_check_resource)
-        # self.socketio.on("local_update", local_update)
-        # self.socketio.on("eval_with_global_weights", eval_with_global_weights)
 
 
 if __name__ == "__main__":

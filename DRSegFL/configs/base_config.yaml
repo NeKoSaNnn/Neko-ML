@@ -17,8 +17,8 @@ model:
 #client
 client:
   epoch: 2
-  batch_size: 2
-  eval_batch_size: 8
+  batch_size: 4
+  eval_batch_size: 4
 
   log_interval_iter: 10
 
@@ -29,17 +29,19 @@ server:
   host: "127.0.0.1"
   port: 9191
 
-  epoch: 10
+  epoch: 300
   num_clients: 4
 
-  num_tolerate: 5
-  type_tolerate: "val"
-
-  log_interval_iter: 10
-
-  eval:
-    # eval_type : global epoch interval
+  global_eval:
+    - "train"
+    - "val"
+    - "test"
+  local_eval:
     val: 5
     test: 5
 
+  num_tolerate: 4
+  type_tolerate: "val"
+
+  log_interval_iter: 10
   per_client_max_loadavg: 0.8

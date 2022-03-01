@@ -130,7 +130,8 @@ class FederatedServer(object):
         self.NUM_GLOBAL_EPOCH = self.server_config[constants.EPOCH]
         self.NUM_TOLERATE = self.server_config["num_tolerate"]
         self.TYPE_TOLERATE = self.server_config["type_tolerate"]
-        self.EVAL = self.server_config["eval"]
+        self.LOCAL_EVAL = self.server_config[constants.LOCAL_EVAL]
+        self.GLOBAL_EVAL = self.server_config[constants.GLOBAL_EVAL]
         self.CLIENT_SINGLE_MAX_LOADAVG = self.server_config["per_client_max_loadavg"]
 
         self.global_model = GlobalModel(self.server_config, self.logger)
@@ -177,10 +178,10 @@ class FederatedServer(object):
         if self.now_global_epoch == 1:
             emit_data["now_weights"] = now_weights_pickle
         else:
-            if constants.VALIDATION in self.EVAL:
-                emit_data[constants.VALIDATION] = self.now_global_epoch % self.EVAL[constants.VALIDATION] == 0
-            if constants.TEST in self.EVAL:
-                emit_data[constants.TEST] = self.now_global_epoch % self.EVAL[constants.TEST] == 0
+            if constants.VALIDATION in self.LOCAL_EVAL:
+                emit_data[constants.VALIDATION] = self.now_global_epoch % self.LOCAL_EVAL[constants.VALIDATION] == 0
+            if constants.TEST in self.LOCAL_EVAL:
+                emit_data[constants.TEST] = self.now_global_epoch % self.LOCAL_EVAL[constants.TEST] == 0
 
         for sid in runnable_client_sids:
             # first global epoch
@@ -205,8 +206,6 @@ class FederatedServer(object):
         @self.socketio.on("disconnect")
         def disconnect_handle():
             self.logger.info("[{}] Close Connect.".format(request.sid))
-            if request.sid in self.ready_client_sids:
-                self.ready_client_sids.remove(request.sid)
 
         @self.socketio.on("client_wakeup")
         def client_wakeup_handle():
@@ -217,15 +216,16 @@ class FederatedServer(object):
         def client_ready_handle():
             self.logger.info("Client-sid:[{}] Ready For Training".format(request.sid))
             self.ready_client_sids.add(request.sid)
+            self.logger.info("Now {} Client(s) Ready ...".format(len(self.ready_client_sids)))
             if len(self.ready_client_sids) >= self.NUM_CLIENTS and self.now_global_epoch == 0:
                 self.logger.info(
-                    "{} Client(s) Ready , Federated Train Start ~".format(len(self.ready_client_sids)))
+                    "Now Ready Client(s) >= {}(num_clients) , Federated Train Start ~".format(self.NUM_CLIENTS))
                 self.clients_check_resource()
-            elif len(self.ready_client_sids) < self.NUM_CLIENTS:
-                self.logger.info(
-                    "{} Client(s) Ready, Waiting Enough Clients To Run...".format(len(self.ready_client_sids)))
-            else:
-                self.logger.error("Now GlobalEpoch != 0 , Please Restart Server")
+            # elif len(self.ready_client_sids) < self.NUM_CLIENTS:
+            #     self.logger.info(
+            #         "{} Client(s) Ready, Waiting Enough Clients To Run...".format(len(self.ready_client_sids)))
+            # else:
+            #     self.logger.error("Now GlobalEpoch != 0 , Please Restart Server")
 
         @self.socketio.on("client_check_resource_complete")
         def client_check_resource_complete_handle(data):
@@ -301,7 +301,7 @@ class FederatedServer(object):
                                                           self.global_model.weights_path)  # weights path
                     emit_data = {"now_global_epoch": self.now_global_epoch,
                                  "now_weights": now_weights_pickle,
-                                 "eval_type": list(self.EVAL.keys())}
+                                 "eval_type": self.GLOBAL_EVAL}
 
                     self.client_eval_datas = []  # empty eval datas for next eval epoch
                     for sid in self.ready_client_sids:
@@ -316,13 +316,21 @@ class FederatedServer(object):
             self.client_eval_datas.append(data)
 
             if len(self.client_eval_datas) == self.NUM_CLIENTS:
+                if constants.TRAIN in self.client_eval_datas[0]:
+                    global_train_loss, global_train_acc = self.global_model.get_global_loss_acc(
+                        self.now_global_epoch, constants.TRAIN,
+                        [client_data[constants.TRAIN][constants.LOSS] for client_data in self.client_eval_datas],
+                        [client_data[constants.TRAIN][constants.ACC] for client_data in self.client_eval_datas],
+                        [client_data[constants.TRAIN][constants.CONTRIB] for client_data in self.client_eval_datas])
+                    self.logger.info(
+                        "Train with_global_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , AvgAcc:{:.3f}".format(
+                            self.now_global_epoch, global_train_loss, global_train_acc))
+
                 if constants.VALIDATION in self.client_eval_datas[0]:
                     global_val_loss, global_val_acc = self.global_model.get_global_loss_acc(
                         self.now_global_epoch, constants.VALIDATION,
-                        [client_data[constants.VALIDATION][constants.LOSS] for client_data in
-                         self.client_eval_datas],
-                        [client_data[constants.VALIDATION][constants.ACC] for client_data in
-                         self.client_eval_datas],
+                        [client_data[constants.VALIDATION][constants.LOSS] for client_data in self.client_eval_datas],
+                        [client_data[constants.VALIDATION][constants.ACC] for client_data in self.client_eval_datas],
                         [client_data[constants.VALIDATION][constants.CONTRIB] for client_data in
                          self.client_eval_datas])
                     self.logger.info(
@@ -336,7 +344,7 @@ class FederatedServer(object):
                             self.now_tolerate = 0
                     self.global_model.prev_val_loss = global_val_loss
 
-                    if self.now_tolerate > self.NUM_TOLERATE > 0:
+                    if self.now_tolerate >= self.NUM_TOLERATE > 0:
                         self.fin = True
                         self.logger.info("Val Tending To Convergence")
 
@@ -364,7 +372,7 @@ class FederatedServer(object):
                             self.now_tolerate = 0
                     self.global_model.prev_test_loss = global_test_loss
 
-                    if self.now_tolerate > self.NUM_TOLERATE > 0:
+                    if self.now_tolerate >= self.NUM_TOLERATE > 0:
                         self.fin = True
                         self.logger.info("Test Tending To Convergence")
 
@@ -408,12 +416,13 @@ class FederatedServer(object):
         def handle_client_fin(data):
             sid = data["sid"]
             self.fin_client_sids.add(sid)
-            disconnect(sid)
             self.logger.info("Federated Learning Client-sid:[{}] Fin.".format(sid))
-            if len(list(self.fin_client_sids)) == self.NUM_CLIENTS or len(self.ready_client_sids) == 0:
-                self.logger.info("All Clients Fin . Federated Learning Server Fin.")
+            disconnect(sid)
+            if sid in self.ready_client_sids:
+                self.ready_client_sids.remove(request.sid)
+            if len(self.ready_client_sids) == 0:
+                self.logger.info("All Clients Fin. Federated Learning Server Fin.")
                 self.socketio.stop()
-                exit(0)
 
 
 if __name__ == "__main__":
