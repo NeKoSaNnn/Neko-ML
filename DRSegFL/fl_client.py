@@ -88,7 +88,7 @@ class FederatedClient(object):
         self.logger.info(self.client_config)
 
         self.local_model = None
-        self.ignore_loadavg = True if self.client_config["ignore_loadavg"] == "true" else False
+        self.ignore_loadavg = self.client_config["ignore_loadavg"]
 
         # self.socketio = SocketIO(self.server_host, self.server_port, None, {"timeout": 36000})
         self.socketio = socketio.Client()
@@ -141,8 +141,7 @@ class FederatedClient(object):
                 loadavg = loadavg_data["loadavg_15min"]
                 self.logger.info("Loadavg : {}".format(loadavg))
 
-            self.socketio.emit("client_check_resource_complete", {"now_global_epoch": data["now_global_epoch"],
-                                                                  "loadavg": loadavg})
+            self.socketio.emit("client_check_resource_complete", {"now_global_epoch": data["now_global_epoch"], "loadavg": loadavg})
             self.logger.info("Check Resource Completed.")
 
         @self.socketio.on("local_update")
@@ -183,26 +182,23 @@ class FederatedClient(object):
             }
 
             self.logger.info(
-                "Train with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- AvgLoss:{:.4f}".format(
-                    now_global_epoch, sid, loss))
+                "Train with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- AvgLoss:{:.4f}".format(now_global_epoch, sid, loss))
 
             if constants.VALIDATION in data and data[constants.VALIDATION]:
                 val_loss, val_acc = self.local_model.eval(constants.VALIDATION)
                 emit_data[constants.VALIDATION_LOSS] = val_loss
                 emit_data[constants.VALIDATION_ACC] = val_acc
                 emit_data[constants.VALIDATION_CONTRIB] = self.local_model.get_contribution(constants.VALIDATION)
-                self.logger.info(
-                    "Val with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] --  Loss:{:.4f} , Acc:{:.3f}".format(
-                        now_global_epoch, sid, val_loss, val_acc))
+                self.logger.info("Val with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] --  Loss:{:.4f} , Acc:{:.3f}".format(
+                    now_global_epoch, sid, val_loss, val_acc))
 
             if constants.TEST in data and data[constants.TEST]:
                 test_loss, test_acc = self.local_model.eval(constants.TEST)
                 emit_data[constants.TEST_LOSS] = test_loss
                 emit_data[constants.TEST_ACC] = test_acc
                 emit_data[constants.TEST_CONTRIB] = self.local_model.get_contribution(constants.TEST)
-                self.logger.info(
-                    "Test with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
-                        now_global_epoch, sid, test_loss, test_acc))
+                self.logger.info("Test with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
+                    now_global_epoch, sid, test_loss, test_acc))
 
             self.logger.info("Local Update Complete.")
             self.logger.info("Emit Local Update To Server ...")

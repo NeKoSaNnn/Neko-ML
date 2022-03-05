@@ -102,7 +102,7 @@ def to_tensor_use_cv(img_path, img_size=None, to_gray=False, debug=False):
 
 
 def to_tensor_use_pil(img_path, img_size=None, to_gray=False, debug=False):
-    pil_img = Image.open(img_path).convert("L") if to_gray else Image.open(img_path).convert("RGB")
+    pil_img = Image.open(img_path).convert("L") if to_gray else Image.open(img_path)
     if debug:
         print(pil_img.size)
         print(np.asarray(pil_img).shape)

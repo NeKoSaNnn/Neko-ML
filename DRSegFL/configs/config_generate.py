@@ -18,7 +18,53 @@ sys.path.append(root_dir_name)
 from DRSegFL import utils, constants, datasets
 
 
+def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
+    """
+    Todo: change dataset , modify below
+    :param config:
+    :param dataset_dir:
+    :param dataset_txt_path:
+    :param dataset_type:
+    """
+    is_augment = config[constants.MODEL]["data_augment"]
+    # ISIC
+    if config[constants.MODEL][constants.NAME_DATASET] == constants.ISIC:
+        img_dir = osp.join(dataset_dir, "image")
+        target_dir = osp.join(dataset_dir, "mask")
+
+        if is_augment and dataset_type == constants.TRAIN:
+            datasets.dataset_augment(img_dir, target_dir, "jpg", "png", dataset_type)
+
+        if isinstance(dataset_txt_path, list):
+            datasets.iid_dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)
+        else:
+            datasets.dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)
+    # DDR
+    elif config[constants.MODEL][constants.NAME_DATASET] == constants.DDR:
+        img_dir = osp.join(dataset_dir, "image")
+        target_dir = osp.join(dataset_dir, "label")
+        ann_dir = osp.join(dataset_dir, "annotation")
+
+        datasets.labels2annotations(img_dir, target_dir, ann_dir, "jpg", "tif", config[constants.MODEL]["classes"], dataset_type)
+
+        if is_augment and dataset_type == constants.TRAIN:
+            datasets.dataset_augment(img_dir, ann_dir, "jpg", "png", dataset_type)
+
+        if isinstance(dataset_txt_path, list):
+            datasets.iid_dataset_txt_generate(img_dir, "jpg", ann_dir, "png", dataset_txt_path, is_augment)
+        else:
+            datasets.dataset_txt_generate(img_dir, "jpg", ann_dir, "png", dataset_txt_path, is_augment)
+    else:
+        raise ImportError
+
+
 def generate(base_config_path="./base_config.yaml", num_clients=None):
+    """
+    generate configs
+    :param base_config_path:
+    :param num_clients:
+    :return:
+    """
     if not osp.exists(base_config_path):
         print("please make sure base_config.yaml in {}".format(base_config_path))
         exit(-1)
@@ -26,6 +72,7 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
     config = utils.load_yaml(base_config_path)
     config[constants.SERVER][constants.NUM_CLIENTS] = config[constants.SERVER][constants.NUM_CLIENTS] \
         if num_clients is None else num_clients
+    print("Generating configs ...")
 
     now_time = utils.get_now_time()
     now_day = utils.get_now_day()
@@ -78,15 +125,11 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
     test_dataset_txt_path = osp.join(generate_dataset_txt_dir,
                                      "{}.txt".format(constants.TEST)) if test_dataset_dir else None
 
-    # Todo: change dataset , modify below
-    datasets.iid_dataset_txt_generate(osp.join(train_dataset_dir, "image"), "jpg", osp.join(train_dataset_dir, "mask"),
-                                      "png", iid_train_dataset_txt_path)
+    generate_dataset_txt(config, train_dataset_dir, iid_train_dataset_txt_path, dataset_type=constants.TRAIN)
     if val_dataset_txt_path:
-        datasets.dataset_txt_generate(osp.join(val_dataset_dir, "image"), "jpg", osp.join(val_dataset_dir, "mask"),
-                                      "png", val_dataset_txt_path)
+        generate_dataset_txt(config, val_dataset_dir, val_dataset_txt_path, dataset_type=constants.VALIDATION)
     if test_dataset_txt_path:
-        datasets.dataset_txt_generate(osp.join(test_dataset_dir, "image"), "jpg", osp.join(test_dataset_dir, "mask"),
-                                      "png", test_dataset_txt_path)
+        generate_dataset_txt(config, test_dataset_dir, test_dataset_txt_path, dataset_type=constants.TEST)
 
     # partial model config -> server/client config
     config[constants.SERVER].update(config[constants.MODEL])
@@ -116,7 +159,6 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
                                                                         "client_{}.log".format(i + 1))
             config[constants.CLIENT][constants.PATH_WEIGHTS] = osp.join(weights_dir,
                                                                         "local_c{}.pkl".format(i + 1))
-            # Todo: change dataset , modify below
             config[constants.CLIENT][constants.TRAIN] = iid_train_dataset_txt_path[i]
             config[constants.CLIENT][constants.VALIDATION] = val_dataset_txt_path
             config[constants.CLIENT][constants.TEST] = test_dataset_txt_path

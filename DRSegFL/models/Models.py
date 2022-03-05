@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from torch.backends.cudnn import benchmark
 from torch.utils.data import DataLoader
 
 from DRSegFL import metrics, constants
@@ -26,34 +27,32 @@ class BaseModel(object):
         self.logger.info(self.config) if self.logger else print(self.config)
 
         if constants.TRAIN in self.config:
-            self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN],
-                                             img_size=self.config[constants.IMG_SIZE], is_augment=True)
+            self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
+                                             img_size=self.config[constants.IMG_SIZE])
             self.train_dataloader = DataLoader(self.train_dataset,
-                                               self.config[constants.BATCH_SIZE],
-                                               shuffle=True,
-                                               num_workers=self.config[constants.NUM_WORKERS])
+                                               self.config[constants.BATCH_SIZE], shuffle=True, num_workers=self.config[constants.NUM_WORKERS])
             self.train_contribution = len(self.train_dataset)
 
         if constants.VALIDATION in self.config:
-            self.val_dataset = ListDataset(txt_path=self.config[constants.VALIDATION],
+            self.val_dataset = ListDataset(txt_path=self.config[constants.VALIDATION], dataset_name=self.config[constants.NAME_DATASET],
                                            img_size=self.config[constants.IMG_SIZE])
-            self.val_dataloader = DataLoader(self.val_dataset,
-                                             self.config[constants.EVAL_BATCH_SIZE],
-                                             shuffle=False,
-                                             num_workers=1)
+            self.val_dataloader = DataLoader(self.val_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
             self.val_contribution = len(self.val_dataset)
 
         if constants.TEST in self.config:
-            self.test_dataset = ListDataset(txt_path=self.config[constants.TEST],
+            self.test_dataset = ListDataset(txt_path=self.config[constants.TEST], dataset_name=self.config[constants.NAME_DATASET],
                                             img_size=self.config[constants.IMG_SIZE])
-            self.test_dataloader = DataLoader(self.test_dataset,
-                                              self.config[constants.EVAL_BATCH_SIZE],
-                                              shuffle=False,
-                                              num_workers=1)
+            self.test_dataloader = DataLoader(self.test_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
             self.test_contribution = len(self.test_dataset)
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+            torch.backends.cudnn.benchmark = True
+        else:
+            self.device = torch.device("cpu")
 
+        self.num_classes = self.config[constants.NUM_CLASSES]
+        self.num_channels = self.config[constants.NUM_CHANNELS]
         self.net = None
         self.optimizer = None
         self.loss_f = None
@@ -76,6 +75,9 @@ class BaseModel(object):
 
     def get_weights(self):
         return copy.deepcopy(self.net.state_dict())
+
+    def get_opt_weights(self):
+        return copy.deepcopy(self.optimizer.state_dict())
 
     def set_weights(self, weights):
         if isinstance(weights, str) and ".pt" in weights:
@@ -107,18 +109,21 @@ class unet(BaseModel):
         super(unet, self).__init__(config, logger)
 
     def model_init(self):
-        self.net = UNet(self.config[constants.NUM_CHANNELS], self.config[constants.NUM_CLASSES]).to(self.device)
+        self.net = UNet(self.num_channels, self.num_classes).to(self.device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
-        self.loss_f = nn.CrossEntropyLoss() if self.config[constants.NUM_CLASSES] > 1 else nn.BCEWithLogitsLoss()
+        self.loss_f = nn.CrossEntropyLoss() if self.num_classes > 1 else nn.BCEWithLogitsLoss()
 
     def train(self, epoch=1):
+        target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net.train()
         ep_losses = []
         for ep in range(1, epoch + 1):
             iter_losses = 0
             for iter, (imgs, targets, _, _) in enumerate(self.train_dataloader, start=1):
-                imgs, targets = Variable(imgs.to(self.device, torch.float32)), Variable(
-                    targets.to(self.device, torch.float32), requires_grad=False)
+                imgs = Variable(imgs.to(self.device, torch.float32))
+                targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
+                assert imgs[1] == self.num_channels
+                assert targets[1] == self.num_classes
                 # 梯度累计，实现不增大显存而增大batch_size
 
                 preds = self.net(imgs)
@@ -152,10 +157,10 @@ class unet(BaseModel):
     def eval(self, eval_type):
         eval_loss = 0
         dice_score = 0
+        target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net.eval()
         if eval_type == constants.TRAIN:
-            eval_dataloader = DataLoader(self.train_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False,
-                                         num_workers=1)
+            eval_dataloader = DataLoader(self.train_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
         elif eval_type == constants.VALIDATION:
             eval_dataloader = self.val_dataloader
         elif eval_type == constants.TEST:
@@ -169,8 +174,9 @@ class unet(BaseModel):
 
         with torch.no_grad():
             for iter, (imgs, targets, _, _) in enumerate(eval_dataloader, start=1):
-                imgs, targets = Variable(imgs.to(self.device, torch.float32), requires_grad=False), \
-                                Variable(targets.to(self.device, torch.float32), requires_grad=False)
+                imgs = Variable(imgs.to(self.device, torch.float32), requires_grad=False)
+                targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
+
                 preds = self.net(imgs)
                 loss = self.loss_f(preds, targets)
 

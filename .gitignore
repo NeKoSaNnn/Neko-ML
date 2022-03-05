@@ -7,6 +7,7 @@ __pycache__/
 *.so
 *.jpg
 *.png
+*.tif
 
 # Distribution / packaging
 .Python
@@ -132,3 +133,4 @@ dmypy.json
 /FL/save/
 /FL/log/
 /FL/data/
+/DRSegFL/datas/

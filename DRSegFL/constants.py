@@ -55,3 +55,6 @@ GLOBAL_EVAL = "global_eval"
 LOCAL_EVAL = "local_eval"
 
 FIN = "fin."
+
+ISIC = "ISIC"
+DDR = "DDR"
