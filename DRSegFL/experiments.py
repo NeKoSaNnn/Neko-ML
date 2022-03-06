@@ -66,3 +66,24 @@ one_hot_b = utils.batch_make_one_hot(torch_b, 2)
 print(one_hot_b)
 print(one_hot_b.shape)
 print(one_hot_b.dtype)
+
+c = np.array([[[1, 2, 1],
+              [0, 1, 1],
+              [0, 0, 2]]])
+c = utils.ignore_background(c, 2, 1)
+mask = (c != 0)
+C = c[mask]
+print(mask)
+print(c)
+print(C)
+
+d = np.array([[[1, 2, 1],
+               [0, 1, 1],
+               [0, 0, 2]],
+              [[0, 0, 1],
+               [0, 1, 1],
+               [0, 0, 0]]
+              ])
+D = []
+D.extend(d[:, ])
+print(D)

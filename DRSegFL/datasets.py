@@ -16,7 +16,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from DRSegFL import utils, constants
+from DRSegFL import utils, constants, preprocess
 
 
 def dataset_txt_generate(imgs_dir: str, img_suffix: str, targets_dir: str, target_suffix: str, txt_file_path: str, is_augment: bool):
@@ -145,42 +145,17 @@ class ListDataset(Dataset):
         self.img_size = img_size
 
     def __getitem__(self, index):
+        img_path = self.datas_and_targets_path[index][0].strip()
+        target_path = self.datas_and_targets_path[index][1].strip()
+
         # Todo: change dataset , modify below
         if self.dataset_name == constants.ISIC:
-            return self._ISIC_getitem(index)
+            return preprocess.ISIC_preprocess(img_path, target_path, self.img_size)
         elif self.dataset_name == constants.DDR:
-            return self._DDR_getitem(index)
+            return preprocess.DDR_preprocess(img_path, target_path, self.img_size, self.num_classes)
 
     def __len__(self):
         return len(self.datas_and_targets_path)
-
-    def _ISIC_getitem(self, index):
-        img_path = self.datas_and_targets_path[index][0].strip()
-        target_path = self.datas_and_targets_path[index][1].strip()
-
-        _, tensor_img = utils.to_tensor_use_pil(img_path, self.img_size)
-
-        if utils.is_img(target_path):
-            _, tensor_target = utils.to_tensor_use_pil(target_path, self.img_size, to_gray=True)
-        else:
-            raise InterruptedError("标签数据非图片数据，需要额外处理")
-        return tensor_img, tensor_target, img_path, target_path
-
-    def _DDR_getitem(self, index):
-        img_path = self.datas_and_targets_path[index][0].strip()
-        target_path = self.datas_and_targets_path[index][1].strip()
-
-        _, tensor_img = utils.to_tensor_use_pil(img_path, self.img_size)
-
-        if utils.is_img(target_path):
-            target = Image.open(target_path).resize((self.img_size, self.img_size))
-            tensor_target = torch.from_numpy(np.asarray(target, dtype=np.long))
-            tensor_target[tensor_target == 0] = 256
-            tensor_target = tensor_target - 1
-            # tensor_target = utils.make_one_hot(tensor_target, self.num_classes)
-        else:
-            raise InterruptedError("标签数据非图片数据，需要额外处理")
-        return tensor_img, tensor_target, img_path, target_path
 
 
 if __name__ == "__main__":

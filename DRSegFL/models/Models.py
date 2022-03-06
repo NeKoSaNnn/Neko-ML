@@ -5,6 +5,7 @@
 """
 import copy
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,8 +24,6 @@ class BaseModel(object):
     def __init__(self, config: dict, logger=None):
         self.config = config
         self.logger = logger
-
-        self.logger.info(self.config) if self.logger else print(self.config)
 
         self.num_classes = self.config[constants.NUM_CLASSES]
         self.num_channels = self.config[constants.NUM_CHANNELS]
@@ -112,7 +111,7 @@ class unet(BaseModel):
     def model_init(self):
         self.net = UNet(self.num_channels, self.num_classes).to(self.device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
-        self.loss_f = nn.CrossEntropyLoss(ignore_index=255) if self.num_classes > 1 else nn.BCEWithLogitsLoss()
+        self.loss_f = nn.CrossEntropyLoss(ignore_index=self.num_classes) if self.num_classes > 1 else nn.BCEWithLogitsLoss()
 
     def train(self, epoch=1):
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
@@ -120,7 +119,7 @@ class unet(BaseModel):
         ep_losses = []
         for ep in range(1, epoch + 1):
             iter_losses = 0
-            for iter, (imgs, targets, _, _) in enumerate(self.train_dataloader, start=1):
+            for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
                 imgs = Variable(imgs.to(self.device, torch.float32))
                 targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
                 assert imgs.shape[1] == self.num_channels, "imgs.shape[1]({})!=self.num_channels({})".format(imgs.shape[1], self.num_channels)
@@ -157,7 +156,7 @@ class unet(BaseModel):
 
     def eval(self, eval_type):
         eval_loss = 0
-        dice_score = 0
+        acc_score = 0
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net.eval()
         if eval_type == constants.TRAIN:
@@ -171,29 +170,45 @@ class unet(BaseModel):
                 self.logger.error("Error Eval_type:{}".format(eval_type))
             else:
                 print("Error Eval_type:{}".format(eval_type))
-            return eval_loss, dice_score
+            return eval_loss, acc_score
 
         with torch.no_grad():
-            for iter, (imgs, targets, _, _) in enumerate(eval_dataloader, start=1):
+            list_preds = []
+            list_targets = []
+            for iter, (imgs, targets) in enumerate(eval_dataloader, start=1):
                 imgs = Variable(imgs.to(self.device, torch.float32), requires_grad=False)
                 targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
 
-                preds = self.net(imgs)
-                assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
+                preds = self.net(imgs)  # [N,C,H,W]
+                assert preds.shape[1] == self.num_classes, "{}!={}".format(preds.shape[1], self.num_classes)
                 loss = self.loss_f(preds, targets)
 
                 eval_loss += loss.item()
-                preds = (torch.sigmoid(preds) > 0.5).float()
 
-                if self.config[constants.NUM_CLASSES] == 1:
-                    dice_score += metrics.dice_coeff(preds, targets).item()
+                if self.num_classes == 1:
+                    preds = (torch.sigmoid(preds) > 0.5).float()
+                    acc_score += metrics.dice_coeff(preds, targets).item()
                 else:
-                    dice_score += F.cross_entropy(preds, targets, ignore_index=255).item()
+                    preds = torch.softmax(preds, dim=1).cpu().numpy()  # [N,C,H,W]
+                    preds = np.argmax(preds, axis=1)  # [N,1,H,W]
+                    # acc_score += F.cross_entropy(preds, targets, ignore_index=self.num_classes).item()
+                    # acc_score += metrics.multi_dice_coeff(preds, targets).item()
+                    list_preds.extend(preds[:, ])
+                    list_targets.extend(targets[:, ].cpu().numpy())
 
             eval_loss /= len(eval_dataloader)
-            dice_score /= len(eval_dataloader)
+            if self.num_classes == 1:
+                acc_score /= len(eval_dataloader)
+                eval_acc = {"mDice": acc_score}
+            else:
+                all_acc, acc, iou = metrics.mIoU(list_preds, list_targets, self.num_classes, self.num_classes)
+                mDice = metrics.mDice(list_preds, list_targets, self.num_classes, self.num_classes)
+                mIoU = np.nanmean(iou)
+                mAcc = np.nanmean(acc)
+                eval_acc = {"mIoU": mIoU, "mDice": mDice, "mAcc": mAcc, "all_acc": all_acc}
+
         self.net.train()
-        return eval_loss, dice_score
+        return eval_loss, eval_acc
 
 
 class Models:

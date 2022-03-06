@@ -84,7 +84,7 @@ class FederatedClient(object):
         sh.setLevel(logging.WARNING)
         sh.setFormatter(log_formatter)
         self.logger.addHandler(sh)
-
+        self.logger.info("=" * 100)
         self.logger.info(self.client_config)
 
         self.local_model = None
@@ -189,16 +189,16 @@ class FederatedClient(object):
                 emit_data[constants.VALIDATION_LOSS] = val_loss
                 emit_data[constants.VALIDATION_ACC] = val_acc
                 emit_data[constants.VALIDATION_CONTRIB] = self.local_model.get_contribution(constants.VALIDATION)
-                self.logger.info("Val with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] --  Loss:{:.4f} , Acc:{:.3f}".format(
-                    now_global_epoch, sid, val_loss, val_acc))
+                self.logger.info("Val with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] --  Loss:{:.4f} , {}".format(
+                    now_global_epoch, sid, val_loss, " , ".join(f"{k} : {v:.4f}" for k, v in val_acc.items())))
 
             if constants.TEST in data and data[constants.TEST]:
                 test_loss, test_acc = self.local_model.eval(constants.TEST)
                 emit_data[constants.TEST_LOSS] = test_loss
                 emit_data[constants.TEST_ACC] = test_acc
                 emit_data[constants.TEST_CONTRIB] = self.local_model.get_contribution(constants.TEST)
-                self.logger.info("Test with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
-                    now_global_epoch, sid, test_loss, test_acc))
+                self.logger.info("Test with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
+                    now_global_epoch, sid, test_loss, " , ".join(f"{k} : {v:.4f}" for k, v in test_acc.items())))
 
             self.logger.info("Local Update Complete.")
             self.logger.info("Emit Local Update To Server ...")
@@ -229,8 +229,8 @@ class FederatedClient(object):
             if constants.TRAIN in eval_type:
                 train_loss, train_acc = self.local_model.eval(constants.TRAIN)
                 self.logger.info(
-                    "Train with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
-                        now_global_epoch, sid, train_loss, train_acc))
+                    "Train with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
+                        now_global_epoch, sid, train_loss, " , ".join(f"{k} : {v:.4f}" for k, v in train_acc.items())))
                 emit_data[constants.TRAIN] = {
                     constants.LOSS: train_loss, constants.ACC: train_acc,
                     constants.CONTRIB: self.local_model.get_contribution(constants.TRAIN)}
@@ -238,8 +238,8 @@ class FederatedClient(object):
             if constants.VALIDATION in eval_type:
                 val_loss, val_acc = self.local_model.eval(constants.VALIDATION)
                 self.logger.info(
-                    "Val with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
-                        now_global_epoch, sid, val_loss, val_acc))
+                    "Val with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
+                        now_global_epoch, sid, val_loss, " , ".join(f"{k} : {v:.4f}" for k, v in val_acc.items())))
                 emit_data[constants.VALIDATION] = {
                     constants.LOSS: val_loss, constants.ACC: val_acc,
                     constants.CONTRIB: self.local_model.get_contribution(constants.VALIDATION)}
@@ -247,8 +247,8 @@ class FederatedClient(object):
             if constants.TEST in eval_type:
                 test_loss, test_acc = self.local_model.eval(constants.TEST)
                 self.logger.info(
-                    "Test with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , Acc:{:.3f}".format(
-                        now_global_epoch, sid, test_loss, test_acc))
+                    "Test with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
+                        now_global_epoch, sid, test_loss, " , ".join(f"{k} : {v:.4f}" for k, v in test_acc.items())))
                 emit_data[constants.TEST] = {
                     constants.LOSS: test_loss, constants.ACC: test_acc,
                     constants.CONTRIB: self.local_model.get_contribution(constants.TEST)}

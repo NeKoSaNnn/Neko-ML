@@ -52,6 +52,34 @@ def is_img(path):
     return False
 
 
+def list_mean(list_, weight_list=None):
+    if list_ is None:
+        return None
+    if weight_list:
+        assert len(list_) == len(weight_list), "{}!={}".format(len(list_), len(weight_list))
+    _len = sum(weight_list) if weight_list else len(list_)
+    mean = 0
+    for i, v in enumerate(list_):
+        mean += (v * weight_list[i]) if weight_list else v
+    mean /= _len
+    return mean
+
+
+def dict_list_mean(dict_list, weight_list=None):
+    if dict_list is None:
+        return None
+    if weight_list:
+        assert len(dict_list) == len(weight_list), "{}!={}".format(len(dict_list), len(weight_list))
+    _len = sum(weight_list) if weight_list else len(dict_list)
+    mean_dict = {}
+    for k in dict_list[0].keys():
+        mean_dict[k] = 0
+        for i, d in enumerate(dict_list):
+            mean_dict[k] += (d[k] * weight_list[i]) if weight_list else d[k]
+        mean_dict[k] /= _len
+    return mean_dict
+
+
 def split_dataset_with_client_nums():
     pass
 
@@ -156,9 +184,21 @@ def batch_make_one_hot(labels, num_classes, ignore=0):
     return result[:, :-1, ]
 
 
-def draw_predict(config, img: Image.Image, target_mask: Image.Image, predict_mask, save_path):
-    classes = config["num_classes"]
-    fig, ax = plt.subplots(1, classes + 2)
+def ignore_background(array, num_classes, ignore=0):
+    """
+    :param array: [*],values in [0,num_classes]
+    :param num_classes: C
+    :param ignore: ignore value of background, here is 0
+    :return: [*] which ignore_index=num_classes
+    """
+    array[array == ignore] = num_classes + 1
+    array[array > ignore] -= 1
+    return array
+
+
+def draw_predict(num_classes, img: Image.Image, target_mask: Image.Image, predict_mask, save_path):
+    assert predict_mask.shape[0] == num_classes, "{}!={}".format(predict_mask.shape[0], num_classes)
+    fig, ax = plt.subplots(1, num_classes + 2)
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=1, hspace=0)
     ax[0].set_title("ori img")
     ax[0].imshow(img)
@@ -167,7 +207,7 @@ def draw_predict(config, img: Image.Image, target_mask: Image.Image, predict_mas
     ax[1].imshow(target_mask)
     ax[1].axis("off")
     # if classes > 1:
-    for i in range(classes):
+    for i in range(num_classes):
         ax[2 + i].set_title("output mask (class {})".format(i + 1))
         ax[2 + i].imshow(predict_mask[i, :, :], cmap="gray")
         ax[2 + i].axis("off")
@@ -177,4 +217,5 @@ def draw_predict(config, img: Image.Image, target_mask: Image.Image, predict_mas
     #     ax[1].axis("off")
     plt.xticks([]), plt.yticks([])
     plt.savefig(save_path)
+    print("predict result saved to {}".format(save_path))
     plt.show()
