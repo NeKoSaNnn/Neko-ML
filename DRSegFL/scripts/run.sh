@@ -1,12 +1,12 @@
 #!/bin/bash
-now_time=$(date '+%Y-%m-%d-%H-%M-%S')
+now_time=$(date '+%Y-%m-%d-%H')
 seconds_left=5
 
 cd ..
 
+read -p "num_clients : " num_clients
 read -p "skip_generate_configs : " skip_generate_configs
 if [ ${skip_generate_configs} = "N" -o ${skip_generate_configs} = "n" ]; then
-  read -p "num_clients : " num_clients
   cd configs
   python3 config_generate.py --num_clients ${num_clients}
   cd ..

@@ -1,5 +1,5 @@
 #!/bin/bash
-now_time=$(date '+%Y-%m-%d-%H-%M-%S')
+now_time=$(date '+%Y-%m-%d-%H')
 
 cd ..
 

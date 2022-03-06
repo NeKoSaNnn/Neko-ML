@@ -135,12 +135,13 @@ def dataset_augment(img_dir, target_dir, img_suffix, target_suffix, dataset_type
 
 
 class ListDataset(Dataset):
-    def __init__(self, txt_path: str, dataset_name: str, img_size=256):
+    def __init__(self, txt_path: str, dataset_name: str, num_classes: int, img_size=256, ):
         with open(txt_path, "r") as f:
             self.datas_and_targets_path = f.readlines()
         self.datas_and_targets_path = [data_and_target.strip().split(" ", 1) for data_and_target in
                                        self.datas_and_targets_path]
         self.dataset_name = dataset_name
+        self.num_classes = num_classes
         self.img_size = img_size
 
     def __getitem__(self, index):
@@ -172,7 +173,11 @@ class ListDataset(Dataset):
         _, tensor_img = utils.to_tensor_use_pil(img_path, self.img_size)
 
         if utils.is_img(target_path):
-            _, tensor_target = utils.to_tensor_use_pil(target_path, self.img_size)
+            target = Image.open(target_path).resize((self.img_size, self.img_size))
+            tensor_target = torch.from_numpy(np.asarray(target, dtype=np.long))
+            tensor_target[tensor_target == 0] = 256
+            tensor_target = tensor_target - 1
+            # tensor_target = utils.make_one_hot(tensor_target, self.num_classes)
         else:
             raise InterruptedError("标签数据非图片数据，需要额外处理")
         return tensor_img, tensor_target, img_path, target_path

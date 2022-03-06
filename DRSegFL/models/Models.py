@@ -26,33 +26,34 @@ class BaseModel(object):
 
         self.logger.info(self.config) if self.logger else print(self.config)
 
+        self.num_classes = self.config[constants.NUM_CLASSES]
+        self.num_channels = self.config[constants.NUM_CHANNELS]
+
         if constants.TRAIN in self.config:
             self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
-                                             img_size=self.config[constants.IMG_SIZE])
+                                             num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE])
             self.train_dataloader = DataLoader(self.train_dataset,
                                                self.config[constants.BATCH_SIZE], shuffle=True, num_workers=self.config[constants.NUM_WORKERS])
             self.train_contribution = len(self.train_dataset)
 
         if constants.VALIDATION in self.config:
             self.val_dataset = ListDataset(txt_path=self.config[constants.VALIDATION], dataset_name=self.config[constants.NAME_DATASET],
-                                           img_size=self.config[constants.IMG_SIZE])
+                                           num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE])
             self.val_dataloader = DataLoader(self.val_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
             self.val_contribution = len(self.val_dataset)
 
         if constants.TEST in self.config:
             self.test_dataset = ListDataset(txt_path=self.config[constants.TEST], dataset_name=self.config[constants.NAME_DATASET],
-                                            img_size=self.config[constants.IMG_SIZE])
+                                            num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE])
             self.test_dataloader = DataLoader(self.test_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
             self.test_contribution = len(self.test_dataset)
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
-            torch.backends.cudnn.benchmark = True
+            # torch.backends.cudnn.benchmark = True
         else:
             self.device = torch.device("cpu")
 
-        self.num_classes = self.config[constants.NUM_CLASSES]
-        self.num_channels = self.config[constants.NUM_CHANNELS]
         self.net = None
         self.optimizer = None
         self.loss_f = None
@@ -111,7 +112,7 @@ class unet(BaseModel):
     def model_init(self):
         self.net = UNet(self.num_channels, self.num_classes).to(self.device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
-        self.loss_f = nn.CrossEntropyLoss() if self.num_classes > 1 else nn.BCEWithLogitsLoss()
+        self.loss_f = nn.CrossEntropyLoss(ignore_index=255) if self.num_classes > 1 else nn.BCEWithLogitsLoss()
 
     def train(self, epoch=1):
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
@@ -122,11 +123,11 @@ class unet(BaseModel):
             for iter, (imgs, targets, _, _) in enumerate(self.train_dataloader, start=1):
                 imgs = Variable(imgs.to(self.device, torch.float32))
                 targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
-                assert imgs[1] == self.num_channels
-                assert targets[1] == self.num_classes
+                assert imgs.shape[1] == self.num_channels, "imgs.shape[1]({})!=self.num_channels({})".format(imgs.shape[1], self.num_channels)
                 # 梯度累计，实现不增大显存而增大batch_size
 
                 preds = self.net(imgs)
+                assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
                 loss = self.loss_f(preds, targets)
 
                 iter_losses += loss.item()
@@ -178,15 +179,16 @@ class unet(BaseModel):
                 targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
 
                 preds = self.net(imgs)
+                assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
                 loss = self.loss_f(preds, targets)
 
                 eval_loss += loss.item()
-                preds = (preds > 0.5).float()
+                preds = (torch.sigmoid(preds) > 0.5).float()
 
                 if self.config[constants.NUM_CLASSES] == 1:
                     dice_score += metrics.dice_coeff(preds, targets).item()
                 else:
-                    dice_score += F.cross_entropy(preds, targets).item()
+                    dice_score += F.cross_entropy(preds, targets, ignore_index=255).item()
 
             eval_loss /= len(eval_dataloader)
             dice_score /= len(eval_dataloader)

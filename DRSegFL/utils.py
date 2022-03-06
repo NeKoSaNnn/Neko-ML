@@ -114,6 +114,48 @@ def to_tensor_use_pil(img_path, img_size=None, to_gray=False, debug=False):
     return pil_img, tensor_img
 
 
+def make_one_hot(label, num_classes, ignore=0):
+    """
+    :param label: [*], values in [0,num_classes]
+    :param num_classes: C
+    :param ignore: ignore value of background, here is 0
+    :return: [C, *]
+    """
+    label = label.unsqueeze(0)
+    shape = list(label.shape)
+    shape[0] = num_classes + 1
+
+    if ignore is not None:
+        label[label == ignore] = num_classes + 1
+        label = label - 1
+
+    result = torch.zeros(shape, device=label.device)
+    result.scatter_(0, label, 1)
+
+    return result[:-1, ]
+
+
+def batch_make_one_hot(labels, num_classes, ignore=0):
+    """
+    :param labels: [N, *], values in [0,num_classes)
+    :param num_classes: C
+    :param ignore: ignore value of background, here is 0
+    :return: [N, C, *]
+    """
+    labels = labels.unsqueeze(1)
+    shape = list(labels.shape)
+    shape[1] = num_classes + 1
+
+    if ignore is not None:
+        labels[labels == ignore] = num_classes + 1
+        labels = labels - 1
+
+    result = torch.zeros(shape, device=labels.device)
+    result.scatter_(1, labels, 1)
+
+    return result[:, :-1, ]
+
+
 def draw_predict(config, img: Image.Image, target_mask: Image.Image, predict_mask, save_path):
     classes = config["num_classes"]
     fig, ax = plt.subplots(1, classes + 2)
