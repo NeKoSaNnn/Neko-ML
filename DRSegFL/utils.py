@@ -5,7 +5,6 @@
 """
 import codecs
 import json
-import os
 import pickle
 import time
 
@@ -18,7 +17,6 @@ from PIL import Image
 
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt
-from torch.nn import functional as F
 from torchvision import transforms
 
 
@@ -60,7 +58,7 @@ def list_mean(list_, weight_list=None):
     _len = sum(weight_list) if weight_list else len(list_)
     mean = 0
     for i, v in enumerate(list_):
-        mean += (np.nan_to_num(v) * weight_list[i]) if weight_list else v
+        mean += (np.nan_to_num(v) * weight_list[i]) if weight_list else np.nan_to_num(v)
     mean /= _len
     return mean
 
@@ -75,7 +73,7 @@ def dict_list_mean(dict_list, weight_list=None):
     for k in dict_list[0].keys():
         mean_dict[k] = 0
         for i, d in enumerate(dict_list):
-            mean_dict[k] += (np.nan_to_num(d[k]) * weight_list[i]) if weight_list else d[k]
+            mean_dict[k] += (np.nan_to_num(d[k]) * weight_list[i]) if weight_list else np.nan_to_num(d[k])
         mean_dict[k] /= _len
     return mean_dict
 
@@ -270,7 +268,7 @@ def draw_predict(num_classes, img: Image.Image, target_mask: Image.Image, predic
         ax.imshow(target_mask, cmap="gray")
         ax.axis("off")
         ax = plt.subplot(1, 3, 3)
-        ax.set_title("segmap(class 1)", fontsize=30)
+        ax.set_title("segmap", fontsize=30)
         ax.imshow(predict_mask[0, :, :], cmap="gray")
         ax.axis("off")
     else:

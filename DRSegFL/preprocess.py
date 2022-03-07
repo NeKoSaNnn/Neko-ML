@@ -6,9 +6,6 @@
 import os.path as osp
 import sys
 
-import numpy as np
-import torch
-from torchvision import transforms
 from PIL import Image
 
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
