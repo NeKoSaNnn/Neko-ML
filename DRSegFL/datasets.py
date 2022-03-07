@@ -160,15 +160,15 @@ class ListDataset(Dataset):
 
 if __name__ == "__main__":
     print("compare PIL with cv2")
-    pilimg1, img1 = utils.to_tensor_use_pil("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/image/ISIC_0001126.jpg",
+    pilimg1, img1 = utils.to_tensor_use_pil(Image.open("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/image/ISIC_0001126.jpg"),
                                             debug=True)
-    cvimg1, img2 = utils.to_tensor_use_cv("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/image/ISIC_0001126.jpg", debug=True)
+    cvimg1, img2 = utils.to_tensor_use_cv(cv.imread("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/image/ISIC_0001126.jpg"),
+                                          debug=True)
     pilimg2, target1 = utils.to_tensor_use_pil(
-        "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/mask/ISIC_0001126_segmentation.png",
-        to_gray=True, debug=True)
+        Image.open("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/mask/ISIC_0001126_segmentation.png").convert("L"), debug=True)
     cvimg2, target2 = utils.to_tensor_use_cv(
-        "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/mask/ISIC_0001126_segmentation.png",
-        to_gray=True, debug=True)
+        cv.imread("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train/mask/ISIC_0001126_segmentation.png", cv.IMREAD_GRAYSCALE),
+        debug=True)
     print(torch.sum(abs(img1 - img2)))
     print(torch.sum(abs(target1 - target2)))
 

@@ -126,7 +126,7 @@ def to_tensor_use_cv(cv_img, img_size=None, debug=False):
     tensor_img = torch.from_numpy(np_img)
     if debug:
         print(tensor_img.shape)
-    return tensor_img
+    return cv_img, tensor_img
 
 
 def to_tensor_use_pil(pil_img, img_size=None, debug=False):
