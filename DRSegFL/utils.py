@@ -108,9 +108,9 @@ def save_weights(weights, path):
     torch.save(weights, path)
 
 
-def to_tensor_use_cv(img_path, img_size=None, to_gray=False, debug=False):
-    cv_img = cv.imread(img_path, cv.IMREAD_GRAYSCALE) if to_gray else cv.cvtColor(
-        cv.imread(img_path, cv.IMREAD_COLOR), cv.COLOR_BGR2RGB)
+def to_tensor_use_cv(cv_img, img_size=None, debug=False):
+    # cv_img = cv.imread(img_path, cv.IMREAD_GRAYSCALE) if to_gray else cv.cvtColor(
+    #     cv.imread(img_path, cv.IMREAD_COLOR), cv.COLOR_BGR2RGB)
     if debug:
         print(cv_img.shape)
     if img_size:
@@ -126,20 +126,45 @@ def to_tensor_use_cv(img_path, img_size=None, to_gray=False, debug=False):
     tensor_img = torch.from_numpy(np_img)
     if debug:
         print(tensor_img.shape)
-    return cv_img, tensor_img
+    return tensor_img
 
 
-def to_tensor_use_pil(img_path, img_size=None, to_gray=False, debug=False):
-    pil_img = Image.open(img_path).convert("L") if to_gray else Image.open(img_path)
+def to_tensor_use_pil(pil_img, img_size=None, debug=False):
+    """
+    :param pil_img:
+    :param img_size:
+    :param debug:
+    :return: pil_img(after center-crop and resize),tensor_img(pil_img convert float(0.0-1.0) tensor)
+    """
     if debug:
         print(pil_img.size)
         print(np.asarray(pil_img).shape)
-    tensor_img = transforms.ToTensor()(pil_img)
+    pil_img = transforms.CenterCrop(min(pil_img.size))(pil_img)  # crop
     if img_size:
-        tensor_img = F.interpolate(tensor_img.unsqueeze(0), img_size, mode="nearest").squeeze(0)
+        pil_img = pil_img.resize((img_size, img_size))
+    tensor_img = transforms.ToTensor()(pil_img)
     if debug:
         print(tensor_img.shape)
     return pil_img, tensor_img
+
+
+def to_label_use_pil(pil_img, img_size=None, debug=False):
+    """
+    :param pil_img:
+    :param img_size:
+    :param debug:
+    :return: pil_img(after center-crop and resize),label_img(pil_img convert long tensor)
+    """
+    if debug:
+        print(pil_img.size)
+        print(np.asarray(pil_img).shape)
+    pil_img = transforms.CenterCrop(min(pil_img.size))(pil_img)  # crop
+    if img_size:
+        pil_img = pil_img.resize((img_size, img_size))
+    if debug:
+        print(pil_img.size)
+    label_img = torch.from_numpy(np.asarray(pil_img, dtype=np.long))
+    return pil_img, label_img
 
 
 def make_one_hot(label, num_classes, ignore=0):
@@ -198,23 +223,38 @@ def ignore_background(array, num_classes, ignore=0):
 
 def draw_predict(num_classes, img: Image.Image, target_mask: Image.Image, predict_mask, save_path):
     assert predict_mask.shape[0] == num_classes, "{}!={}".format(predict_mask.shape[0], num_classes)
-    fig, ax = plt.subplots(1, num_classes + 2)
-    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=1, hspace=0)
-    ax[0].set_title("ori img")
-    ax[0].imshow(img)
-    ax[0].axis("off")
-    ax[1].set_title("ground truth")
-    ax[1].imshow(target_mask)
-    ax[1].axis("off")
-    # if classes > 1:
-    for i in range(num_classes):
-        ax[2 + i].set_title("output mask (class {})".format(i + 1))
-        ax[2 + i].imshow(predict_mask[i, :, :], cmap="gray")
-        ax[2 + i].axis("off")
-    # else:
-    #     ax[1].set_title("output mask")
-    #     ax[1].imshow(predict_mask)
-    #     ax[1].axis("off")
+    plt.figure(figsize=(20, 20))
+    if num_classes > 1:
+        plt.subplots_adjust(top=0.96, bottom=0.01, left=0.02, right=0.98, hspace=0.01, wspace=0.01)
+        ax = plt.subplot(2, 2, 1)
+        ax.set_title("ori img", fontsize=30)
+        ax.imshow(img)
+        ax.axis("off")
+        ax = plt.subplot(2, 2, 2)
+        ax.set_title("ground truth", fontsize=30)
+        ax.imshow(target_mask)
+        ax.axis("off")
+        for i in range(num_classes):
+            ax = plt.subplot(2, num_classes, num_classes + i + 1)
+            ax.set_title("segmap(class {})".format(i + 1), fontsize=30)
+            ax.imshow(predict_mask[i, :, :], cmap="gray")
+            ax.axis("off")
+    elif num_classes == 1:
+        plt.subplots_adjust(top=0.96, bottom=0.01, left=0.02, right=0.98, hspace=0, wspace=0.01)
+        ax = plt.subplot(1, 3, 1)
+        ax.set_title("ori img", fontsize=30)
+        ax.imshow(img)
+        ax.axis("off")
+        ax = plt.subplot(1, 3, 2)
+        ax.set_title("ground truth", fontsize=30)
+        ax.imshow(target_mask, cmap="gray")
+        ax.axis("off")
+        ax = plt.subplot(1, 3, 3)
+        ax.set_title("segmap(class 1)", fontsize=30)
+        ax.imshow(predict_mask[0, :, :], cmap="gray")
+        ax.axis("off")
+    else:
+        raise AssertionError("num_classes >= 1")
     plt.xticks([]), plt.yticks([])
     plt.savefig(save_path)
     print("predict result saved to {}".format(save_path))

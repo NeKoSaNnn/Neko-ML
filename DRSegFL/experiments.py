@@ -9,7 +9,7 @@ import numpy as np
 import imgviz
 import torch
 from PIL import Image
-import utils
+import utils, preprocess
 from torch.nn import functional as F
 
 # path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation/007-6361-400.png"
@@ -45,45 +45,65 @@ from torch.nn import functional as F
 # print(torch.max(onehot_img[2]))
 # print(torch.max(onehot_img[3]))
 
-a = np.array([[1, 2, 1],
-              [0, 1, 1],
-              [0, 0, 2]])
-torch_a = torch.from_numpy(a)
-print(a.shape)
-one_hot_a = utils.make_one_hot(torch_a, 2)
-print(one_hot_a)
-print(one_hot_a.shape)
+# a = np.array([[1, 2, 1],
+#               [0, 1, 1],
+#               [0, 0, 2]])
+# torch_a = torch.from_numpy(a)
+# print(a.shape)
+# one_hot_a = utils.make_one_hot(torch_a, 2)
+# print(one_hot_a)
+# print(one_hot_a.shape)
+#
+# b = np.array([[[1, 2, 1],
+#                [0, 1, 1],
+#                [0, 0, 2]]])
+# print(b.shape)
+# print(b.dtype)
+# torch_b = torch.from_numpy(b)
+# print(torch_b.shape)
+# print(torch_b.dtype)
+# one_hot_b = utils.batch_make_one_hot(torch_b, 2)
+# print(one_hot_b)
+# print(one_hot_b.shape)
+# print(one_hot_b.dtype)
+#
+# c = np.array([[[1, 2, 1],
+#               [0, 1, 1],
+#               [0, 0, 2]]])
+# c = utils.ignore_background(c, 2, 1)
+# mask = (c != 0)
+# C = c[mask]
+# print(mask)
+# print(c)
+# print(C)
+#
+# d = np.array([[[1, 2, 1],
+#                [0, 1, 1],
+#                [0, 0, 2]],
+#               [[0, 0, 1],
+#                [0, 1, 1],
+#                [0, 0, 0]]
+#               ])
+# D = []
+# D.extend(d[:, ])
+# print(D)
 
-b = np.array([[[1, 2, 1],
-               [0, 1, 1],
-               [0, 0, 2]]])
-print(b.shape)
-print(b.dtype)
-torch_b = torch.from_numpy(b)
-print(torch_b.shape)
-print(torch_b.dtype)
-one_hot_b = utils.batch_make_one_hot(torch_b, 2)
-print(one_hot_b)
-print(one_hot_b.shape)
-print(one_hot_b.dtype)
+path1 = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/test/image/ISIC_0014749.jpg"
+path2 = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/test/mask/ISIC_0014749_segmentation.png"
+path3 = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/valid/image/007-7210-400.jpg"
+path4 = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/valid/annotation/007-7210-400.png"
 
-c = np.array([[[1, 2, 1],
-              [0, 1, 1],
-              [0, 0, 2]]])
-c = utils.ignore_background(c, 2, 1)
-mask = (c != 0)
-C = c[mask]
-print(mask)
-print(c)
-print(C)
-
-d = np.array([[[1, 2, 1],
-               [0, 1, 1],
-               [0, 0, 2]],
-              [[0, 0, 1],
-               [0, 1, 1],
-               [0, 0, 0]]
-              ])
-D = []
-D.extend(d[:, ])
-print(D)
+tensor_img1, tensor_target1 = preprocess.ISIC_preprocess(path1, path2, 256)[:2]
+tensor_img2, tensor_target2 = preprocess.DDR_preprocess(path3, path4, 512, 4)[:2]
+print(tensor_img1.shape)
+print(torch.max(tensor_img1))
+print(torch.min(tensor_img1))
+print(tensor_target1.shape)
+print(torch.max(tensor_target1))
+print(torch.min(tensor_target1))
+print(tensor_img2.shape)
+print(torch.max(tensor_img2))
+print(torch.min(tensor_img2))
+print(tensor_target2.shape)
+print(torch.max(tensor_target2))
+print(torch.min(tensor_target2))

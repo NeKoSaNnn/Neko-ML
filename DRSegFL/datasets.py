@@ -150,9 +150,9 @@ class ListDataset(Dataset):
 
         # Todo: change dataset , modify below
         if self.dataset_name == constants.ISIC:
-            return preprocess.ISIC_preprocess(img_path, target_path, self.img_size)
+            return preprocess.ISIC_preprocess(img_path, target_path, self.img_size)[:2]
         elif self.dataset_name == constants.DDR:
-            return preprocess.DDR_preprocess(img_path, target_path, self.img_size, self.num_classes)
+            return preprocess.DDR_preprocess(img_path, target_path, self.img_size, self.num_classes)[:2]
 
     def __len__(self):
         return len(self.datas_and_targets_path)
