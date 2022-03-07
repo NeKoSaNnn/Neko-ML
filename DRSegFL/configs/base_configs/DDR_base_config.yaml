@@ -46,7 +46,7 @@ server:
     val: 5
     test: 5
 
-  num_tolerate: 4
+  num_tolerate: 5
   type_tolerate: "val"
 
   log_interval_iter: 10
