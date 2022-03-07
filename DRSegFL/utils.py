@@ -60,7 +60,7 @@ def list_mean(list_, weight_list=None):
     _len = sum(weight_list) if weight_list else len(list_)
     mean = 0
     for i, v in enumerate(list_):
-        mean += (v * weight_list[i]) if weight_list else v
+        mean += (np.nan_to_num(v) * weight_list[i]) if weight_list else v
     mean /= _len
     return mean
 
@@ -75,7 +75,7 @@ def dict_list_mean(dict_list, weight_list=None):
     for k in dict_list[0].keys():
         mean_dict[k] = 0
         for i, d in enumerate(dict_list):
-            mean_dict[k] += (d[k] * weight_list[i]) if weight_list else d[k]
+            mean_dict[k] += (np.nan_to_num(d[k]) * weight_list[i]) if weight_list else d[k]
         mean_dict[k] /= _len
     return mean_dict
 

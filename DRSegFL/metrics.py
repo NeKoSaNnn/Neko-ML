@@ -76,10 +76,14 @@ def mIoU(results, gt_seg_maps, num_classes, ignore_index, nan_to_num=None):
 
 
 def Dice2IoU(dice):
+    if dice is None:
+        return None
     return dice / (2 - dice)
 
 
 def IoU2Dice(iou):
+    if iou is None:
+        return None
     return 2 * iou / (1 + iou)
 
 

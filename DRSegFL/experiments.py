@@ -128,3 +128,8 @@ for i, c in enumerate(classes):
     pil_img2 = utils.pil_crop_and_resize(pil_img2, crop_method="min", img_size=512, resize_method=Image.NEAREST)
     np_img2 = np.asarray(pil_img2)
     print("ori_{}:{}".format(c, np.sum(np.where(np_img2 > 0, 1, 0))))
+
+a = [{"aa": np.nan}, {"aa": 1}, {"aa": None, "B": None}]
+b = [1, 2, np.nan, 2, 1.2]
+print(np.nan_to_num(a))
+print(np.nan_to_num(b))
