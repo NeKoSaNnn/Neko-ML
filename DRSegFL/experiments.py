@@ -9,6 +9,8 @@ import numpy as np
 import imgviz
 import torch
 from PIL import Image
+from torchvision import transforms
+
 import utils, preprocess
 from torch.nn import functional as F
 
@@ -88,6 +90,7 @@ from torch.nn import functional as F
 # D.extend(d[:, ])
 # print(D)
 
+# dataset preprocess experiments
 path1 = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/test/image/ISIC_0014749.jpg"
 path2 = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/test/mask/ISIC_0014749_segmentation.png"
 path3 = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/valid/image/007-7210-400.jpg"
@@ -107,3 +110,21 @@ print(torch.min(tensor_img2))
 print(tensor_target2.shape)
 print(torch.max(tensor_target2))
 print(torch.min(tensor_target2))
+
+print("0:{}".format(torch.sum(torch.where(tensor_target2 == 0, 1, 0))))
+print("1:{}".format(torch.sum(torch.where(tensor_target2 == 1, 1, 0))))
+print("2:{}".format(torch.sum(torch.where(tensor_target2 == 2, 1, 0))))
+print("3:{}".format(torch.sum(torch.where(tensor_target2 == 3, 1, 0))))
+print("4:{}".format(torch.sum(torch.where(tensor_target2 == 4, 1, 0))))
+
+classes = ["EX", "HE", "MA", "SE"]
+pil_img1 = Image.open("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/valid/annotation/007-7210-400.png")
+pil_img1 = utils.pil_crop_and_resize(pil_img1, crop_method="min", img_size=512, resize_method=Image.NEAREST)
+np_img1 = np.asarray(pil_img1)
+for i, c in enumerate(classes):
+    print("ann_{}:{}".format(c, np.sum(np.where(np_img1 == i + 1, 1, 0))))
+
+    pil_img2 = Image.open("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/valid/label/{}/007-7210-400.tif".format(c))
+    pil_img2 = utils.pil_crop_and_resize(pil_img2, crop_method="min", img_size=512, resize_method=Image.NEAREST)
+    np_img2 = np.asarray(pil_img2)
+    print("ori_{}:{}".format(c, np.sum(np.where(np_img2 > 0, 1, 0))))

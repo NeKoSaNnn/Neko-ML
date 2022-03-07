@@ -68,20 +68,19 @@ def mIoU(results, gt_seg_maps, num_classes, ignore_index, nan_to_num=None):
         total_area_pred_label += area_pred_label
         total_area_label += area_label
     all_acc = total_area_intersect.sum() / total_area_label.sum()
-    acc = total_area_intersect / total_area_label
-    iou = total_area_intersect / total_area_union
+    accs = total_area_intersect / total_area_label
+    ious = total_area_intersect / total_area_union
     if nan_to_num is not None:
-        return all_acc, np.nan_to_num(acc, nan=nan_to_num), np.nan_to_num(iou, nan=nan_to_num)
-    return all_acc, acc, iou
+        return all_acc, np.nan_to_num(accs, nan=nan_to_num), np.nan_to_num(ious, nan=nan_to_num)
+    return all_acc, accs, ious
 
 
-def mDice(results, gt_seg_maps, num_classes, ignore_index, nan_to_num=None):
-    num_imgs = len(results)
-    assert len(gt_seg_maps) == num_imgs
-    _, _, iou = mIoU(results, gt_seg_maps, num_classes, ignore_index, nan_to_num)
-    miou = np.nanmean(iou)
-    Dice = (2 * miou) / (1 + miou)
-    return Dice
+def Dice2IoU(dice):
+    return dice / (2 - dice)
+
+
+def IoU2Dice(iou):
+    return 2 * iou / (1 + iou)
 
 
 def dice_coeff(preds, targets, epsilon=1e-6):

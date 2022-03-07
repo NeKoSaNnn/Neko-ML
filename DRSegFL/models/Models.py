@@ -155,9 +155,6 @@ class unet(BaseModel):
         return ep_losses
 
     def eval(self, eval_type):
-        eval_loss = 0
-        acc_score = 0
-        target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net.eval()
         if eval_type == constants.TRAIN:
             eval_dataloader = DataLoader(self.train_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
@@ -170,9 +167,12 @@ class unet(BaseModel):
                 self.logger.error("Error Eval_type:{}".format(eval_type))
             else:
                 print("Error Eval_type:{}".format(eval_type))
-            return eval_loss, acc_score
+            raise AssertionError("eval_type:{}".format(eval_type))
 
+        target_data_type = torch.long if self.num_classes > 1 else torch.float32
         with torch.no_grad():
+            eval_loss = 0
+            acc_score = 0
             list_preds = []
             list_targets = []
             for iter, (imgs, targets) in enumerate(eval_dataloader, start=1):
@@ -198,13 +198,16 @@ class unet(BaseModel):
 
             eval_loss /= len(eval_dataloader)
             if self.num_classes == 1:
-                acc_score /= len(eval_dataloader)
-                eval_acc = {"mDice": acc_score}
+                mDice = acc_score / len(eval_dataloader)
+                mIoU = metrics.Dice2IoU(mDice)
+                eval_acc = {"mDice": mDice, "mIoU": mIoU}
             else:
-                all_acc, acc, iou = metrics.mIoU(list_preds, list_targets, self.num_classes, self.num_classes)
-                mDice = metrics.mDice(list_preds, list_targets, self.num_classes, self.num_classes)
-                mIoU = np.nanmean(iou)
-                mAcc = np.nanmean(acc)
+                all_acc, accs, ious = metrics.mIoU(list_preds, list_targets, self.num_classes, self.num_classes)
+                self.logger.debug("accs={}".format(accs))
+                self.logger.debug("ious={}".format(ious))
+                mIoU = np.nanmean(ious)
+                mAcc = np.nanmean(accs)
+                mDice = metrics.IoU2Dice(mIoU)
                 eval_acc = {"mIoU": mIoU, "mDice": mDice, "mAcc": mAcc, "all_acc": all_acc}
 
         self.net.train()

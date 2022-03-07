@@ -108,6 +108,32 @@ def save_weights(weights, path):
     torch.save(weights, path)
 
 
+def pil_crop_and_resize(pil_img, crop_method="min", img_size=None, resize_method=None, debug=False):
+    if debug:
+        print("ori")
+        print(pil_img.size)
+        print(np.asarray(pil_img).shape)
+    if crop_method is None:  # no crop
+        pass
+    elif crop_method == "min":
+        pil_img = transforms.CenterCrop(min(pil_img.size))(pil_img)  # crop
+    elif crop_method == "max":
+        pil_img = transforms.CenterCrop(max(pil_img.size))(pil_img)  # crop
+    else:
+        raise AssertionError("crop_method:{} error".format(crop_method))
+    if debug:
+        print("after crop")
+        print(pil_img.size)
+        print(np.asarray(pil_img).shape)
+    if img_size:
+        pil_img = pil_img.resize((img_size, img_size), resample=resize_method)
+    if debug:
+        print("after resize")
+        print(pil_img.size)
+        print(np.asarray(pil_img).shape)
+    return pil_img
+
+
 def to_tensor_use_cv(cv_img, img_size=None, debug=False):
     # cv_img = cv.imread(img_path, cv.IMREAD_GRAYSCALE) if to_gray else cv.cvtColor(
     #     cv.imread(img_path, cv.IMREAD_COLOR), cv.COLOR_BGR2RGB)
@@ -129,38 +155,32 @@ def to_tensor_use_cv(cv_img, img_size=None, debug=False):
     return cv_img, tensor_img
 
 
-def to_tensor_use_pil(pil_img, img_size=None, debug=False):
+def to_tensor_use_pil(pil_img, crop_method="min", img_size=None, resize_method=None, debug=False):
     """
-    :param pil_img:
-    :param img_size:
-    :param debug:
+    :param pil_img:PIL.Image
+    :param crop_method:"min","max",None
+    :param img_size:int
+    :param resize_method: PIL.Image.NEAREST,...,None
+    :param debug:bool
     :return: pil_img(after center-crop and resize),tensor_img(pil_img convert float(0.0-1.0) tensor)
     """
-    if debug:
-        print(pil_img.size)
-        print(np.asarray(pil_img).shape)
-    pil_img = transforms.CenterCrop(min(pil_img.size))(pil_img)  # crop
-    if img_size:
-        pil_img = pil_img.resize((img_size, img_size))
+    pil_img = pil_crop_and_resize(pil_img, crop_method=crop_method, img_size=img_size, resize_method=resize_method, debug=debug)
     tensor_img = transforms.ToTensor()(pil_img)
     if debug:
         print(tensor_img.shape)
     return pil_img, tensor_img
 
 
-def to_label_use_pil(pil_img, img_size=None, debug=False):
+def to_label_use_pil(pil_img, crop_method="min", img_size=None, debug=False):
     """
-    :param pil_img:
-    :param img_size:
-    :param debug:
+    :param pil_img:PIL.Image
+    :param crop_method:"min","max",None
+    :param img_size:int , resize method is always PIL.Image.NEAREST
+    :param debug:bool
     :return: pil_img(after center-crop and resize),label_img(pil_img convert long tensor)
     """
-    if debug:
-        print(pil_img.size)
-        print(np.asarray(pil_img).shape)
-    pil_img = transforms.CenterCrop(min(pil_img.size))(pil_img)  # crop
-    if img_size:
-        pil_img = pil_img.resize((img_size, img_size))
+
+    pil_img = pil_crop_and_resize(pil_img, crop_method=crop_method, img_size=img_size, resize_method=Image.NEAREST, debug=debug)
     if debug:
         print(pil_img.size)
     label_img = torch.from_numpy(np.asarray(pil_img, dtype=np.long))
