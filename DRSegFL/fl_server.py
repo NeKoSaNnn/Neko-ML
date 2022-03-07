@@ -397,15 +397,13 @@ class FederatedServer(object):
                     self.logger.info(
                         "Best Global -- Test -- Epoch : {}".format(self.global_model.best_test_global_epoch))
                     if self.global_model.best_val_weights:
-                        self.logger.info("Save Best GlobalWeights -- Val : {}".format(
-                            self.global_model.best_weights_path[constants.VALIDATION]))
-                        utils.save_weights(self.global_model.best_val_weights,
-                                           self.global_model.best_weights_path[constants.VALIDATION])
+                        self.logger.info(
+                            "Save Best GlobalWeights -- Val : {}".format(self.global_model.best_weights_path[constants.VALIDATION]))
+                        utils.save_weights(self.global_model.best_val_weights, self.global_model.best_weights_path[constants.VALIDATION])
                     if self.global_model.best_test_weights:
-                        self.logger.info("Save Best GlobalWeights -- Test : {}".format(
-                            self.global_model.best_weights_path[constants.TEST]))
-                        utils.save_weights(self.global_model.best_test_weights,
-                                           self.global_model.best_weights_path[constants.TEST])
+                        self.logger.info("Save Best GlobalWeights -- Test : {}".format(self.global_model.best_weights_path[constants.TEST]))
+                        utils.save_weights(self.global_model.best_test_weights, self.global_model.best_weights_path[constants.TEST])
+                    self.logger.debug("Global Stats : {}".format(self.global_model.get_global_stats()))
                 self.clients_check_resource()
 
         @self.socketio.on("client_fin")

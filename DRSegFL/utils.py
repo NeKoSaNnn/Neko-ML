@@ -60,6 +60,8 @@ def list_mean(list_, weight_list=None):
     for i, v in enumerate(list_):
         mean += (np.nan_to_num(v) * weight_list[i]) if weight_list else np.nan_to_num(v)
     mean /= _len
+    if torch.is_tensor(mean):
+        mean = mean.item()
     return mean
 
 
@@ -75,6 +77,8 @@ def dict_list_mean(dict_list, weight_list=None):
         for i, d in enumerate(dict_list):
             mean_dict[k] += (np.nan_to_num(d[k]) * weight_list[i]) if weight_list else np.nan_to_num(d[k])
         mean_dict[k] /= _len
+        if torch.is_tensor(mean_dict[k]):
+            mean_dict[k] = mean_dict[k].item()
     return mean_dict
 
 
