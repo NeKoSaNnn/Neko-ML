@@ -340,7 +340,7 @@ class FederatedServer(object):
                             self.now_tolerate = 0
                         if self.now_tolerate >= self.NUM_TOLERATE > 0:
                             self.fin = True
-                            self.logger.info("Val Tending To Convergence")
+                            self.logger.info("Val Tending To Convergence.")
                     self.global_model.prev_val_loss = global_val_loss
 
                     # Get Best according to Loss
@@ -367,7 +367,7 @@ class FederatedServer(object):
                             self.now_tolerate = 0
                         if self.now_tolerate >= self.NUM_TOLERATE > 0:
                             self.fin = True
-                            self.logger.info("Test Tending To Convergence")
+                            self.logger.info("Test Tending To Convergence.")
                     self.global_model.prev_test_loss = global_test_loss
 
                     # Get Best according to Loss

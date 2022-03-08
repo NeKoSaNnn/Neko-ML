@@ -12,8 +12,9 @@ model:
   num_workers: 1
 
   num_channels: 3
-  num_classes: 4
+  num_classes: 5
   classes:
+    - "bg"
     - "EX"
     - "HE"
     - "MA"

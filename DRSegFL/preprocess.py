@@ -41,7 +41,7 @@ def DDR_preprocess(img_path, target_path, img_size, num_classes):
     :param target_path:
     :param img_size:
     :param num_classes:
-    :return: tensor_img [Channel,H,W] ; tensor_target [H,W]:values in [0,num_classes],ignore_index=num_classes ; pil_img ; pil_target
+    :return: tensor_img [Channel,H,W] ; tensor_target [H,W]:values in [0,num_classes),ignore_index=num_classes ; pil_img ; pil_target
     """
     img = Image.open(img_path)
     pil_img, tensor_img = utils.to_tensor_use_pil(img, img_size=img_size)
@@ -49,7 +49,7 @@ def DDR_preprocess(img_path, target_path, img_size, num_classes):
     if utils.is_img(target_path):
         target = Image.open(target_path)
         pil_target, tensor_target = utils.to_label_use_pil(target, img_size=img_size)
-        tensor_target = utils.ignore_background(tensor_target, num_classes, 0)
+        # tensor_target = utils.ignore_background(tensor_target, num_classes, 0)
         # tensor_target = utils.make_one_hot(tensor_target, self.num_classes)
     else:
         raise InterruptedError("标签数据非图片数据，需要额外处理")

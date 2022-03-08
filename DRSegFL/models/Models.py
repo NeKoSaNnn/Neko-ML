@@ -111,7 +111,8 @@ class unet(BaseModel):
     def model_init(self):
         self.net = UNet(self.num_channels, self.num_classes).to(self.device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
-        self.loss_f = nn.CrossEntropyLoss(ignore_index=self.num_classes) if self.num_classes > 1 else nn.BCEWithLogitsLoss()
+        loss_weights = torch.tensor([0.01, 1., 1., 1., 1.]).to(self.device)
+        self.loss_f = nn.CrossEntropyLoss(weight=loss_weights) if self.num_classes > 1 else nn.BCEWithLogitsLoss()
 
     def train(self, epoch=1):
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
@@ -202,7 +203,7 @@ class unet(BaseModel):
                 mIoU = metrics.Dice2IoU(mDice)
                 eval_acc = {"mDice": mDice, "mIoU": mIoU}
             else:
-                all_acc, accs, ious = metrics.mIoU(list_preds, list_targets, self.num_classes, self.num_classes)
+                all_acc, accs, ious = metrics.mIoU(list_preds, list_targets, self.num_classes, -1)
                 self.logger.debug("accs={}".format(accs))
                 self.logger.debug("ious={}".format(ious))
                 mIoU = np.nanmean(ious)

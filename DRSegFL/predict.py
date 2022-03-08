@@ -30,6 +30,8 @@ def predict(config_path, weights_path, predict_img_path, ground_truth_path, out_
     dataset_name = config[constants.NAME_DATASET]
     model_name = config[constants.NAME_MODEL]
     num_classes = config[constants.NUM_CLASSES]
+    classes = config[constants.CLASSES] if constants.CLASSES in config else None
+
     os.environ["CUDA_VISIBLE_DEVICES"] = config["gpu"]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -63,7 +65,7 @@ def predict(config_path, weights_path, predict_img_path, ground_truth_path, out_
             predict_mask = (predict_mask > out_threshold).float().cpu().numpy()
     predict_mask = (predict_mask * 255).astype(np.uint8)
 
-    utils.draw_predict(num_classes, pil_img, pil_gt, predict_mask, save_path)
+    utils.draw_predict(num_classes, pil_img, pil_gt, predict_mask, save_path, classes=classes)
 
 
 if __name__ == "__main__":

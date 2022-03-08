@@ -6,6 +6,7 @@
 
 HOST = "host"
 PORT = "port"
+CLASSES = "classes"
 
 TRAIN = "train"
 TRAIN_LOSS = "train_loss"

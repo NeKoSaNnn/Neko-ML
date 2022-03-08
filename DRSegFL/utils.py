@@ -189,20 +189,15 @@ def to_label_use_pil(pil_img, crop_method="min", img_size=None, debug=False):
     return pil_img, label_img
 
 
-def make_one_hot(label, num_classes, ignore=0):
+def make_one_hot(label, num_classes):
     """
-    :param label: [*], values in [0,num_classes]
+    :param label: [*], values in [0,num_classes)
     :param num_classes: C
-    :param ignore: ignore value of background, here is 0
     :return: [C, *]
     """
     label = label.unsqueeze(0)
     shape = list(label.shape)
     shape[0] = num_classes + 1
-
-    if ignore is not None:
-        label[label == ignore] = num_classes + 1
-        label = label - 1
 
     result = torch.zeros(shape, device=label.device)
     result.scatter_(0, label, 1)
@@ -210,20 +205,16 @@ def make_one_hot(label, num_classes, ignore=0):
     return result[:-1, ]
 
 
-def batch_make_one_hot(labels, num_classes, ignore=0):
+def batch_make_one_hot(labels, num_classes):
     """
     :param labels: [N, *], values in [0,num_classes)
     :param num_classes: C
-    :param ignore: ignore value of background, here is 0
+    :param ignore: ignore value of labels
     :return: [N, C, *]
     """
     labels = labels.unsqueeze(1)
     shape = list(labels.shape)
     shape[1] = num_classes + 1
-
-    if ignore is not None:
-        labels[labels == ignore] = num_classes + 1
-        labels = labels - 1
 
     result = torch.zeros(shape, device=labels.device)
     result.scatter_(1, labels, 1)
@@ -233,7 +224,7 @@ def batch_make_one_hot(labels, num_classes, ignore=0):
 
 def ignore_background(array, num_classes, ignore=0):
     """
-    :param array: [*],values in [0,num_classes]
+    :param array: [*],values in [0,num_classes)
     :param num_classes: C
     :param ignore: ignore value of background, here is 0
     :return: [*] which ignore_index=num_classes
@@ -243,7 +234,7 @@ def ignore_background(array, num_classes, ignore=0):
     return array
 
 
-def draw_predict(num_classes, img: Image.Image, target_mask: Image.Image, predict_mask, save_path):
+def draw_predict(num_classes, img: Image.Image, target_mask: Image.Image, predict_mask, save_path, classes=None):
     assert predict_mask.shape[0] == num_classes, "{}!={}".format(predict_mask.shape[0], num_classes)
     plt.figure(figsize=(20, 20))
     if num_classes > 1:
@@ -258,7 +249,7 @@ def draw_predict(num_classes, img: Image.Image, target_mask: Image.Image, predic
         ax.axis("off")
         for i in range(num_classes):
             ax = plt.subplot(2, num_classes, num_classes + i + 1)
-            ax.set_title("segmap(class {})".format(i + 1), fontsize=30)
+            ax.set_title("segmap(class {})".format(i + 1) if classes is None else classes[i], fontsize=30)
             ax.imshow(predict_mask[i, :, :], cmap="gray")
             ax.axis("off")
     elif num_classes == 1:
@@ -272,11 +263,11 @@ def draw_predict(num_classes, img: Image.Image, target_mask: Image.Image, predic
         ax.imshow(target_mask, cmap="gray")
         ax.axis("off")
         ax = plt.subplot(1, 3, 3)
-        ax.set_title("segmap", fontsize=30)
+        ax.set_title("segmap" if classes is None else classes[0], fontsize=30)
         ax.imshow(predict_mask[0, :, :], cmap="gray")
         ax.axis("off")
     else:
-        raise AssertionError("num_classes >= 1")
+        raise AssertionError("num_classes({}) >= 1".format(num_classes))
     plt.xticks([]), plt.yticks([])
     plt.savefig(save_path)
     print("predict result saved to {}".format(save_path))

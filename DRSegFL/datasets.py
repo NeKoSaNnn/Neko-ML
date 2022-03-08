@@ -84,7 +84,7 @@ def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, 
     :param ann_dir:
     :param img_suffix:not include dot
     :param target_suffix:not include dot
-    :param classes:the list of classes
+    :param classes:the list of classes , not include "background(bg)"
     :param dataset_type:
     """
     os.makedirs(ann_dir, exist_ok=True)
@@ -92,6 +92,7 @@ def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, 
         file_name = osp.basename(file_path).rsplit(".", 1)[0]
         img = cv.imread(file_path, cv.IMREAD_GRAYSCALE)
         shape = img.shape
+        del img
         ann = np.zeros(shape, dtype=np.int32)
         ann_path = osp.join(ann_dir, "{}.png".format(file_name))
 
@@ -105,6 +106,25 @@ def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, 
         color_map = imgviz.label_colormap()
         ann_pil.putpalette(color_map)
         ann_pil.save(ann_path)
+
+
+def get_loss_weights(ann_dir, num_classes, ann_suffix):
+    label_counts = [0] * num_classes
+    files = glob.glob(osp.join(ann_dir, "*.{}".format(ann_suffix)))
+    print(len(files))
+    for file in files:
+        img = Image.open(file)
+        np_img = np.asarray(img)
+        assert np.max(np_img) <= num_classes - 1, "values in [0,num_classes)"
+        for i in range(num_classes):
+            label_counts[i] += np.sum(np.where(np_img == i, 1, 0))
+    print(label_counts)
+    avg_label_counts = np.array(label_counts) / len(files)
+    print(avg_label_counts)
+    loss_weights = sum(avg_label_counts) / avg_label_counts
+    print(loss_weights)
+    loss_weights /= np.min(loss_weights)
+    return loss_weights
 
 
 def dataset_augment(img_dir, target_dir, img_suffix, target_suffix, dataset_type):
