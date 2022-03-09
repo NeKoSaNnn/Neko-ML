@@ -54,8 +54,8 @@ class Up(nn.Module):
         diffY = torch.tensor([x2.size()[2] - x1.size()[2]])
         diffX = torch.tensor([x2.size()[3] - x1.size()[3]])
 
-        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2])
+        x1 = F.pad(x1, [torch.div(diffX, 2, rounding_mode="floor"), diffX - torch.div(diffX, 2, rounding_mode="floor"),
+                        torch.div(diffY, 2, rounding_mode="floor"), diffY - torch.div(diffX, 2, rounding_mode="floor")])
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
 
