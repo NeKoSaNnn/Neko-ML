@@ -10,7 +10,6 @@ import sys
 
 import numpy as np
 import torch
-from PIL import Image
 from torch.nn import functional as F
 
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
@@ -65,7 +64,12 @@ def predict(config_path, weights_path, predict_img_path, ground_truth_path, out_
             predict_mask = (predict_mask > out_threshold).float().cpu().numpy()
     predict_mask = (predict_mask * 255).astype(np.uint8)
 
-    utils.draw_predict(num_classes, pil_img, pil_gt, predict_mask, save_path, classes=classes)
+    if dataset_name == constants.ISIC:
+        utils.draw_predict(classes, pil_img, pil_gt, predict_mask, save_path)
+    elif dataset_name == constants.DDR:
+        utils.draw_predict(classes, pil_img, pil_gt, predict_mask, save_path, draw_gt_one_hot=True, ignore_index=0)  # ignore bg
+    else:
+        raise AssertionError("no such dataset:{}".format(dataset_name))
 
 
 if __name__ == "__main__":

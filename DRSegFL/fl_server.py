@@ -290,7 +290,7 @@ class FederatedServer(object):
             [client_data[eval_type][constants.ACC] for client_data in self.client_eval_datas],
             [client_data[eval_type][constants.CONTRIB] for client_data in self.client_eval_datas])
 
-        self.logger.info("Eval-{} with_global_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg : {}".format(
+        self.logger.info("Eval-{} with_global_weights -- GlobalEpoch:{} -- Loss:{:.4f} , {}".format(
             eval_type, self.global_model.now_global_epoch, global_loss,
             " , ".join(f"{k} : {v:.4f}" for k, v in global_acc.items())))
 

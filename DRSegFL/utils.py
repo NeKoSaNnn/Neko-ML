@@ -234,24 +234,35 @@ def ignore_background(array, num_classes, ignore=0):
     return array
 
 
-def draw_predict(num_classes, img: Image.Image, target_mask: Image.Image, predict_mask, save_path, classes=None):
+def draw_predict(classes: list, img: Image.Image, target_mask: Image.Image, predict_mask, save_path, draw_gt_one_hot=False, ignore_index=-1):
+    num_classes = len(classes)
     assert predict_mask.shape[0] == num_classes, "{}!={}".format(predict_mask.shape[0], num_classes)
-    plt.figure(figsize=(20, 20))
+    plt.figure(figsize=(25, 25))
     if num_classes > 1:
-        plt.subplots_adjust(top=0.96, bottom=0.01, left=0.02, right=0.98, hspace=0.01, wspace=0.01)
-        ax = plt.subplot(2, 2, 1)
+        flag = ignore_index in range(num_classes)
+        plt.subplots_adjust(top=0.96, bottom=0, left=0.02, right=0.98, hspace=0.01, wspace=0.01)
+        ax = plt.subplot(2 + draw_gt_one_hot, 2, 1)
         ax.set_title("ori img", fontsize=30)
         ax.imshow(img)
         ax.axis("off")
-        ax = plt.subplot(2, 2, 2)
-        ax.set_title("ground truth", fontsize=30)
+        ax = plt.subplot(2 + draw_gt_one_hot, 2, 2)
+        ax.set_title("gt color_map", fontsize=30)
         ax.imshow(target_mask)
         ax.axis("off")
         for i in range(num_classes):
-            ax = plt.subplot(2, num_classes, num_classes + i + 1)
-            ax.set_title("segmap(class {})".format(i + 1) if classes is None else classes[i], fontsize=30)
-            ax.imshow(predict_mask[i, :, :], cmap="gray")
-            ax.axis("off")
+            if ignore_index != i:
+                ax = plt.subplot(2 + draw_gt_one_hot, num_classes - flag, num_classes + i + 1 - flag - (flag and i > ignore_index))
+                ax.set_title("segmap(class {})".format(i + 1) if classes is None else classes[i], fontsize=30)
+                ax.imshow(predict_mask[i, :, :], cmap="gray")
+                ax.axis("off")
+        if draw_gt_one_hot:
+            for i in range(num_classes):
+                if ignore_index != i:
+                    one_hot_gt = make_one_hot(torch.from_numpy(np.asarray(target_mask, dtype=np.long)), num_classes)
+                    ax = plt.subplot(2 + draw_gt_one_hot, num_classes - flag, 2 * (num_classes - flag) + i + 1 - (flag and i > ignore_index))
+                    ax.set_title("gt(class {})".format(i + 1) if classes is None else "gt({})".format(classes[i]), fontsize=30)
+                    ax.imshow(one_hot_gt[i, :, :], cmap="gray")
+                    ax.axis("off")
     elif num_classes == 1:
         plt.subplots_adjust(top=0.96, bottom=0.01, left=0.02, right=0.98, hspace=0, wspace=0.01)
         ax = plt.subplot(1, 3, 1)

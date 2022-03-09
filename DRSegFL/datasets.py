@@ -76,36 +76,49 @@ def iid_dataset_txt_generate(imgs_dir: str, img_suffix: str, targets_dir: str, t
         f.writelines(lines)
 
 
-def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, classes, dataset_type):
+def label2annotation(img_path: str, label_paths: list, ann_path: str):
+    img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
+    shape = img.shape
+    del img
+    ann = np.zeros(shape, dtype=np.int32)
+
+    for i, label_path in enumerate(label_paths):
+        if not osp.exists(label_path):
+            continue
+        label = cv.imread(label_path, cv.IMREAD_GRAYSCALE)
+        ann[label > 0] = i + 1
+    ann_pil = Image.fromarray(ann.astype(np.uint8), mode="P")
+    color_map = imgviz.label_colormap()
+    ann_pil.putpalette(color_map)
+    ann_pil.save(ann_path)
+    return ann_pil
+
+
+def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, classes, dataset_type, custom_target_name=False):
     """
     Attention:img_name should be equal to target_name
-    :param img_dir:
-    :param target_dir:
-    :param ann_dir:
+    :param img_dir:.../img_files
+    :param target_dir:.../class/target_files
+    :param ann_dir:.../ann_files
     :param img_suffix:not include dot
     :param target_suffix:not include dot
     :param classes:the list of classes , not include "background(bg)"
     :param dataset_type:
+    :param custom_target_name: optional custom, default target_name==img_name
     """
     os.makedirs(ann_dir, exist_ok=True)
-    for file_path in tqdm(glob.glob(osp.join(img_dir, "*.{}".format(img_suffix))), desc="{}_labels_to_annotations".format(dataset_type)):
-        file_name = osp.basename(file_path).rsplit(".", 1)[0]
-        img = cv.imread(file_path, cv.IMREAD_GRAYSCALE)
-        shape = img.shape
-        del img
-        ann = np.zeros(shape, dtype=np.int32)
-        ann_path = osp.join(ann_dir, "{}.png".format(file_name))
-
+    for img_path in tqdm(glob.glob(osp.join(img_dir, "*.{}".format(img_suffix))), desc="{}_labels_to_annotations".format(dataset_type)):
+        img_name = osp.basename(img_path).rsplit(".", 1)[0]
+        target_name = img_name
+        if custom_target_name:
+            # Todo: custom this
+            pass
+        ann_path = osp.join(ann_dir, "{}.png".format(img_name))
+        label_paths = []
         for i, c in enumerate(classes):
-            label_path = osp.join(target_dir, c, "{}.{}".format(file_name, target_suffix))
-            if not osp.exists(label_path):
-                continue
-            label = cv.imread(label_path, cv.IMREAD_GRAYSCALE)
-            ann[label > 0] = i + 1
-        ann_pil = Image.fromarray(ann.astype(np.uint8), mode="P")
-        color_map = imgviz.label_colormap()
-        ann_pil.putpalette(color_map)
-        ann_pil.save(ann_path)
+            label_path = osp.join(target_dir, c, "{}.{}".format(target_name, target_suffix))
+            label_paths.append(label_path)
+        label2annotation(img_path, label_paths, ann_path)
 
 
 def get_loss_weights(ann_dir, num_classes, ann_suffix):
