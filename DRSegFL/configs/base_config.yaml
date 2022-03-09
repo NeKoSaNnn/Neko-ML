@@ -1,31 +1,25 @@
 #model
 model:
   model_name: unet
-  dataset_name: DDR
-  img_size: 1024
+  dataset_name: ISIC
+  img_size: 256
   data_augment: False
 
   dataset_dir:
-    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train"
-    val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/valid"
-    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/test"
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train"
+    val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/val"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/test"
   num_workers: 1
 
   num_channels: 3
-  num_classes: 5
-  classes:
-    - "bg"
-    - "EX"
-    - "HE"
-    - "MA"
-    - "SE"
+  num_classes: 1
   gpu: "4,5"
 
 #client
 client:
   epoch: 2
-  batch_size: 1
-  eval_batch_size: 1
+  batch_size: 4
+  eval_batch_size: 4
 
   log_interval_iter: 10
 
@@ -37,18 +31,24 @@ server:
   port: 9191
 
   epoch: 300
-  num_clients: 2
+  num_clients: 4
 
   global_eval:
-    - "train"
-    - "val"
-    - "test"
+    # {type : metric to best}
+    train: "loss"
+    val: "mIoU"
+    test: "mIoU"
+
   local_eval:
+    # {type : global ep interval to eval}
     val: 5
     test: 5
 
-  num_tolerate: 5
-  type_tolerate: "val"
+  tolerate:
+    val:
+      num: 5
+      metric: "mIoU"
 
   log_interval_iter: 10
+  save_ckpt_epoch: 40
   per_client_max_loadavg: 0.8

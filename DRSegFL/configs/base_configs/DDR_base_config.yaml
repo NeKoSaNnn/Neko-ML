@@ -2,7 +2,7 @@
 model:
   model_name: unet
   dataset_name: DDR
-  img_size: 512
+  img_size: 1024
   data_augment: False
 
   dataset_dir:
@@ -24,8 +24,8 @@ model:
 #client
 client:
   epoch: 2
-  batch_size: 2
-  eval_batch_size: 2
+  batch_size: 1
+  eval_batch_size: 1
 
   log_interval_iter: 10
 
@@ -40,15 +40,21 @@ server:
   num_clients: 2
 
   global_eval:
-    - "train"
-    - "val"
-    - "test"
+    # {type : metric to best}
+    train: "loss"
+    val: "mIoU"
+    test: "mIoU"
+
   local_eval:
+    # {type : global ep interval to eval}
     val: 5
     test: 5
 
-  num_tolerate: 5
-  type_tolerate: "val"
+  tolerate:
+    val:
+      num: 5
+      metric: "mIoU"
 
   log_interval_iter: 10
+  save_ckpt_epoch: 40
   per_client_max_loadavg: 0.8

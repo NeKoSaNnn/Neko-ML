@@ -111,7 +111,7 @@ class unet(BaseModel):
     def model_init(self):
         self.net = UNet(self.num_channels, self.num_classes).to(self.device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
-        loss_weights = torch.tensor([0.01, 1., 1., 1., 1.]).to(self.device)
+        loss_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
         self.loss_f = nn.CrossEntropyLoss(weight=loss_weights) if self.num_classes > 1 else nn.BCEWithLogitsLoss()
 
     def train(self, epoch=1):

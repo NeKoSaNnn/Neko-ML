@@ -134,4 +134,4 @@ print(one_hot_b.dtype)
 # print(np.nan_to_num(a))
 # print(np.nan_to_num(b))
 #
-# print(datasets.get_loss_weights("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation", 5, "png"))
+print(datasets.get_loss_weights("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation", 5, "png"))

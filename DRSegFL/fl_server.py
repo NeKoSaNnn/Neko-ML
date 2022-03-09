@@ -16,6 +16,7 @@ import time
 import numpy as np
 from flask import Flask, request, render_template
 from flask_socketio import SocketIO, emit, disconnect
+from typing import List
 
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
 now_dir_name = sys.path[0]  # ...DRSegFL/
@@ -32,30 +33,29 @@ class GlobalModel(object):
         self.config = config
         self.logger = logger
         self.global_weights = self.get_init_weights()
+        self.now_global_epoch = 0
+        self.now_tolerate = 0
+
         self.weights_path = self.config[constants.PATH_WEIGHTS]
         self.best_weights_path = self.config[constants.PATH_BEST_WEIGHTS]
+        self.tolerate = self.config["tolerate"]
 
-        self.global_train_loss = []
-        self.global_train_acc = []
-        self.global_val_loss = []
-        self.global_val_acc = []
-        self.global_test_loss = []
-        self.global_test_acc = []
+        self.global_stats = {constants.TRAIN: {constants.ACC: [], constants.LOSS: []},
+                             constants.VALIDATION: {constants.ACC: [], constants.LOSS: []},
+                             constants.TEST: {constants.ACC: [], constants.LOSS: []}}
+        self.aggre_stats = {constants.TRAIN: {constants.ACC: [], constants.LOSS: []},
+                            constants.VALIDATION: {constants.ACC: [], constants.LOSS: []},
+                            constants.TEST: {constants.ACC: [], constants.LOSS: []}}
 
-        self.prev_val_loss = None
-        self.best_val_loss = math.inf
-        self.best_val_acc = {}
-        self.best_val_weights = None
-        self.best_val_global_epoch = 0
-
-        self.prev_test_loss = None
-        self.best_test_loss = math.inf
-        self.best_test_acc = {}
-        self.best_test_weights = None
-        self.best_test_global_epoch = 0
+        self.prev = {constants.TRAIN: {constants.LOSS: None, constants.ACC: None},
+                     constants.VALIDATION: {constants.LOSS: None, constants.ACC: None},
+                     constants.TEST: {constants.LOSS: None, constants.ACC: None}}
+        self.best = {constants.TRAIN: {constants.LOSS: None, constants.ACC: None, constants.WEIGHTS: None, constants.EPOCH: 0},
+                     constants.VALIDATION: {constants.LOSS: None, constants.ACC: None, constants.WEIGHTS: None, constants.EPOCH: 0},
+                     constants.TEST: {constants.LOSS: None, constants.ACC: None, constants.WEIGHTS: None, constants.EPOCH: 0}}
 
     def update_global_weights(self, clients_weights, clients_contribution):
-        self.global_weights = fed.FedAvg(clients_weights, clients_contribution)
+        self.global_weights = copy.deepcopy(fed.FedAvg(clients_weights, clients_contribution))
 
     def get_init_weights(self):
         model = getattr(Models, self.config["model_name"])(self.config, self.logger)
@@ -64,32 +64,116 @@ class GlobalModel(object):
         del model
         return init_weights
 
-    def get_global_loss_acc(self, now_global_epoch: int, eval_type: str, client_losses: list, client_acc: list or None,
-                            client_contributions: list):
+    def get_aggre_loss_acc(self, eval_type: str, client_losses: list, client_acc: List[dict], client_contributions: list, is_record: bool):
+        assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], "aggre eval_type:{} error".format(eval_type)
+        now_aggre_loss = utils.list_mean(client_losses, client_contributions)
+        now_aggre_acc = utils.dict_list_mean(client_acc, client_contributions)
+
+        if is_record:
+            self.aggre_stats[eval_type][constants.LOSS].append(now_aggre_loss)
+            self.aggre_stats[eval_type][constants.ACC].append(now_aggre_acc)
+
+        return now_aggre_loss, now_aggre_acc
+
+    def get_global_loss_acc(self, eval_type: str, client_losses: list, client_acc: List[dict], client_contributions: list):
+        assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], "global eval_type:{} error".format(eval_type)
         now_global_loss = utils.list_mean(client_losses, client_contributions)
         now_global_acc = utils.dict_list_mean(client_acc, client_contributions)
 
-        if eval_type == constants.TRAIN:
-            self.global_train_loss.append([now_global_epoch, now_global_loss])
-            self.global_train_acc.append([now_global_epoch, now_global_acc])
-        elif eval_type == constants.VALIDATION:
-            self.global_val_loss.append([now_global_epoch, now_global_loss])
-            self.global_val_acc.append([now_global_epoch, now_global_acc])
-        elif eval_type == constants.TEST:
-            self.global_test_loss.append([now_global_epoch, now_global_loss])
-            self.global_test_acc.append([now_global_epoch, now_global_acc])
-        else:
-            self.logger.error("Get Eval Loss And Acc Error ! Error Eval_type :{}".format(eval_type))
+        self.global_stats[eval_type][constants.LOSS].append(now_global_loss)
+        self.global_stats[eval_type][constants.ACC].append(now_global_acc)
+
         return now_global_loss, now_global_acc
 
-    def get_global_stats(self):
+    def get_stats(self):
         return {
-            "global_train_loss": self.global_train_loss,
-            "global_val_loss": self.global_val_loss,
-            "global_val_acc": self.global_val_acc,
-            "global_test_loss": self.global_test_loss,
-            "global_test_acc": self.global_test_acc,
+            "global_stats": self.global_stats,
+            "aggre_stats": self.aggre_stats
         }
+
+    def update_tolerate(self):
+        self.logger.debug("tolerate:{}".format(self.tolerate))
+        assert len(self.tolerate.keys()) == 1, "tolerate parameter must just have one"
+        tolerate_type = list(self.tolerate.keys())[0]
+        assert tolerate_type in [constants.TRAIN, constants.VALIDATION, constants.TEST]
+        tolerate_metric = self.tolerate[tolerate_type][constants.METRIC]
+        tolerate_num = self.tolerate[tolerate_type][constants.NUM]
+
+        now_stats = {constants.LOSS: self.global_stats[tolerate_type][constants.LOSS][-1],
+                     constants.ACC: self.global_stats[tolerate_type][constants.ACC][-1]}
+        assert tolerate_metric == constants.LOSS or tolerate_metric in now_stats[constants.ACC].keys(), \
+            "metric_tolerate error:{}".format(tolerate_metric)
+        if tolerate_metric == constants.LOSS:
+            preLoss = self.prev[tolerate_type][constants.LOSS]
+            nowLoss = now_stats[constants.LOSS]
+            if preLoss and nowLoss > preLoss:
+                self.now_tolerate += 1
+            else:
+                self.now_tolerate = 0
+        else:
+            preAcc = self.prev[tolerate_type][constants.ACC]
+            nowAcc = now_stats[constants.ACC]
+            if preAcc and nowAcc[tolerate_metric] < preAcc[tolerate_metric]:
+                self.now_tolerate += 1
+            else:
+                self.now_tolerate = 0
+
+        self.prev[tolerate_type][constants.LOSS] = self.global_stats[tolerate_type][constants.LOSS][-1]
+        self.prev[tolerate_type][constants.ACC] = self.global_stats[tolerate_type][constants.ACC][-1]
+
+        if self.now_tolerate >= tolerate_num > 0:
+            self.logger.info("{}(metric:{}) Tending To Convergence.".format(tolerate_type, tolerate_metric))
+            return True
+        return False
+
+    def update_best(self, best_type: str):
+        """
+        after get_global_loss_acc
+        :param best_type:
+        :return:
+        """
+        self.logger.debug("best_type:{}".format(best_type))
+        assert self.now_global_epoch == len(self.global_stats[best_type][constants.LOSS])
+        assert best_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], "best_type:{} error".format(best_type)
+        now_global_loss = self.global_stats[best_type][constants.LOSS][-1]
+        now_global_acc = self.global_stats[best_type][constants.ACC][-1]
+        global_metric = self.config[constants.GLOBAL_EVAL][best_type]
+        if self.best[best_type][constants.ACC] is None:
+            self.best[best_type][constants.ACC] = now_global_acc
+        if self.best[best_type][constants.LOSS] is None:
+            self.best[best_type][constants.LOSS] = now_global_loss
+        if (global_metric in now_global_acc.keys() and now_global_acc[global_metric] > self.best[best_type][constants.ACC][global_metric]) \
+                or (global_metric == constants.LOSS and now_global_loss < self.best[best_type][constants.LOSS]):
+            # default is loss
+            self.best[best_type][constants.LOSS] = now_global_loss
+            self.best[best_type][constants.ACC] = now_global_acc
+            self.best[best_type][constants.WEIGHTS] = copy.deepcopy(self.global_weights)
+            self.best[best_type][constants.EPOCH] = self.now_global_epoch
+
+    def save_ckpt(self, save_ckpt_epoch):
+        if save_ckpt_epoch is not None:
+            if self.now_global_epoch % save_ckpt_epoch == 0:
+                ckpt_record_dir = osp.join(osp.dirname(self.weights_path), "record")
+                os.makedirs(ckpt_record_dir, exist_ok=True)
+                ckpt_record_path = osp.join(ckpt_record_dir, "fed_gep_{}.pth".format(self.now_global_epoch))
+                utils.save_weights(self.global_weights, ckpt_record_path)
+                self.logger.info("Save Record GlobalWeights -- Epoch : {} -- {}".format(self.now_global_epoch, ckpt_record_path))
+
+    def fin_summary(self, global_eval_types):
+        self.logger.info("Federated Learning Summary ...")
+        for global_eval_type in global_eval_types:
+            assert global_eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], \
+                "global eval type:{} error".format(global_eval_types)
+            now_best = self.best[global_eval_type]
+            self.logger.info("Best Global -- {} -- Loss  : {:.4f}".format(global_eval_types, now_best[constants.LOSS]))
+            self.logger.info("Best Global -- {} -- Acc   : {}".format(global_eval_types, " , ".
+                                                                      join(f"{k} : {v:.4f}" for k, v in now_best[constants.ACC].items())))
+            self.logger.info("Best Global -- {} -- Epoch : {}".format(global_eval_types, now_best[constants.EPOCH]))
+            if now_best[constants.WEIGHTS]:
+                self.logger.info("Save Best GlobalWeights -- {} : {}".format(global_eval_types, self.best_weights_path[global_eval_type]))
+                utils.save_weights(now_best[constants.WEIGHTS], self.best_weights_path[global_eval_type])
+
+        self.logger.debug("Global Stats : {}".format(self.get_stats()))
 
 
 class FederatedServer(object):
@@ -124,17 +208,14 @@ class FederatedServer(object):
 
         self.NUM_CLIENTS = self.server_config[constants.NUM_CLIENTS]
         self.NUM_GLOBAL_EPOCH = self.server_config[constants.EPOCH]
-        self.NUM_TOLERATE = self.server_config["num_tolerate"]
-        self.TYPE_TOLERATE = self.server_config["type_tolerate"]
         self.LOCAL_EVAL = self.server_config[constants.LOCAL_EVAL]
         self.GLOBAL_EVAL = self.server_config[constants.GLOBAL_EVAL]
         self.CLIENT_SINGLE_MAX_LOADAVG = self.server_config["per_client_max_loadavg"]
+        self.SAVE_CKPT_EPOCH = self.server_config["save_ckpt_epoch"] if "save_ckpt_epoch" in self.server_config.keys() else None
 
         self.global_model = GlobalModel(self.server_config, self.logger)
 
-        self.now_global_epoch = 0
         self.wait_time = 0
-        self.now_tolerate = 0
         self.fin = False
         self.ready_client_sids = set()
         self.fin_client_sids = set()
@@ -150,7 +231,7 @@ class FederatedServer(object):
 
         @self.app.route("/stats")
         def stats_page():
-            return json.dumps(self.global_model.get_global_stats())
+            return json.dumps(self.global_model.get_stats())
 
     def clients_check_resource(self):
         self.client_resource = dict()
@@ -160,31 +241,58 @@ class FederatedServer(object):
         else:
             check_client_sids = np.random.choice(list(self.ready_client_sids), self.NUM_CLIENTS, replace=False)
             for sid in check_client_sids:
-                emit("client_check_resource", {"now_global_epoch": self.now_global_epoch}, room=sid)
+                emit("client_check_resource", {"now_global_epoch": self.global_model.now_global_epoch}, room=sid)
 
     def global_train_next_epoch(self, runnable_client_sids):
-        self.now_global_epoch += 1
+        self.global_model.now_global_epoch += 1
         self.client_update_datas = []
-        self.logger.info("GlobalEpoch : {}".format(self.now_global_epoch))
+        self.logger.info("GlobalEpoch : {}".format(self.global_model.now_global_epoch))
         self.logger.info("Clients-sids : [{}]".format(",".join(runnable_client_sids)))
         now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)
 
-        emit_data = {"now_global_epoch": self.now_global_epoch}
+        emit_data = {"now_global_epoch": self.global_model.now_global_epoch}
         # first global epoch
-        if self.now_global_epoch == 1:
+        if self.global_model.now_global_epoch == 1:
             emit_data["now_weights"] = now_weights_pickle
         else:
+            if constants.TRAIN in self.LOCAL_EVAL:
+                emit_data[constants.TRAIN] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.TRAIN] == 0
             if constants.VALIDATION in self.LOCAL_EVAL:
-                emit_data[constants.VALIDATION] = self.now_global_epoch % self.LOCAL_EVAL[constants.VALIDATION] == 0
+                emit_data[constants.VALIDATION] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.VALIDATION] == 0
             if constants.TEST in self.LOCAL_EVAL:
-                emit_data[constants.TEST] = self.now_global_epoch % self.LOCAL_EVAL[constants.TEST] == 0
+                emit_data[constants.TEST] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.TEST] == 0
 
         for sid in runnable_client_sids:
             # first global epoch
-            if self.now_global_epoch == 1:
+            if self.global_model.now_global_epoch == 1:
                 self.logger.info("First GlobalEpoch , Send Init Weights To Client-sid:[{}]".format(sid))
             emit_data["sid"] = sid
             emit("local_update", emit_data, room=sid)
+
+    def _local_eval(self, eval_type):
+        assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], "eval_type:{} error".format(eval_type)
+        avg_loss, avg_acc = self.global_model.get_aggre_loss_acc(
+            eval_type,
+            [client_data[eval_type][constants.LOSS] for client_data in self.client_update_datas],
+            [client_data[eval_type][constants.ACC] for client_data in self.client_update_datas],
+            [client_data[eval_type][constants.CONTRIB] for client_data in self.client_update_datas],
+            True)
+
+        self.logger.info("Eval-{} with_locals_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg : {}".format(
+            eval_type, self.global_model.now_global_epoch, avg_loss,
+            " , ".join(f"{k} : {v:.4f}" for k, v in avg_acc.items())))
+
+    def _global_eval(self, eval_type):
+        assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], "eval_type:{} error".format(eval_type)
+        global_loss, global_acc = self.global_model.get_global_loss_acc(
+            eval_type,
+            [client_data[eval_type][constants.LOSS] for client_data in self.client_eval_datas],
+            [client_data[eval_type][constants.ACC] for client_data in self.client_eval_datas],
+            [client_data[eval_type][constants.CONTRIB] for client_data in self.client_eval_datas])
+
+        self.logger.info("Eval-{} with_global_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg : {}".format(
+            eval_type, self.global_model.now_global_epoch, global_loss,
+            " , ".join(f"{k} : {v:.4f}" for k, v in global_acc.items())))
 
     def start(self):
         self.logger.info("Server Start {}:{}".format(self.server_host, self.server_port))
@@ -213,7 +321,7 @@ class FederatedServer(object):
             self.logger.info("Client-sid:[{}] Ready For Training".format(request.sid))
             self.ready_client_sids.add(request.sid)
             self.logger.info("Now {} Client(s) Ready ...".format(len(self.ready_client_sids)))
-            if len(self.ready_client_sids) >= self.NUM_CLIENTS and self.now_global_epoch == 0:
+            if len(self.ready_client_sids) >= self.NUM_CLIENTS and self.global_model.now_global_epoch == 0:
                 self.logger.info(
                     "Now Ready Client(s) >= {}(num_clients) , Federated Train Start ~".format(self.NUM_CLIENTS))
                 self.clients_check_resource()
@@ -225,7 +333,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_check_resource_complete")
         def client_check_resource_complete_handle(data):
-            if data["now_global_epoch"] == self.now_global_epoch:
+            if data["now_global_epoch"] == self.global_model.now_global_epoch:
                 self.client_resource[request.sid] = data["loadavg"]
                 # up to NUM_CLIENTS , begin next step
                 if len(self.client_resource) == self.NUM_CLIENTS:
@@ -252,52 +360,41 @@ class FederatedServer(object):
         def client_update_complete_handle(data):
             self.logger.debug("Received Client-sid:[{}] Update-Data:{} ".format(request.sid, data))
 
-            if self.now_global_epoch == data["now_global_epoch"]:
+            if self.global_model.now_global_epoch == data["now_global_epoch"]:
                 data["now_weights"] = copy.deepcopy(utils.pickle2obj(data["now_weights"]))
                 self.client_update_datas.append(data)
                 # all clients upload complete
                 if self.NUM_CLIENTS == len(self.client_update_datas):
+                    local_eval_types = list(self.client_update_datas[0].keys())
+
                     self.global_model.update_global_weights(
                         [client_data["now_weights"] for client_data in self.client_update_datas],
                         [client_data[constants.TRAIN_CONTRIB] for client_data in self.client_update_datas])
 
-                    global_train_loss, _ = self.global_model.get_global_loss_acc(
-                        self.now_global_epoch, constants.TRAIN,
+                    global_train_loss, _ = self.global_model.get_aggre_loss_acc(
+                        constants.TRAIN,
                         [client_data[constants.TRAIN_LOSS] for client_data in self.client_update_datas],
                         None,
-                        [client_data[constants.TRAIN_CONTRIB] for client_data in self.client_update_datas])
+                        [client_data[constants.TRAIN_CONTRIB] for client_data in self.client_update_datas],
+                        False)
 
                     self.logger.info(
-                        "Train -- GlobalEpoch:{} -- AvgLoss:{:.4f}".format(self.now_global_epoch,
-                                                                           global_train_loss))
+                        "Train -- GlobalEpoch:{} -- AvgLoss:{:.4f}".format(self.global_model.now_global_epoch, global_train_loss))
 
-                    if constants.VALIDATION_LOSS in self.client_update_datas[0]:
-                        avg_val_loss, avg_val_acc = self.global_model.get_global_loss_acc(
-                            self.now_global_epoch, constants.VALIDATION,
-                            [client_data[constants.VALIDATION_LOSS] for client_data in self.client_update_datas],
-                            [client_data[constants.VALIDATION_ACC] for client_data in self.client_update_datas],
-                            [client_data[constants.VALIDATION_CONTRIB] for client_data in self.client_update_datas])
+                    if constants.TRAIN in local_eval_types:
+                        self._local_eval(constants.TRAIN)
 
-                        self.logger.info(
-                            "Val with_locals_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg :{}".format(
-                                self.now_global_epoch, avg_val_loss, " , ".join(f"{k} : {v:.4f}" for k, v in avg_val_acc.items())))
+                    if constants.VALIDATION in local_eval_types:
+                        self._local_eval(constants.VALIDATION)
 
-                    if constants.TEST_LOSS in self.client_update_datas[0]:
-                        avg_test_loss, avg_test_acc = self.global_model.get_global_loss_acc(
-                            self.now_global_epoch, constants.TEST,
-                            [client_data[constants.TEST_LOSS] for client_data in self.client_update_datas],
-                            [client_data[constants.TEST_ACC] for client_data in self.client_update_datas],
-                            [client_data[constants.TEST_CONTRIB] for client_data in self.client_update_datas])
-
-                        self.logger.info(
-                            "Test with_locals_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg :{}".format(
-                                self.now_global_epoch, avg_test_loss, " , ".join(f"{k} : {v:.4f}" for k, v in avg_test_acc.items())))
+                    if constants.TEST in local_eval_types:
+                        self._local_eval(constants.TEST)
 
                     now_weights_pickle = utils.obj2pickle(self.global_model.global_weights,
                                                           self.global_model.weights_path)  # weights path
-                    emit_data = {"now_global_epoch": self.now_global_epoch,
+                    emit_data = {"now_global_epoch": self.global_model.now_global_epoch,
                                  "now_weights": now_weights_pickle,
-                                 "eval_type": self.GLOBAL_EVAL}
+                                 "eval_type": list(self.GLOBAL_EVAL.keys())}
 
                     self.client_eval_datas = []  # empty eval datas for next eval epoch
                     for sid in self.ready_client_sids:
@@ -312,72 +409,25 @@ class FederatedServer(object):
             self.client_eval_datas.append(data)
 
             if len(self.client_eval_datas) == self.NUM_CLIENTS:
-                if constants.TRAIN in self.client_eval_datas[0]:
-                    global_train_loss, global_train_acc = self.global_model.get_global_loss_acc(
-                        self.now_global_epoch, constants.TRAIN,
-                        [client_data[constants.TRAIN][constants.LOSS] for client_data in self.client_eval_datas],
-                        [client_data[constants.TRAIN][constants.ACC] for client_data in self.client_eval_datas],
-                        [client_data[constants.TRAIN][constants.CONTRIB] for client_data in self.client_eval_datas])
-                    self.logger.info(
-                        "Train with_global_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg :{}".format(
-                            self.now_global_epoch, global_train_loss, " , ".join(f"{k} : {v:.4f}" for k, v in global_train_acc.items())))
+                global_eval_types = list(self.client_eval_datas[0].keys())
 
-                if constants.VALIDATION in self.client_eval_datas[0]:
-                    global_val_loss, global_val_acc = self.global_model.get_global_loss_acc(
-                        self.now_global_epoch, constants.VALIDATION,
-                        [client_data[constants.VALIDATION][constants.LOSS] for client_data in self.client_eval_datas],
-                        [client_data[constants.VALIDATION][constants.ACC] for client_data in self.client_eval_datas],
-                        [client_data[constants.VALIDATION][constants.CONTRIB] for client_data in
-                         self.client_eval_datas])
-                    self.logger.info(
-                        "Val with_global_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg :{}".format(
-                            self.now_global_epoch, global_val_loss, " , ".join(f"{k} : {v:.4f}" for k, v in global_val_acc.items())))
+                if constants.TRAIN in global_eval_types:
+                    self._global_eval(constants.TRAIN)
+                    self.global_model.update_best(constants.TRAIN)
 
-                    if self.TYPE_TOLERATE == constants.VALIDATION:
-                        if self.global_model.prev_val_loss and global_val_loss > self.global_model.prev_val_loss:
-                            self.now_tolerate += 1
-                        else:
-                            self.now_tolerate = 0
-                        if self.now_tolerate >= self.NUM_TOLERATE > 0:
-                            self.fin = True
-                            self.logger.info("Val Tending To Convergence.")
-                    self.global_model.prev_val_loss = global_val_loss
+                if constants.VALIDATION in global_eval_types:
+                    self._global_eval(constants.VALIDATION)
+                    self.global_model.update_best(constants.VALIDATION)
 
-                    # Get Best according to Loss
-                    if global_val_loss < self.global_model.best_val_loss:
-                        self.global_model.best_val_loss = global_val_loss
-                        self.global_model.best_val_acc = global_val_acc
-                        self.global_model.best_val_weights = self.global_model.global_weights
-                        self.global_model.best_val_global_epoch = self.now_global_epoch
+                if constants.TEST in global_eval_types:
+                    self._global_eval(constants.TEST)
+                    self.global_model.update_best(constants.TEST)
 
-                if constants.TEST in self.client_eval_datas[0]:
-                    global_test_loss, global_test_acc = self.global_model.get_global_loss_acc(
-                        self.now_global_epoch, constants.TEST,
-                        [client_data[constants.TEST][constants.LOSS] for client_data in self.client_eval_datas],
-                        [client_data[constants.TEST][constants.ACC] for client_data in self.client_eval_datas],
-                        [client_data[constants.TEST][constants.CONTRIB] for client_data in self.client_eval_datas])
-                    self.logger.info(
-                        "Test with_global_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg :{}".format(
-                            self.now_global_epoch, global_test_loss, " , ".join(f"{k} : {v:.4f}" for k, v in global_test_acc.items())))
+                self.fin = self.global_model.update_tolerate()
 
-                    if self.TYPE_TOLERATE == constants.TEST:
-                        if self.global_model.prev_test_loss and global_test_loss > self.global_model.prev_test_loss:
-                            self.now_tolerate += 1
-                        else:
-                            self.now_tolerate = 0
-                        if self.now_tolerate >= self.NUM_TOLERATE > 0:
-                            self.fin = True
-                            self.logger.info("Test Tending To Convergence.")
-                    self.global_model.prev_test_loss = global_test_loss
+                self.global_model.save_ckpt(self.SAVE_CKPT_EPOCH)
 
-                    # Get Best according to Loss
-                    if global_test_loss < self.global_model.best_test_loss:
-                        self.global_model.best_test_loss = global_test_loss
-                        self.global_model.best_test_acc = global_test_acc
-                        self.global_model.best_test_weights = copy.deepcopy(self.global_model.global_weights)
-                        self.global_model.best_test_global_epoch = self.now_global_epoch
-
-                if self.now_global_epoch >= self.NUM_GLOBAL_EPOCH > 0:
+                if self.global_model.now_global_epoch >= self.NUM_GLOBAL_EPOCH > 0:
                     self.fin = True
                     self.logger.info("Go to NUM_GLOBAL_EPOCH:{}".format(self.NUM_GLOBAL_EPOCH))
 
@@ -385,25 +435,8 @@ class FederatedServer(object):
                     # next global epoch
                     self.logger.info("Start Next Global-Epoch Training ...")
                 else:
-                    self.logger.info("Federated Learning Summary ...")
-                    self.logger.info("Best Global -- Val -- Loss : {:.4f}".format(self.global_model.best_val_loss))
-                    self.logger.info("Best Global -- Val -- Acc  : {}".format(
-                        " , ".join(f"{k} : {v:.4f}" for k, v in self.global_model.best_val_acc.items())))
-                    self.logger.info(
-                        "Best Global -- Val -- Epoch : {}".format(self.global_model.best_val_global_epoch))
-                    self.logger.info("Best Global -- Test -- Loss : {:.4f}".format(self.global_model.best_test_loss))
-                    self.logger.info("Best Global -- Test -- Acc  : {}".format(
-                        " , ".join(f"{k} : {v:.4f}" for k, v in self.global_model.best_test_acc.items())))
-                    self.logger.info(
-                        "Best Global -- Test -- Epoch : {}".format(self.global_model.best_test_global_epoch))
-                    if self.global_model.best_val_weights:
-                        self.logger.info(
-                            "Save Best GlobalWeights -- Val : {}".format(self.global_model.best_weights_path[constants.VALIDATION]))
-                        utils.save_weights(self.global_model.best_val_weights, self.global_model.best_weights_path[constants.VALIDATION])
-                    if self.global_model.best_test_weights:
-                        self.logger.info("Save Best GlobalWeights -- Test : {}".format(self.global_model.best_weights_path[constants.TEST]))
-                        utils.save_weights(self.global_model.best_test_weights, self.global_model.best_weights_path[constants.TEST])
-                    self.logger.debug("Global Stats : {}".format(self.global_model.get_global_stats()))
+                    self.global_model.fin_summary(global_eval_types)
+
                 self.clients_check_resource()
 
         @self.socketio.on("client_fin")

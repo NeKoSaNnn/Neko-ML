@@ -30,6 +30,8 @@ NAME_MODEL = "model_name"
 CLIENT = "client"
 SERVER = "server"
 MODEL = "model"
+WEIGHTS = "weights"
+METRIC = "metric"
 
 EPOCH = "epoch"
 BATCH_SIZE = "batch_size"
@@ -40,6 +42,7 @@ EVAL_BATCH_SIZE = "eval_batch_size"
 
 GRAD_ACCUMULATE = "accumulate_grad"
 
+NUM = "num"
 NUM_WORKERS = "num_workers"
 NUM_CHANNELS = "num_channels"
 NUM_CLASSES = "num_classes"

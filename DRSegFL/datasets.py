@@ -118,11 +118,9 @@ def get_loss_weights(ann_dir, num_classes, ann_suffix):
         assert np.max(np_img) <= num_classes - 1, "values in [0,num_classes)"
         for i in range(num_classes):
             label_counts[i] += np.sum(np.where(np_img == i, 1, 0))
-    print(label_counts)
     avg_label_counts = np.array(label_counts) / len(files)
     print(avg_label_counts)
     loss_weights = sum(avg_label_counts) / avg_label_counts
-    print(loss_weights)
     loss_weights /= np.min(loss_weights)
     return loss_weights
 
