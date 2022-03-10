@@ -94,7 +94,7 @@ def label2annotation(img_path: str, label_paths: list, ann_path: str):
     return ann_pil
 
 
-def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, classes, dataset_type, custom_target_name=False):
+def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, classes, dataset_type, custom_target_name=False, force=False):
     """
     Attention:img_name should be equal to target_name
     :param img_dir:.../img_files
@@ -105,6 +105,7 @@ def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, 
     :param classes:the list of classes , not include "background(bg)"
     :param dataset_type:
     :param custom_target_name: optional custom, default target_name==img_name
+    :param force: force to re-generate annotations
     """
     os.makedirs(ann_dir, exist_ok=True)
     for img_path in tqdm(glob.glob(osp.join(img_dir, "*.{}".format(img_suffix))), desc="{}_labels_to_annotations".format(dataset_type)):
@@ -114,6 +115,8 @@ def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, 
             # Todo: custom this
             raise RuntimeError
         ann_path = osp.join(ann_dir, "{}.png".format(img_name))
+        if not force and osp.exists(ann_path):
+            continue
         label_paths = []
         for i, c in enumerate(classes):
             label_path = osp.join(target_dir, c, "{}.{}".format(target_name, target_suffix))

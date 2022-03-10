@@ -310,6 +310,8 @@ class FederatedServer(object):
         @self.socketio.on("disconnect")
         def disconnect_handle():
             self.logger.info("[{}] Close Connect.".format(request.sid))
+            if request.sid in self.ready_client_sids:
+                self.ready_client_sids.remove(request.sid)
 
         @self.socketio.on("client_wakeup")
         def client_wakeup_handle():
@@ -320,16 +322,17 @@ class FederatedServer(object):
         def client_ready_handle():
             self.logger.info("Client-sid:[{}] Ready For Training".format(request.sid))
             self.ready_client_sids.add(request.sid)
-            self.logger.info("Now {} Client(s) Ready ...".format(len(self.ready_client_sids)))
             if len(self.ready_client_sids) >= self.NUM_CLIENTS and self.global_model.now_global_epoch == 0:
                 self.logger.info(
-                    "Now Ready Client(s) >= {}(num_clients) , Federated Train Start ~".format(self.NUM_CLIENTS))
+                    "Now Ready Client(s)_Num:{} >= {}(num_clients) , Federated Train Start ~".format(len(self.ready_client_sids),
+                                                                                                     self.NUM_CLIENTS))
                 self.clients_check_resource()
-            # elif len(self.ready_client_sids) < self.NUM_CLIENTS:
-            #     self.logger.info(
-            #         "{} Client(s) Ready, Waiting Enough Clients To Run...".format(len(self.ready_client_sids)))
-            # else:
-            #     self.logger.error("Now GlobalEpoch != 0 , Please Restart Server")
+            elif len(self.ready_client_sids) < self.NUM_CLIENTS:
+                self.logger.info(
+                    "Now Ready Client(s)_Num:{} < {}(num_clients) , Waiting Enough Clients To Run...".format(len(self.ready_client_sids),
+                                                                                                             self.NUM_CLIENTS))
+            else:
+                self.logger.error("Now GlobalEpoch != 0 , Please Restart Server ~")
 
         @self.socketio.on("client_check_resource_complete")
         def client_check_resource_complete_handle(data):
@@ -446,7 +449,7 @@ class FederatedServer(object):
             self.logger.info("Federated Learning Client-sid:[{}] Fin.".format(sid))
             disconnect(sid)
             if sid in self.ready_client_sids:
-                self.ready_client_sids.remove(request.sid)
+                self.ready_client_sids.remove(sid)
             if len(self.ready_client_sids) == 0:
                 self.logger.info("All Clients Fin. Federated Learning Server Fin.")
                 self.socketio.stop()

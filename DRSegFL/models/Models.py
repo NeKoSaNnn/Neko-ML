@@ -65,6 +65,7 @@ class BaseModel(object):
             print("Model:{} init ......".format(self.config["model_name"]))
 
         self.model_init()
+        self.loss_init()
 
         if self.logger:
             self.logger.info("Model:{} Construct and Init Completed.".format(self.config["model_name"]))
@@ -95,12 +96,23 @@ class BaseModel(object):
             # state_dict file
             self.net.load_state_dict(copy.deepcopy(weights))
 
+    def loss_init(self):
+        if self.dataset_name == constants.ISIC:
+            self.loss_f = nn.BCEWithLogitsLoss()
+        elif self.dataset_name == constants.DDR:
+            class_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
+            # self.loss_f = nn.CrossEntropyLoss(weight=class_weights)
+            self.loss_f = BinaryLoss(loss_type="dice")
+            # self.loss_f = FocalLoss(gamma=2.0, alpha=0.25, class_weight=[0.01, 1., 1., 1., 1.])
+            # self.loss_f = loss.FocalLoss(gamma=2, alpha=0.25, class_weight=class_weights)
+        else:
+            raise AssertionError("dataset error:{}".format(self.dataset_name))
+
     def model_init(self):
         """
         init belows:
         self.net
         self.optimizer
-        self.loss_f
         """
         raise NotImplementedError
 
@@ -119,16 +131,6 @@ class unet(BaseModel):
         self.net = UNet(self.num_channels, self.num_classes).to(self.device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
 
-        if self.dataset_name == constants.ISIC:
-            self.loss_f = nn.BCEWithLogitsLoss()
-        elif self.dataset_name == constants.DDR:
-            class_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
-            # self.loss_f = nn.CrossEntropyLoss(weight=class_weights)
-            self.loss_f = FocalLoss(ignore_index=0)
-            # self.loss_f = loss.FocalLoss(gamma=2, alpha=0.25, class_weight=class_weights)
-        else:
-            raise AssertionError("dataset error:{}".format(self.dataset_name))
-
     def train(self, epoch=1):
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net.train()
@@ -143,7 +145,7 @@ class unet(BaseModel):
 
                 preds = self.net(imgs)
                 assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
-                loss = self.loss_f(preds, targets, ignore_index=0)
+                loss = self.loss_f(preds, targets)
 
                 iter_losses += loss.item()
 

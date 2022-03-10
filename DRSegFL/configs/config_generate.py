@@ -50,7 +50,7 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
         target_dir = osp.join(dataset_dir, "label")
         ann_dir = osp.join(dataset_dir, "annotation")
 
-        datasets.labels2annotations(img_dir, target_dir, ann_dir, "jpg", "tif", no_bg_classes, dataset_type)
+        datasets.labels2annotations(img_dir, target_dir, ann_dir, "jpg", "tif", no_bg_classes, dataset_type, force=False)
 
         if is_augment and dataset_type == constants.TRAIN:
             datasets.dataset_augment(img_dir, ann_dir, "jpg", "png", dataset_type)
