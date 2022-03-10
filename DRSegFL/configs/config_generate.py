@@ -151,9 +151,11 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
             config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH]))
         config[constants.SERVER][constants.DIR_PREDICT] = predict_dir
         config[constants.SERVER][constants.PATH_BEST_WEIGHTS] = {
-            "val": osp.join(best_weights_dir, "best_fed_val_c{}_ep{}.pt".format(
+            constants.TRAIN: osp.join(best_weights_dir, "best_fed_train_c{}_ep{}.pt".format(
                 config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH])),
-            "test": osp.join(best_weights_dir, "best_fed_test_c{}_ep{}.pt".format(
+            constants.VALIDATION: osp.join(best_weights_dir, "best_fed_val_c{}_ep{}.pt".format(
+                config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH])),
+            constants.TEST: osp.join(best_weights_dir, "best_fed_test_c{}_ep{}.pt".format(
                 config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH]))}
         json.dump(config[constants.SERVER], f, indent=4)
 

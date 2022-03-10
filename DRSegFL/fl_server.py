@@ -155,7 +155,7 @@ class GlobalModel(object):
             if self.now_global_epoch % save_ckpt_epoch == 0:
                 ckpt_record_dir = osp.join(osp.dirname(self.weights_path), "record")
                 os.makedirs(ckpt_record_dir, exist_ok=True)
-                ckpt_record_path = osp.join(ckpt_record_dir, "fed_gep_{}.pth".format(self.now_global_epoch))
+                ckpt_record_path = osp.join(ckpt_record_dir, "fed_gep_{}.pt".format(self.now_global_epoch))
                 utils.save_weights(self.global_weights, ckpt_record_path)
                 self.logger.info("Save Record GlobalWeights -- Epoch : {} -- {}".format(self.now_global_epoch, ckpt_record_path))
 
@@ -165,12 +165,12 @@ class GlobalModel(object):
             assert global_eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], \
                 "global eval type:{} error".format(global_eval_types)
             now_best = self.best[global_eval_type]
-            self.logger.info("Best Global -- {} -- Loss  : {:.4f}".format(global_eval_types, now_best[constants.LOSS]))
-            self.logger.info("Best Global -- {} -- Acc   : {}".format(global_eval_types, " , ".
+            self.logger.info("Best Global -- {} -- Loss  : {:.4f}".format(global_eval_type, now_best[constants.LOSS]))
+            self.logger.info("Best Global -- {} -- Acc   : {}".format(global_eval_type, " , ".
                                                                       join(f"{k} : {v:.4f}" for k, v in now_best[constants.ACC].items())))
-            self.logger.info("Best Global -- {} -- Epoch : {}".format(global_eval_types, now_best[constants.EPOCH]))
+            self.logger.info("Best Global -- {} -- Epoch : {}".format(global_eval_type, now_best[constants.EPOCH]))
             if now_best[constants.WEIGHTS]:
-                self.logger.info("Save Best GlobalWeights -- {} : {}".format(global_eval_types, self.best_weights_path[global_eval_type]))
+                self.logger.info("Save Best GlobalWeights -- {} : {}".format(global_eval_type, self.best_weights_path[global_eval_type]))
                 utils.save_weights(now_best[constants.WEIGHTS], self.best_weights_path[global_eval_type])
 
         self.logger.debug("Global Stats : {}".format(self.get_stats()))

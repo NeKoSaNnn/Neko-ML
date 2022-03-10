@@ -2,7 +2,7 @@
 model:
   model_name: unet
   dataset_name: DDR
-  img_size: 1024
+  img_size: 512
   data_augment: False
 
   dataset_dir:
@@ -24,8 +24,8 @@ model:
 #client
 client:
   epoch: 2
-  batch_size: 1
-  eval_batch_size: 1
+  batch_size: 4
+  eval_batch_size: 4
 
   log_interval_iter: 10
 
