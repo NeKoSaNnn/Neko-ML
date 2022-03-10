@@ -112,7 +112,7 @@ def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, 
         target_name = img_name
         if custom_target_name:
             # Todo: custom this
-            pass
+            raise RuntimeError
         ann_path = osp.join(ann_dir, "{}.png".format(img_name))
         label_paths = []
         for i, c in enumerate(classes):

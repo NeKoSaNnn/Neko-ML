@@ -4,6 +4,7 @@
 @author:mjx
 """
 import argparse
+import copy
 import json
 import os
 import os.path as osp
@@ -41,8 +42,9 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
             datasets.dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)
     # DDR
     elif config[constants.MODEL][constants.NAME_DATASET] == constants.DDR:
-        classes = config[constants.MODEL][constants.CLASSES]
-        no_bg_classes = classes.remove("bg") if "bg" in classes else classes  # remove background(bg)
+        no_bg_classes = copy.deepcopy(config[constants.MODEL][constants.CLASSES])
+        if "bg" in no_bg_classes:  # remove background(bg)
+            no_bg_classes.remove("bg")
 
         img_dir = osp.join(dataset_dir, "image")
         target_dir = osp.join(dataset_dir, "label")

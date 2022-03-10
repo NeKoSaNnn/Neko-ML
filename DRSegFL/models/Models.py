@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 
 from DRSegFL import metrics, constants
 from DRSegFL.datasets import ListDataset
+from DRSegFL.loss import *
 from DRSegFL.models.UNet import UNet
 
 torch.set_num_threads(4)
@@ -27,6 +28,7 @@ class BaseModel(object):
 
         self.num_classes = self.config[constants.NUM_CLASSES]
         self.num_channels = self.config[constants.NUM_CHANNELS]
+        self.dataset_name = self.config[constants.NAME_DATASET]
 
         if constants.TRAIN in self.config:
             self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
@@ -116,8 +118,16 @@ class unet(BaseModel):
     def model_init(self):
         self.net = UNet(self.num_channels, self.num_classes).to(self.device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
-        loss_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
-        self.loss_f = nn.CrossEntropyLoss(weight=loss_weights) if self.num_classes > 1 else nn.BCEWithLogitsLoss()
+
+        if self.dataset_name == constants.ISIC:
+            self.loss_f = nn.BCEWithLogitsLoss()
+        elif self.dataset_name == constants.DDR:
+            class_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
+            # self.loss_f = nn.CrossEntropyLoss(weight=class_weights)
+            self.loss_f = FocalLoss(ignore_index=0)
+            # self.loss_f = loss.FocalLoss(gamma=2, alpha=0.25, class_weight=class_weights)
+        else:
+            raise AssertionError("dataset error:{}".format(self.dataset_name))
 
     def train(self, epoch=1):
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
@@ -133,7 +143,7 @@ class unet(BaseModel):
 
                 preds = self.net(imgs)
                 assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
-                loss = self.loss_f(preds, targets)
+                loss = self.loss_f(preds, targets, ignore_index=0)
 
                 iter_losses += loss.item()
 
