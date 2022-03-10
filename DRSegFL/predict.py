@@ -20,64 +20,76 @@ from DRSegFL import utils, constants, preprocess
 from DRSegFL.models import Models
 
 
-def predict(config_path, weights_path, predict_img_path, ground_truth_path, out_threshold=0.5):
-    assert ".json" in config_path, "config type error :{} ,expect jon".format(config_path)
-    now_day = utils.get_now_day()
-    now_time = utils.get_now_time()
-    config = utils.load_json(config_path)
-    img_size = config[constants.IMG_SIZE]
-    dataset_name = config[constants.NAME_DATASET]
-    model_name = config[constants.NAME_MODEL]
-    num_classes = config[constants.NUM_CLASSES]
-    classes = config[constants.CLASSES] if constants.CLASSES in config else None
+class Predictor(object):
+    def __init__(self, config_path, weights_path):
+        assert ".json" in config_path, "config type error :{} ,expect jon".format(config_path)
+        now_day = utils.get_now_day()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = config["gpu"]
+        config = utils.load_json(config_path)
+        self.img_size = config[constants.IMG_SIZE]
+        self.dataset_name = config[constants.NAME_DATASET]
+        model_name = config[constants.NAME_MODEL]
+        self.num_classes = config[constants.NUM_CLASSES]
+        self.classes = config[constants.CLASSES] if constants.CLASSES in config else None
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        os.environ["CUDA_VISIBLE_DEVICES"] = config["gpu"]
 
-    predict_dir = osp.join(config[constants.DIR_PREDICT], now_day)
-    os.makedirs(predict_dir, exist_ok=True)
-    save_path = osp.join(predict_dir, "predict_{}_{}.jpg".format(osp.basename(predict_img_path), now_time))
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if dataset_name == constants.ISIC:
-        tensor_img, _, pil_img, pil_gt = preprocess.ISIC_preprocess(predict_img_path, ground_truth_path, img_size)
-    elif dataset_name == constants.DDR:
-        tensor_img, _, pil_img, pil_gt = preprocess.DDR_preprocess(predict_img_path, ground_truth_path, img_size, num_classes)
-    else:
-        raise AssertionError("no such dataset:{}".format(dataset_name))
-    batch_img = tensor_img.unsqueeze(0)  # (1,Channel,H,W)
-    batch_img = batch_img.to(device)
+        self.predict_dir = osp.join(config[constants.DIR_PREDICT], now_day)
+        os.makedirs(self.predict_dir, exist_ok=True)
 
-    model = getattr(Models, model_name)(config)
-    model.set_weights(weights_path)
-    net = model.net
-    net.eval()
-    with torch.no_grad():
-        output = net(batch_img)
-        if num_classes > 1:
-            predict_mask = F.softmax(output, dim=1)[0]
-            predict_mask = F.one_hot(predict_mask.argmax(dim=0), num_classes).permute(2, 0, 1).cpu().numpy()
+        self.model = getattr(Models, model_name)(config)
+        self.model.set_weights(weights_path)
+        self.net = self.model.net
+        self.net.eval()
 
-            # (Classes,H,W)
+    def reference(self, predict_img_path, ground_truth_path, out_threshold=0.5):
+        now_time = utils.get_now_time()
+        save_path = osp.join(self.predict_dir, "predict_{}_{}.jpg".format(osp.basename(predict_img_path), now_time))
+
+        if self.dataset_name == constants.ISIC:
+            tensor_img, _, pil_img, pil_gt = preprocess.ISIC_preprocess(predict_img_path, ground_truth_path, self.img_size)
+        elif self.dataset_name == constants.DDR:
+            tensor_img, _, pil_img, pil_gt = preprocess.DDR_preprocess(predict_img_path, ground_truth_path, self.img_size)
         else:
-            predict_mask = torch.sigmoid(output)[0]
-            predict_mask = (predict_mask > out_threshold).float().cpu().numpy()
-    predict_mask = (predict_mask * 255).astype(np.uint8)
+            raise AssertionError("no such dataset:{}".format(self.dataset_name))
+        batch_img = tensor_img.unsqueeze(0)  # (1,Channel,H,W)
+        batch_img = batch_img.to(self.device)
 
-    if dataset_name == constants.ISIC:
-        utils.draw_predict(classes, pil_img, pil_gt, predict_mask, save_path)
-    elif dataset_name == constants.DDR:
-        utils.draw_predict(classes, pil_img, pil_gt, predict_mask, save_path, draw_gt_one_hot=True, ignore_index=0)  # ignore bg
-    else:
-        raise AssertionError("no such dataset:{}".format(dataset_name))
+        with torch.no_grad():
+            output = self.net(batch_img)
+            if self.num_classes > 1:
+                predict_mask = F.softmax(output, dim=1)[0]
+                predict_mask = F.one_hot(predict_mask.argmax(dim=0), self.num_classes).permute(2, 0, 1).cpu().numpy()
+
+                # (Classes,H,W)
+            else:
+                predict_mask = torch.sigmoid(output)[0]
+                predict_mask = (predict_mask > out_threshold).float().cpu().numpy()
+        predict_mask = (predict_mask * 255).astype(np.uint8)
+
+        if self.dataset_name == constants.ISIC:
+            utils.draw_predict(self.classes, pil_img, pil_gt, predict_mask, save_path)
+        elif self.dataset_name == constants.DDR:
+            utils.draw_predict(self.classes, pil_img, pil_gt, predict_mask, save_path, draw_gt_one_hot=True, ignore_index=0)  # ignore bg
+        else:
+            raise AssertionError("no such dataset:{}".format(self.dataset_name))
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config_path", type=str, required=True, help="path of server config")
-    parser.add_argument("--weights_path", type=str, required=True, help="path of weights")
-    parser.add_argument("--predict_img_path", type=str, required=True, help="the path of the predict img")
-    parser.add_argument("--ground_truth_path", type=str, required=True, help="the path of the ground truth")
-
-    args = parser.parse_args()
-    predict(args.config_path, args.weights_path, args.predict_img_path, args.ground_truth_path)
+    config_path = input("input config_path:").strip()
+    weights_path = input("input weights_path:").strip()
+    predictor = Predictor(config_path, weights_path)
+    predict_img_path = input("input predict_img_path:").strip()
+    ground_truth_path = input("input ground_truth_path:").strip()
+    predictor.reference(predict_img_path, ground_truth_path)
+    while True:
+        is_continue = input("continue? (y/n)   ")
+        if is_continue.lower() == "y":
+            predict_img_path = input("input predict_img_path:").strip()
+            ground_truth_path = input("input ground_truth_path:").strip()
+            predictor.reference(predict_img_path, ground_truth_path)
+        else:
+            print("predict over.")
+            exit(0)

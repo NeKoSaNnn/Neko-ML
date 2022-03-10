@@ -57,6 +57,11 @@ class BaseModel(object):
         self.optimizer = None
         self.loss_f = None
 
+        if self.logger:
+            self.logger.info("Model:{} init ......".format(self.config["model_name"]))
+        else:
+            print("Model:{} init ......".format(self.config["model_name"]))
+
         self.model_init()
 
         if self.logger:

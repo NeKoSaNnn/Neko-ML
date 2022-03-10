@@ -110,7 +110,25 @@ def save_weights(weights, path):
     torch.save(weights, path)
 
 
-def pil_crop_and_resize(pil_img, crop_method="min", img_size=None, resize_method=None, debug=False):
+def get_foreground_hw(img_path):
+    """
+    according to the center symmetry, get the foreground h and w
+    :param img_path:
+    :return: foreground_h, foreground_w
+    """
+    img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
+    h, w = img.shape
+    center_h, center_w = h // 2, w // 2
+    mask = np.where(img > 0, 1, 0)
+    i_h, i_w = mask.nonzero()
+    min_h, max_h = np.min(i_h), np.max(i_h)
+    min_w, max_w = np.min(i_w), np.max(i_w)
+    foreground_h = 2 * max(abs(min_h - center_h), abs(max_h - center_h))
+    foreground_w = 2 * max(abs(min_w - center_w), abs(max_w - center_w))
+    return foreground_h, foreground_w
+
+
+def pil_crop_and_resize(pil_img, crop_method="min", crop_size=None, img_size=None, resize_method=None, debug=False):
     if debug:
         print("ori")
         print(pil_img.size)
@@ -229,7 +247,7 @@ def ignore_background(array, num_classes, ignore=0):
     :param ignore: ignore value of background, here is 0
     :return: [*] which ignore_index=num_classes
     """
-    array[array == ignore] = num_classes + 1
+    array[array == ignore] = -1
     array[array > ignore] -= 1
     return array
 
