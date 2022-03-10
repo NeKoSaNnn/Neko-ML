@@ -42,14 +42,13 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
     # DDR
     elif config[constants.MODEL][constants.NAME_DATASET] == constants.DDR:
         classes = config[constants.MODEL][constants.CLASSES]
-        if "bg" in classes:
-            classes.remove("bg")  # remove background(bg)
+        no_bg_classes = classes.remove("bg") if "bg" in classes else classes  # remove background(bg)
 
         img_dir = osp.join(dataset_dir, "image")
         target_dir = osp.join(dataset_dir, "label")
         ann_dir = osp.join(dataset_dir, "annotation")
 
-        datasets.labels2annotations(img_dir, target_dir, ann_dir, "jpg", "tif", classes, dataset_type)
+        datasets.labels2annotations(img_dir, target_dir, ann_dir, "jpg", "tif", no_bg_classes, dataset_type)
 
         if is_augment and dataset_type == constants.TRAIN:
             datasets.dataset_augment(img_dir, ann_dir, "jpg", "png", dataset_type)

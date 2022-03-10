@@ -13,6 +13,8 @@ model:
 
   num_channels: 3
   num_classes: 1
+  classes:
+    - "lesions"
   gpu: "4,5"
 
 #client
