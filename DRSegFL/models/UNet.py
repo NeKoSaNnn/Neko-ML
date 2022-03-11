@@ -6,6 +6,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from mmcv.cnn import xavier_init, constant_init
+from mmcv.runner import load_checkpoint
 from torchsummary import summary
 
 
@@ -70,7 +72,7 @@ class OutConv(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, num_channels: int, num_classes: int, upsampling=True):
+    def __init__(self, num_channels: int, num_classes: int, upsampling=True, pretrain=None):
         super(UNet, self).__init__()
         self.num_channels = num_channels
         self.num_classes = num_classes
@@ -86,6 +88,27 @@ class UNet(nn.Module):
         self.up3 = Up(256, 64, upsampling)
         self.up4 = Up(128, 64, upsampling)
         self.output_conv = OutConv(64, num_classes)
+
+        self.init_weights(pretrain)
+
+    def init_weights(self, pretrained=None):
+        """Initialize the weights in backbone.
+
+        Args:
+            pretrained (str, optional): Path to pre-trained weights.
+                Defaults to None.
+        """
+        if isinstance(pretrained, str):
+            load_checkpoint(self, pretrained, strict=False)
+        elif pretrained is None:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    xavier_init(m)
+                elif isinstance(m, nn.BatchNorm2d):
+                    constant_init(m.weight, 1)
+                    constant_init(m.bias, 0)
+        else:
+            raise TypeError('pretrained must be a str or None')
 
     def forward(self, x):
         x1 = self.input_conv(x)

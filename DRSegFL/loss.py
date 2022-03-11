@@ -76,6 +76,48 @@ class BinaryLoss(nn.Module):
         self.loss_type = loss_type
         self.smooth = smooth
 
+    def forward(self, pred, label, weight=None, avg_factor=None, reduction_override=None):
+        """
+        :param pred: [N,C,*]
+        :param label: [N,*]
+        :param weight:
+        :param avg_factor:
+        :param reduction_override:
+        :return:
+        """
+        assert reduction_override in (None, "none", "mean", "sum")
+        reduction = (reduction_override if reduction_override else self.reduction)
+
+        if self.class_weight is not None:
+            class_weight = pred.new_tensor(self.class_weight)
+            assert class_weight.shape[0] == pred.shape[1], \
+                "Expect class weight shape [{}], get[{}]".format(pred.shape[1], class_weight.shape[0])
+        else:
+            class_weight = None
+
+        loss_func = None
+        if self.loss_type == "ce":
+            loss_func = self.binary_ce_loss
+        elif self.loss_type == "dice":
+            loss_func = self.binary_dice_loss
+        elif self.loss_type == "ce_dice":
+            loss_func = self.binary_ce_dice_loss
+        elif self.loss_type == "cbce":
+            loss_func = self.binary_cbce_loss
+
+        loss_cls = self.loss_weight * self.binary_loss(
+            pred,
+            label,
+            loss_func,
+            weight,
+            class_weight=class_weight,
+            class_weight_norm=self.class_weight_norm,
+            reduction=reduction,
+            avg_factor=avg_factor,
+            smooth=self.smooth
+        )
+        return loss_cls
+
     @classmethod
     def binary_ce_loss(cls, pred, label):
         """
@@ -170,48 +212,6 @@ class BinaryLoss(nn.Module):
         loss = weight_reduce_loss(loss, weight=weight, reduction=reduction, avg_factor=avg_factor)
         return loss
 
-    def forward(self, pred, label, weight=None, avg_factor=None, reduction_override=None):
-        """
-        :param pred: [N,C,*]
-        :param label: [N,*]
-        :param weight:
-        :param avg_factor:
-        :param reduction_override:
-        :return:
-        """
-        assert reduction_override in (None, "none", "mean", "sum")
-        reduction = (reduction_override if reduction_override else self.reduction)
-
-        if self.class_weight is not None:
-            class_weight = pred.new_tensor(self.class_weight)
-            assert class_weight.shape[0] == pred.shape[1], \
-                "Expect class weight shape [{}], get[{}]".format(pred.shape[1], class_weight.shape[0])
-        else:
-            class_weight = None
-
-        loss_func = None
-        if self.loss_type == "ce":
-            loss_func = self.binary_ce_loss
-        elif self.loss_type == "dice":
-            loss_func = self.binary_dice_loss
-        elif self.loss_type == "ce_dice":
-            loss_func = self.binary_ce_dice_loss
-        elif self.loss_type == "cbce":
-            loss_func = self.binary_cbce_loss
-
-        loss_cls = self.loss_weight * self.binary_loss(
-            pred,
-            label,
-            loss_func,
-            weight,
-            class_weight=class_weight,
-            class_weight_norm=self.class_weight_norm,
-            reduction=reduction,
-            avg_factor=avg_factor,
-            smooth=self.smooth
-        )
-        return loss_cls
-
 
 class CrossEntropyLoss(nn.Module):
     """CrossEntropyLoss.
@@ -228,7 +228,6 @@ class CrossEntropyLoss(nn.Module):
 
     def __init__(self, use_sigmoid=False, reduction="mean", class_weight=None, loss_weight=1.0, ignore_index=255):
         super(CrossEntropyLoss, self).__init__()
-        assert (use_sigmoid is False)
         self.use_sigmoid = use_sigmoid
         self.reduction = reduction
         self.loss_weight = loss_weight

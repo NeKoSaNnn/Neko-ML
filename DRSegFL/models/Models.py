@@ -13,6 +13,7 @@ from torch.autograd import Variable
 from torch.backends.cudnn import benchmark
 from torch.utils.data import DataLoader
 
+import segmentation_models_pytorch as smp
 from DRSegFL import metrics, constants
 from DRSegFL.datasets import ListDataset
 from DRSegFL.loss import *
@@ -97,14 +98,19 @@ class BaseModel(object):
             self.net.load_state_dict(copy.deepcopy(weights))
 
     def loss_init(self):
+        # Todo: add dataset , modify belows
         if self.dataset_name == constants.ISIC:
             self.loss_f = nn.BCEWithLogitsLoss()
         elif self.dataset_name == constants.DDR:
             class_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
             # self.loss_f = nn.CrossEntropyLoss(weight=class_weights)
-            self.loss_f = BinaryLoss(loss_type="dice")
+            self.loss_f = CrossEntropyLoss(class_weight=[0.01, 1., 1., 1., 1.])
+            # self.loss_f = BinaryLoss(loss_type="dice", class_weight=[0.01, 1., 1., 1., 1.])
             # self.loss_f = FocalLoss(gamma=2.0, alpha=0.25, class_weight=[0.01, 1., 1., 1., 1.])
             # self.loss_f = loss.FocalLoss(gamma=2, alpha=0.25, class_weight=class_weights)
+            # self.loss_f = smp.losses.FocalLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0)
+            # self.loss_f = smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0)
+            # self.loss_f = smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights)
         else:
             raise AssertionError("dataset error:{}".format(self.dataset_name))
 
@@ -128,7 +134,13 @@ class unet(BaseModel):
         super(unet, self).__init__(config, logger)
 
     def model_init(self):
-        self.net = UNet(self.num_channels, self.num_classes).to(self.device)
+        self.net = smp.Unet(
+            encoder_name="resnet50",
+            encoder_weights="imagenet",
+            in_channels=self.num_channels,
+            classes=self.num_classes).to(self.device)
+
+        # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
 
     def train(self, epoch=1):

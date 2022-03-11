@@ -12,7 +12,9 @@ from PIL import Image
 from torchvision import transforms
 
 import utils, preprocess, datasets
+from loss import *
 from torch.nn import functional as F
+import torch.nn as nn
 
 # path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation/007-6361-400.png"
 # img = Image.open(path)
@@ -47,27 +49,27 @@ from torch.nn import functional as F
 # print(torch.max(onehot_img[2]))
 # print(torch.max(onehot_img[3]))
 
-a = np.array([[1, 2, 1],
-              [0, 1, 1],
-              [0, 0, 2]])
-torch_a = torch.from_numpy(a)
-print(a.shape)
-one_hot_a = utils.make_one_hot(torch_a, 3)
-print(one_hot_a)
-print(one_hot_a.shape)
-
-b = np.array([[[1, 2, 1],
-               [0, 1, 1],
-               [0, 0, 2]]])
-print(b.shape)
-print(b.dtype)
-torch_b = torch.from_numpy(b)
-print(torch_b.shape)
-print(torch_b.dtype)
-one_hot_b = utils.batch_make_one_hot(torch_b, 3)
-print(one_hot_b)
-print(one_hot_b.shape)
-print(one_hot_b.dtype)
+# a = np.array([[1, 2, 1],
+#               [0, 1, 1],
+#               [0, 0, 2]])
+# torch_a = torch.from_numpy(a)
+# print(a.shape)
+# one_hot_a = utils.make_one_hot(torch_a, 3)
+# print(one_hot_a)
+# print(one_hot_a.shape)
+#
+# b = np.array([[[1, 2, 1],
+#                [0, 1, 1],
+#                [0, 0, 2]]])
+# print(b.shape)
+# print(b.dtype)
+# torch_b = torch.from_numpy(b)
+# print(torch_b.shape)
+# print(torch_b.dtype)
+# one_hot_b = utils.batch_make_one_hot(torch_b, 3)
+# print(one_hot_b)
+# print(one_hot_b.shape)
+# print(one_hot_b.dtype)
 #
 # c = np.array([[[1, 2, 1],
 #               [0, 1, 1],
@@ -134,4 +136,59 @@ print(one_hot_b.dtype)
 # print(np.nan_to_num(a))
 # print(np.nan_to_num(b))
 #
-print(datasets.get_loss_weights("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation", 5, "png"))
+# print(datasets.get_loss_weights("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation", 5, "png"))
+
+class_weights = torch.FloatTensor([0.01, 1.])
+loss_f0 = nn.CrossEntropyLoss(weight=class_weights, reduction="none")
+loss_f01 = nn.CrossEntropyLoss(weight=class_weights, reduction="sum")
+loss_f1 = nn.CrossEntropyLoss(ignore_index=0, reduction="mean")
+# weight=class_weights
+loss_f2 = CrossEntropyLoss(class_weight=[0.01, 1], reduction="none")
+loss_f3 = CrossEntropyLoss(ignore_index=0, reduction="mean")
+loss_f4 = CrossEntropyLoss(use_sigmoid=True, ignore_index=0, reduction="mean")
+# class_weight=[0.01, 1.]
+
+pred = np.array([[[[1, 1, 1],
+                   [0, 0, 0],
+                   [0, 0, 0]],
+                  [[0, 0, 0],
+                   [1, 1, 1],
+                   [1, 1, 1]]
+                  ],
+                 [[[0, 0, 0],
+                   [0, 1, 0],
+                   [0, 1, 0]],
+                  [[1, 1, 1],
+                   [1, 0, 1],
+                   [1, 0, 1]]
+                  ]
+                 ])
+target = np.array([[[1, 0, 1],
+                    [0, 1, 0],
+                    [0, 0, 0]],
+                   [[0, 1, 0],
+                    [1, 0, 0],
+                    [0, 1, 0]]]
+                  )
+print(pred.shape)
+print(target.shape)
+pred = torch.from_numpy(pred).float()
+target = torch.from_numpy(target).long()
+
+res0 = loss_f0(pred, target)
+print(res0)
+print(res0.sum())
+print(res0.mean())
+res01 = loss_f01(pred, target)
+print(res01)
+res1 = loss_f1(pred, target)
+print(res1)
+# print(res1.mean())
+res2 = loss_f2(pred, target)
+print(res2)
+# print(res2.mean())
+res3 = loss_f3(pred, target)
+print(res3)
+
+res4 = loss_f4(pred, target)
+print(res4)
