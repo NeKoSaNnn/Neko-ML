@@ -4,10 +4,12 @@
 @author:mjx
 """
 import copy
+import sys
 
 import numpy as np
 import torch
 import torch.nn as nn
+import os.path as osp
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.backends.cudnn import benchmark
@@ -59,6 +61,7 @@ class BaseModel(object):
         self.net = None
         self.optimizer = None
         self.loss_f = None
+        self.schedule = None
 
         if self.logger:
             self.logger.info("Model:{} init ......".format(self.config["model_name"]))
@@ -103,14 +106,15 @@ class BaseModel(object):
             self.loss_f = nn.BCEWithLogitsLoss()
         elif self.dataset_name == constants.DDR:
             class_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
-            # self.loss_f = nn.CrossEntropyLoss(weight=class_weights)
-            self.loss_f = CrossEntropyLoss(class_weight=[0.01, 1., 1., 1., 1.])
+            self.loss_f = nn.CrossEntropyLoss(weight=class_weights)
+            # self.loss_f = CrossEntropyLoss(class_weight=[0.01, 1., 1., 1., 1.])
             # self.loss_f = BinaryLoss(loss_type="dice", class_weight=[0.01, 1., 1., 1., 1.])
             # self.loss_f = FocalLoss(gamma=2.0, alpha=0.25, class_weight=[0.01, 1., 1., 1., 1.])
             # self.loss_f = loss.FocalLoss(gamma=2, alpha=0.25, class_weight=class_weights)
-            # self.loss_f = smp.losses.FocalLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0)
+            # self.loss_f = smp.losses.FocalLoss(mode=smp.losses.constants.MULTICLASS_MODE, alpha=0.25, gamma=2)
             # self.loss_f = smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0)
-            # self.loss_f = smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights)
+            # self.loss_f = smp.losses.SoftCrossEntropyLoss(smooth_factor=0, ignore_index=0)
+            # self.loss_f = smp.losses.SoftBCEWithLogitsLoss(smooth_factor=0.1, ignore_index=0)
         else:
             raise AssertionError("dataset error:{}".format(self.dataset_name))
 
@@ -140,8 +144,25 @@ class unet(BaseModel):
             in_channels=self.num_channels,
             classes=self.num_classes).to(self.device)
 
-        # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
+        # default is adam optimizer
         self.optimizer = torch.optim.Adam(self.net.parameters())
+
+        if "optim" in self.config.keys() and self.config["optim"] is not None:
+            if self.config["optim"]["type"] == "SGD":
+                self.optimizer = torch.optim.SGD(self.net.parameters(), lr=self.config["optim"]["lr"],
+                                                 momentum=self.config["optim"]["momentum"],
+                                                 weight_decay=self.config["optim"]["weight_decay"])
+
+        if "lr_schedule" in self.config.keys() and self.config["lr_schedule"] is not None:
+            self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+                                                                       mode=self.config["lr_schedule"]["mode"],
+                                                                       factor=self.config["lr_schedule"]["factor"],
+                                                                       patience=self.config["lr_schedule"]["patience"],
+                                                                       min_lr=self.config["lr_schedule"]["min_lr"])
+        # self.optimizer = torch.optim.SGD(self.net.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0005)
+
+        # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
+        # self.optimizer = torch.optim.Adam(self.net.parameters())
 
     def train(self, epoch=1):
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
@@ -181,7 +202,10 @@ class unet(BaseModel):
                             "Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
                     else:
                         print("Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
-            ep_losses.append(iter_losses / len(self.train_dataloader))
+            ep_loss = iter_losses / len(self.train_dataloader)
+            ep_losses.append(ep_loss)
+            if self.schedule is not None:
+                self.schedule.step(ep_loss)
         return ep_losses
 
     def eval(self, eval_type):
@@ -239,7 +263,6 @@ class unet(BaseModel):
                 mAcc = np.nanmean(accs)
                 mDice = metrics.IoU2Dice(mIoU)
                 eval_acc = {"mIoU": mIoU, "mDice": mDice, "mAcc": mAcc, "all_acc": all_acc}
-
         self.net.train()
         return eval_loss, eval_acc
 

@@ -15,10 +15,11 @@ model:
   num_classes: 1
   classes:
     - "lesions"
-  gpu: "4,5"
 
 #client
 client:
+  gpu: "4"
+
   epoch: 2
   batch_size: 4
   eval_batch_size: 4
@@ -31,8 +32,9 @@ client:
 server:
   host: "127.0.0.1"
   port: 9191
+  gpu: "5"
 
-  epoch: 300
+  epoch: 100
   num_clients: 4
 
   global_eval:

@@ -5,11 +5,23 @@ model:
   img_size: 512
   data_augment: False
 
+  optim:
+    type: "SGD"
+    lr: 0.01
+    momentum: 0.9
+    weight_decay: 0.0005
+
+  lr_schedule:
+    mode: "min"
+    factor: 0.1
+    patience: 10
+    min_lr: 1e-5
+
   dataset_dir:
     train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train"
     val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/valid"
     test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/test"
-  num_workers: 1
+  num_workers: 4
 
   num_channels: 3
   num_classes: 5
@@ -19,13 +31,14 @@ model:
     - "HE"
     - "MA"
     - "SE"
-  gpu: "4,5"
 
 #client
 client:
+  gpu: "4"
+
   epoch: 2
-  batch_size: 4
-  eval_batch_size: 4
+  batch_size: 8
+  eval_batch_size: 8
 
   log_interval_iter: 10
 
@@ -35,8 +48,9 @@ client:
 server:
   host: "127.0.0.1"
   port: 9191
+  gpu: "5"
 
-  epoch: 300
+  epoch: 200
   num_clients: 2
 
   global_eval:

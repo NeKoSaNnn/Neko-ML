@@ -29,7 +29,7 @@ def ISIC_preprocess(img_path, target_path, img_size):
     img = Image.open(img_path)
     img_trans = transforms.Compose([
         transforms.CenterCrop(max(img.size)),
-        transforms.Resize(img_size)
+        transforms.Resize((img_size, img_size))
     ])
     pil_img = img_trans(img)
     tensor_img = transforms.ToTensor()(pil_img)
@@ -38,7 +38,7 @@ def ISIC_preprocess(img_path, target_path, img_size):
         target = Image.open(target_path).convert("L")
         target_trans = transforms.Compose([
             transforms.CenterCrop(max(img.size)),
-            transforms.Resize(img_size, interpolation=InterpolationMode.NEAREST)
+            transforms.Resize((img_size, img_size), interpolation=InterpolationMode.NEAREST)
         ])
         pil_target = target_trans(target)
         tensor_target = torch.from_numpy(np.asarray(pil_target, dtype=np.long))
@@ -68,16 +68,19 @@ def DDR_preprocess(img_path, target_path, img_size):
     img = Image.open(img_path)
     img_trans = transforms.Compose([
         transforms.CenterCrop(min(img.size)),
-        transforms.Resize(img_size, interpolation=InterpolationMode.BICUBIC)
+        transforms.Resize((img_size, img_size), interpolation=InterpolationMode.BICUBIC)
     ])
     pil_img = img_trans(img)
-    tensor_img = transforms.ToTensor()(pil_img)
+    tensor_img = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.4211, 0.2640, 0.1104], std=[0.3133, 0.2094, 0.1256])
+    ])(pil_img)
 
     if utils.is_img(target_path):
         target = Image.open(target_path)
         target_trans = transforms.Compose([
             transforms.CenterCrop(min(img.size)),
-            transforms.Resize(img_size, interpolation=InterpolationMode.NEAREST)
+            transforms.Resize((img_size, img_size), interpolation=InterpolationMode.NEAREST)
         ])
         pil_target = target_trans(target)
         tensor_target = torch.from_numpy(np.asarray(pil_target, dtype=np.long))

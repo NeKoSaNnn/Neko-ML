@@ -4,20 +4,24 @@
 @author:mjx
 """
 import codecs
+import glob
 import json
 import pickle
 import time
 
+import os.path as osp
 import cv2 as cv
 import matplotlib
 import numpy as np
 import torch
 import yaml
 from PIL import Image
+from tqdm import tqdm
 
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 from torchvision import transforms
+from torchvision.transforms import InterpolationMode
 
 
 def load_json(f_path):
@@ -43,6 +47,8 @@ def get_now_time():
 
 
 def is_img(path):
+    if path is None:
+        return False
     img_types = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tga", ".svg", ".raw"}
     for img_type in img_types:
         if img_type in path:
@@ -104,6 +110,35 @@ def pickle2obj(pickle_or_filepath):
     else:
         obj = pickle.loads(codecs.decode(pickle_or_filepath.encode(), "base64"))
     return obj
+
+
+def get_dataset_norm(dataset_dir: str, img_suffix: str, img_size: int):
+    means, stdevs = [], []
+    img_list = []
+
+    imgs_path_list = glob.glob(osp.join(dataset_dir, "*.{}".format(img_suffix)))
+
+    for path in tqdm(imgs_path_list, desc="dataset normalize"):
+        img = Image.open(path)  # C,H,W
+        img = transforms.Compose([
+            transforms.CenterCrop(min(img.size)),
+            transforms.Resize((img_size, img_size), interpolation=InterpolationMode.BICUBIC)
+        ])(img)
+        img = np.asarray(img)  # H,W,C  RGB
+        img = img[:, :, :, np.newaxis]
+        img_list.append(img)
+
+    imgs = np.concatenate(img_list, axis=3)
+    imgs = imgs.astype(np.float32) / 255.
+
+    for i in range(3):
+        pixels = imgs[:, :, i, :].ravel()  # flatten
+        means.append(np.mean(pixels))
+        stdevs.append(np.std(pixels))
+
+    print("normMean = {}".format(means))
+    print("normStd = {}".format(stdevs))
+    return means, stdevs
 
 
 def save_weights(weights, path):

@@ -192,3 +192,6 @@ print(res3)
 
 res4 = loss_f4(pred, target)
 print(res4)
+
+utils.get_dataset_norm(dataset_dir="/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image",
+                       img_suffix="jpg", img_size=512)

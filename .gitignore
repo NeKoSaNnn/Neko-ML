@@ -134,3 +134,4 @@ dmypy.json
 /FL/log/
 /FL/data/
 /DRSegFL/datas/
+/DRSegFL/pretrained/
