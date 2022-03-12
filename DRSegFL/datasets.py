@@ -13,6 +13,7 @@ import imgviz
 import numpy as np
 import torch
 from PIL import Image
+from torchvision import transforms
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
@@ -149,6 +150,7 @@ def dataset_augment(img_dir, target_dir, img_suffix, target_suffix, dataset_type
     augment_target_dir = osp.join(target_dir, "augment")
     os.makedirs(augment_target_dir, exist_ok=True)
     assert len(imgs) == len(targets), "len(imgs)!=len(targets)"
+    trans = transforms.RandAugment
     for img_path in tqdm(imgs, desc="{}_imgs_augment".format(dataset_type)):
         img_name = osp.basename(img_path).strip().rsplit(".", 1)[0]
         img_pil = Image.open(img_path)
@@ -169,7 +171,7 @@ def dataset_augment(img_dir, target_dir, img_suffix, target_suffix, dataset_type
 
 
 class ListDataset(Dataset):
-    def __init__(self, txt_path: str, dataset_name: str, num_classes: int, img_size=256, ):
+    def __init__(self, txt_path: str, dataset_name: str, num_classes: int, img_size: int, is_train: bool):
         with open(txt_path, "r") as f:
             self.datas_and_targets_path = f.readlines()
         self.datas_and_targets_path = [data_and_target.strip().split(" ", 1) for data_and_target in
@@ -177,6 +179,7 @@ class ListDataset(Dataset):
         self.dataset_name = dataset_name
         self.num_classes = num_classes
         self.img_size = img_size
+        self.is_train = is_train
 
     def __getitem__(self, index):
         img_path = self.datas_and_targets_path[index][0].strip()
@@ -186,7 +189,7 @@ class ListDataset(Dataset):
         if self.dataset_name == constants.ISIC:
             return preprocess.ISIC_preprocess(img_path, target_path, self.img_size)[:2]
         elif self.dataset_name == constants.DDR:
-            return preprocess.DDR_preprocess(img_path, target_path, self.img_size)[:2]
+            return preprocess.DDR_preprocess(img_path, target_path, self.img_size, self.is_train)[:2]
 
     def __len__(self):
         return len(self.datas_and_targets_path)

@@ -35,20 +35,20 @@ class BaseModel(object):
 
         if constants.TRAIN in self.config:
             self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
-                                             num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE])
+                                             num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
             self.train_dataloader = DataLoader(self.train_dataset,
                                                self.config[constants.BATCH_SIZE], shuffle=True, num_workers=self.config[constants.NUM_WORKERS])
             self.train_contribution = len(self.train_dataset)
 
         if constants.VALIDATION in self.config:
             self.val_dataset = ListDataset(txt_path=self.config[constants.VALIDATION], dataset_name=self.config[constants.NAME_DATASET],
-                                           num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE])
+                                           num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
             self.val_dataloader = DataLoader(self.val_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
             self.val_contribution = len(self.val_dataset)
 
         if constants.TEST in self.config:
             self.test_dataset = ListDataset(txt_path=self.config[constants.TEST], dataset_name=self.config[constants.NAME_DATASET],
-                                            num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE])
+                                            num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
             self.test_dataloader = DataLoader(self.test_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
             self.test_contribution = len(self.test_dataset)
 
@@ -149,16 +149,16 @@ class unet(BaseModel):
 
         if "optim" in self.config.keys() and self.config["optim"] is not None:
             if self.config["optim"]["type"] == "SGD":
-                self.optimizer = torch.optim.SGD(self.net.parameters(), lr=self.config["optim"]["lr"],
-                                                 momentum=self.config["optim"]["momentum"],
-                                                 weight_decay=self.config["optim"]["weight_decay"])
+                self.optimizer = torch.optim.SGD(self.net.parameters(), lr=float(self.config["optim"]["lr"]),
+                                                 momentum=float(self.config["optim"]["momentum"]),
+                                                 weight_decay=float(self.config["optim"]["weight_decay"]))
 
         if "lr_schedule" in self.config.keys() and self.config["lr_schedule"] is not None:
             self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
                                                                        mode=self.config["lr_schedule"]["mode"],
-                                                                       factor=self.config["lr_schedule"]["factor"],
-                                                                       patience=self.config["lr_schedule"]["patience"],
-                                                                       min_lr=self.config["lr_schedule"]["min_lr"])
+                                                                       factor=float(self.config["lr_schedule"]["factor"]),
+                                                                       patience=int(self.config["lr_schedule"]["patience"]),
+                                                                       min_lr=float(self.config["lr_schedule"]["min_lr"]))
         # self.optimizer = torch.optim.SGD(self.net.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0005)
 
         # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
