@@ -15,7 +15,7 @@ model:
     mode: "min"
     factor: 0.1
     patience: 10
-    min_lr: 1e-6
+    min_lr: 1e-5
 
   dataset_dir:
     train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train"

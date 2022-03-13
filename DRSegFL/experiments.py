@@ -14,6 +14,7 @@ from torchvision import transforms
 import utils, preprocess, datasets
 from loss import *
 from torch.nn import functional as F
+import segmentation_models_pytorch as smp
 import torch.nn as nn
 
 # path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation/007-6361-400.png"
@@ -172,26 +173,65 @@ target = np.array([[[1, 0, 1],
                   )
 print(pred.shape)
 print(target.shape)
-pred = torch.from_numpy(pred).float()
+pred = torch.from_numpy(pred).float().requires_grad_(True)
 target = torch.from_numpy(target).long()
 
-res0 = loss_f0(pred, target)
-print(res0)
-print(res0.sum())
-print(res0.mean())
-res01 = loss_f01(pred, target)
-print(res01)
-res1 = loss_f1(pred, target)
-print(res1)
-# print(res1.mean())
-res2 = loss_f2(pred, target)
-print(res2)
-# print(res2.mean())
-res3 = loss_f3(pred, target)
-print(res3)
 
-res4 = loss_f4(pred, target)
-print(res4)
+# res0 = loss_f0(pred, target)
+# print(res0)
+# print(res0.sum())
+# print(res0.mean())
+# res01 = loss_f01(pred, target)
+# print(res01)
+# res1 = loss_f1(pred, target)
+# print(res1)
+# # print(res1.mean())
+# res2 = loss_f2(pred, target)
+# print(res2)
+# # print(res2.mean())
+# res3 = loss_f3(pred, target)
+# print(res3)
+#
+# res4 = loss_f4(pred, target)
+# print(res4)
+#
+# utils.get_dataset_norm(dataset_dir="/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image",
+#                        img_suffix="jpg", img_size=1024)
 
-utils.get_dataset_norm(dataset_dir="/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image",
-                       img_suffix="jpg", img_size=1024)
+def cal_loss(loss_f, pred, target, weight=None):
+    """
+    :param pred:
+    :param target:
+    :param weight: list , int or float
+    :return:
+    """
+    if len(loss_f) == 0:
+        return None
+
+    if weight is not None:
+        assert isinstance(weight, list) and len(weight) == len(loss_f) or isinstance(weight, (int, float))
+        if isinstance(weight, (int, float)):
+            weight = [weight] * len(loss_f)
+        weight = torch.as_tensor(weight)
+        loss = loss_f[0](pred, target) * weight[0]
+        for i, loss_func in enumerate(loss_f[1:], start=1):
+            loss += loss_func(pred, target) * weight[i]
+    else:
+        loss = loss_f[0](pred, target)
+        for i, loss_func in enumerate(loss_f[1:], start=1):
+            loss += loss_func(pred, target)
+    return loss
+
+
+loss_F = [nn.CrossEntropyLoss(), smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE)]
+loss = 0
+for loss_f in loss_F:
+    loss += loss_f(pred, target)
+loss1 = cal_loss(loss_F, pred, target, weight=[1, 0])
+print(loss)
+print(loss.backward())
+print(loss)
+
+print(loss1)
+print(loss1.backward())
+print(loss1)

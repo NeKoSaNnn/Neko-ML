@@ -36,8 +36,8 @@ class BaseModel(object):
         if constants.TRAIN in self.config:
             self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
                                              num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
-            self.train_dataloader = DataLoader(self.train_dataset,
-                                               self.config[constants.BATCH_SIZE], shuffle=True, num_workers=self.config[constants.NUM_WORKERS])
+            self.train_dataloader = DataLoader(self.train_dataset, self.config[constants.BATCH_SIZE], shuffle=True,
+                                               num_workers=self.config[constants.NUM_WORKERS])
             self.train_contribution = len(self.train_dataset)
 
         if constants.VALIDATION in self.config:
@@ -62,7 +62,8 @@ class BaseModel(object):
 
         self.net = None
         self.optimizer = None
-        self.loss_f = None
+        self.loss_f = []
+        self.loss_weight = None
         self.schedule = None
 
         if self.logger:
@@ -70,8 +71,24 @@ class BaseModel(object):
         else:
             print("Model:{} init ......".format(self.config["model_name"]))
 
-        self.model_init()
+        self.net_init()
         self.loss_init()
+
+        # default is adam optimizer
+        self.optimizer = torch.optim.Adam(self.net.parameters())
+
+        if "optim" in self.config.keys() and self.config["optim"] is not None:
+            if self.config["optim"]["type"] == "SGD":
+                self.optimizer = torch.optim.SGD(self.net.parameters(), lr=float(self.config["optim"]["lr"]),
+                                                 momentum=float(self.config["optim"]["momentum"]),
+                                                 weight_decay=float(self.config["optim"]["weight_decay"]))
+
+        if "lr_schedule" in self.config.keys() and self.config["lr_schedule"] is not None:
+            self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+                                                                       mode=self.config["lr_schedule"]["mode"],
+                                                                       factor=float(self.config["lr_schedule"]["factor"]),
+                                                                       patience=int(self.config["lr_schedule"]["patience"]),
+                                                                       min_lr=float(self.config["lr_schedule"]["min_lr"]))
 
         if self.logger:
             self.logger.info("Model:{} Construct and Init Completed.".format(self.config["model_name"]))
@@ -94,8 +111,8 @@ class BaseModel(object):
         return copy.deepcopy(self.optimizer.state_dict())
 
     def set_weights(self, weights):
-        if isinstance(weights, str) and ".pt" in weights:
-            # .pt file
+        if isinstance(weights, str) and (".pt" in weights or ".pth" in weights):
+            # .pt/.pth file
             weights = torch.load(weights)
             self.net.load_state_dict(weights)
         else:
@@ -103,28 +120,56 @@ class BaseModel(object):
             self.net.load_state_dict(copy.deepcopy(weights))
 
     def loss_init(self):
+        self.loss_f = []
         # Todo: add dataset , modify belows
         if self.dataset_name == constants.ISIC:
-            self.loss_f = nn.BCEWithLogitsLoss()
+            self.loss_weight = 1
+            self.loss_f.append(nn.BCEWithLogitsLoss())
         elif self.dataset_name == constants.DDR:
+            self.loss_weight = 1
             class_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
-            self.loss_f = nn.CrossEntropyLoss(weight=class_weights)
-            # self.loss_f = CrossEntropyLoss(class_weight=[0.01, 1., 1., 1., 1.])
-            # self.loss_f = BinaryLoss(loss_type="dice", class_weight=[0.01, 1., 1., 1., 1.])
-            # self.loss_f = FocalLoss(gamma=2.0, alpha=0.25, class_weight=[0.01, 1., 1., 1., 1.])
-            # self.loss_f = loss.FocalLoss(gamma=2, alpha=0.25, class_weight=class_weights)
-            # self.loss_f = smp.losses.FocalLoss(mode=smp.losses.constants.MULTICLASS_MODE, alpha=0.25, gamma=2)
-            # self.loss_f = smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0)
-            # self.loss_f = smp.losses.SoftCrossEntropyLoss(smooth_factor=0, ignore_index=0)
-            # self.loss_f = smp.losses.SoftBCEWithLogitsLoss(smooth_factor=0.1, ignore_index=0)
+            self.loss_f.append(nn.CrossEntropyLoss(weight=class_weights))
+            self.loss_f.append(smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0))
+            # self.loss_f.append(CrossEntropyLoss(class_weight=[0.01, 1., 1., 1., 1.]))
+            # self.loss_f.append(BinaryLoss(loss_type="dice", class_weight=[0.01, 1., 1., 1., 1.]))
+            # self.loss_f.append(FocalLoss(gamma=2.0, alpha=0.25, class_weight=[0.01, 1., 1., 1., 1.]))
+            # self.loss_f.append(loss.FocalLoss(gamma=2, alpha=0.25, class_weight=class_weights))
+            # self.loss_f.append(smp.losses.FocalLoss(mode=smp.losses.constants.MULTICLASS_MODE, alpha=0.25, gamma=2))
+            # self.loss_f.append(smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0))
+            # self.loss_f.append(smp.losses.SoftCrossEntropyLoss(smooth_factor=0, ignore_index=0))
+            # self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights))
         else:
             raise AssertionError("dataset error:{}".format(self.dataset_name))
+        assert isinstance(self.loss_weight, (int, float)) or isinstance(self.loss_weight, list) and (len(self.loss_f) == len(self.loss_weight))
 
-    def model_init(self):
+    def cal_loss(self, pred, target, weight=None):
         """
-        init belows:
-        self.net
-        self.optimizer
+        :param pred:
+        :param target:
+        :param weight: list , int or float
+        :return:
+        """
+        if len(self.loss_f) == 0:
+            self.loss_init()
+            return self.cal_loss(pred, target, weight)
+
+        if weight is not None:
+            assert isinstance(weight, list) and len(weight) == len(self.loss_f) or isinstance(weight, (int, float))
+            if isinstance(weight, (int, float)):
+                weight = [weight] * len(self.loss_f)
+            weight = torch.as_tensor(weight)
+            loss = self.loss_f[0](pred, target) * weight[0]
+            for i, loss_func in enumerate(self.loss_f[1:], start=1):
+                loss += loss_func(pred, target) * weight[i]
+        else:
+            loss = self.loss_f[0](pred, target)
+            for i, loss_func in enumerate(self.loss_f[1:], start=1):
+                loss += loss_func(pred, target)
+        return loss
+
+    def net_init(self):
+        """
+        init self.net:
         """
         raise NotImplementedError
 
@@ -139,32 +184,13 @@ class unet(BaseModel):
     def __init__(self, config: dict, logger=None):
         super(unet, self).__init__(config, logger)
 
-    def model_init(self):
+    def net_init(self):
         self.net = smp.Unet(
             encoder_name="resnet50",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
             classes=self.num_classes).to(self.device)
-
-        # default is adam optimizer
-        self.optimizer = torch.optim.Adam(self.net.parameters())
-
-        if "optim" in self.config.keys() and self.config["optim"] is not None:
-            if self.config["optim"]["type"] == "SGD":
-                self.optimizer = torch.optim.SGD(self.net.parameters(), lr=float(self.config["optim"]["lr"]),
-                                                 momentum=float(self.config["optim"]["momentum"]),
-                                                 weight_decay=float(self.config["optim"]["weight_decay"]))
-
-        if "lr_schedule" in self.config.keys() and self.config["lr_schedule"] is not None:
-            self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
-                                                                       mode=self.config["lr_schedule"]["mode"],
-                                                                       factor=float(self.config["lr_schedule"]["factor"]),
-                                                                       patience=int(self.config["lr_schedule"]["patience"]),
-                                                                       min_lr=float(self.config["lr_schedule"]["min_lr"]))
-        # self.optimizer = torch.optim.SGD(self.net.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0005)
-
         # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
-        # self.optimizer = torch.optim.Adam(self.net.parameters())
 
     def train(self, epoch=1):
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
@@ -180,7 +206,7 @@ class unet(BaseModel):
 
                 preds = self.net(imgs)
                 assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
-                loss = self.loss_f(preds, targets)
+                loss = self.cal_loss(preds, targets, weight=self.loss_weight)
 
                 iter_losses += loss.item()
 
@@ -213,7 +239,10 @@ class unet(BaseModel):
     def eval(self, eval_type):
         self.net.eval()
         if eval_type == constants.TRAIN:
-            eval_dataloader = DataLoader(self.train_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
+            train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
+                                        num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
+            eval_dataloader = DataLoader(train_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False,
+                                         num_workers=self.config[constants.NUM_WORKERS])
         elif eval_type == constants.VALIDATION:
             eval_dataloader = self.val_dataloader
         elif eval_type == constants.TEST:
@@ -237,7 +266,7 @@ class unet(BaseModel):
 
                 preds = self.net(imgs)  # [N,C,H,W]
                 assert preds.shape[1] == self.num_classes, "{}!={}".format(preds.shape[1], self.num_classes)
-                loss = self.loss_f(preds, targets)
+                loss = self.cal_loss(preds, targets, weight=self.loss_weight)
 
                 eval_loss += loss.item()
 
@@ -258,7 +287,7 @@ class unet(BaseModel):
                 mIoU = metrics.Dice2IoU(mDice)
                 eval_acc = {"mDice": mDice, "mIoU": mIoU}
             else:
-                all_acc, accs, ious = metrics.mIoU(list_preds, list_targets, self.num_classes, -1)
+                all_acc, accs, ious = metrics.mIoU(list_preds, list_targets, self.num_classes, 0)
                 self.logger.debug("accs={}".format(accs))
                 self.logger.debug("ious={}".format(ious))
                 mIoU = np.nanmean(ious)
