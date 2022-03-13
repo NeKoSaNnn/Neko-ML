@@ -22,7 +22,7 @@ from DRSegFL.logger import Logger
 
 def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
     """
-    Todo: change dataset , modify below
+    Todo: add dataset , modify below
     :param config:
     :param dataset_dir:
     :param dataset_txt_path:

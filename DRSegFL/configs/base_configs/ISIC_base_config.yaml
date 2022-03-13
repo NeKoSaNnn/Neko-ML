@@ -1,6 +1,6 @@
 #model
 model:
-  model_name: unet
+  model_name: res_unet
   dataset_name: ISIC
   img_size: 256
   data_augment: False

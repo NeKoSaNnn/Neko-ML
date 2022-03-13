@@ -1,6 +1,6 @@
 #model
 model:
-  model_name: unet
+  model_name: res_unet
   dataset_name: DDR
   img_size: 512
   data_augment: True

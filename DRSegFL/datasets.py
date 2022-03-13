@@ -115,6 +115,7 @@ def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, 
         if custom_target_name:
             # Todo: custom this
             raise RuntimeError
+
         ann_path = osp.join(ann_dir, "{}.png".format(img_name))
         if not force and osp.exists(ann_path):
             continue
@@ -185,7 +186,7 @@ class ListDataset(Dataset):
         img_path = self.datas_and_targets_path[index][0].strip()
         target_path = self.datas_and_targets_path[index][1].strip()
 
-        # Todo: change dataset , modify below
+        # Todo: add dataset , modify below
         if self.dataset_name == constants.ISIC:
             return preprocess.ISIC_preprocess(img_path, target_path, self.img_size)[:2]
         elif self.dataset_name == constants.DDR:

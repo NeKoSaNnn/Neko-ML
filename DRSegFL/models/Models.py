@@ -267,12 +267,32 @@ class unet(BaseModel):
         super(unet, self).__init__(config, logger)
 
     def net_init(self):
+        self.net = UNet(self.num_channels, self.num_classes).to(self.device)
+
+
+class res_unet(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(res_unet, self).__init__(config, logger)
+
+    def net_init(self):
         self.net = smp.Unet(
             encoder_name="resnet50",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
             classes=self.num_classes).to(self.device)
         # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
+
+
+class dense_unet(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(dense_unet, self).__init__(config, logger)
+
+    def net_init(self):
+        self.net = smp.Unet(
+            encoder_name="densenet169",
+            encoder_weights="imagenet",
+            in_channels=self.num_channels,
+            classes=self.num_classes).to(self.device)
 
 
 class unetplusplus(BaseModel):
@@ -337,6 +357,8 @@ class pspnet(BaseModel):
 
 class Models:
     unet = unet
+    res_unet = res_unet
+    dense_unet = dense_unet
     unetplusplus = unetplusplus
     deeplabv3 = deeplabv3
     deeplabv3plus = deeplabv3plus
