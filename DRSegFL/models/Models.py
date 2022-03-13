@@ -43,13 +43,15 @@ class BaseModel(object):
         if constants.VALIDATION in self.config:
             self.val_dataset = ListDataset(txt_path=self.config[constants.VALIDATION], dataset_name=self.config[constants.NAME_DATASET],
                                            num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
-            self.val_dataloader = DataLoader(self.val_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
+            self.val_dataloader = DataLoader(self.val_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False,
+                                             num_workers=self.config[constants.NUM_WORKERS])
             self.val_contribution = len(self.val_dataset)
 
         if constants.TEST in self.config:
             self.test_dataset = ListDataset(txt_path=self.config[constants.TEST], dataset_name=self.config[constants.NAME_DATASET],
                                             num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
-            self.test_dataloader = DataLoader(self.test_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False, num_workers=1)
+            self.test_dataloader = DataLoader(self.test_dataset, self.config[constants.EVAL_BATCH_SIZE], shuffle=False,
+                                              num_workers=self.config[constants.NUM_WORKERS])
             self.test_contribution = len(self.test_dataset)
 
         if torch.cuda.is_available():

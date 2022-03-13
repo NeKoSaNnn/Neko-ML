@@ -51,7 +51,7 @@ class Predictor(object):
         if self.dataset_name == constants.ISIC:
             tensor_img, _, pil_img, pil_gt = preprocess.ISIC_preprocess(predict_img_path, ground_truth_path, self.img_size)
         elif self.dataset_name == constants.DDR:
-            tensor_img, _, pil_img, pil_gt = preprocess.DDR_preprocess(predict_img_path, ground_truth_path, self.img_size)
+            tensor_img, _, pil_img, pil_gt = preprocess.DDR_preprocess(predict_img_path, ground_truth_path, self.img_size, is_train=False)
         else:
             raise AssertionError("no such dataset:{}".format(self.dataset_name))
         batch_img = tensor_img.unsqueeze(0)  # (1,Channel,H,W)

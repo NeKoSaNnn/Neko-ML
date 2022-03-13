@@ -3,7 +3,7 @@ model:
   model_name: unet
   dataset_name: DDR
   img_size: 512
-  data_augment: False
+  data_augment: True
 
   optim:
     type: "SGD"
@@ -15,7 +15,7 @@ model:
     mode: "min"
     factor: 0.1
     patience: 10
-    min_lr: 1e-5
+    min_lr: 1e-6
 
   dataset_dir:
     train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train"
