@@ -18,6 +18,7 @@ now_dir_name = sys.path[0]  # ...DRSegFL/
 sys.path.append(root_dir_name)
 
 from DRSegFL import utils, constants
+from DRSegFL.logger import Logger
 from DRSegFL.models.Models import Models
 
 DEBUG = True
@@ -84,6 +85,9 @@ class FederatedClient(object):
         sh.setLevel(logging.WARNING)
         sh.setFormatter(log_formatter)
         self.logger.addHandler(sh)
+
+        self.logger = Logger(self.logger)
+
         self.logger.info("=" * 100)
         self.logger.info(self.client_config)
 

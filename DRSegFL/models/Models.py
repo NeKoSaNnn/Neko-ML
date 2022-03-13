@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 import segmentation_models_pytorch as smp
 from DRSegFL import metrics, constants
 from DRSegFL.datasets import ListDataset
+from DRSegFL.logger import Logger
 from DRSegFL.loss import *
 from DRSegFL.models.UNet import UNet
 
@@ -27,7 +28,7 @@ torch.set_num_threads(4)
 class BaseModel(object):
     def __init__(self, config: dict, logger=None):
         self.config = config
-        self.logger = logger
+        self.logger = Logger(logger)
 
         self.num_classes = self.config[constants.NUM_CLASSES]
         self.num_channels = self.config[constants.NUM_CHANNELS]
@@ -66,10 +67,7 @@ class BaseModel(object):
         self.loss_weight = None
         self.schedule = None
 
-        if self.logger:
-            self.logger.info("Model:{} init ......".format(self.config["model_name"]))
-        else:
-            print("Model:{} init ......".format(self.config["model_name"]))
+        self.logger.info("Model:{} init ......".format(self.config["model_name"]))
 
         self.net_init()
         self.loss_init()
@@ -90,10 +88,7 @@ class BaseModel(object):
                                                                        patience=int(self.config["lr_schedule"]["patience"]),
                                                                        min_lr=float(self.config["lr_schedule"]["min_lr"]))
 
-        if self.logger:
-            self.logger.info("Model:{} Construct and Init Completed.".format(self.config["model_name"]))
-        else:
-            print("Model:{} Construct and Init Completed.".format(self.config["model_name"]))
+        self.logger.info("Model:{} Construct and Init Completed.".format(self.config["model_name"]))
 
     def __del__(self):
         self.optimizer = None
@@ -146,7 +141,7 @@ class BaseModel(object):
         """
         :param pred:
         :param target:
-        :param weight: list , int or float
+        :param weight: list , int or float , if is None , weight=1
         :return:
         """
         if len(self.loss_f) == 0:
@@ -173,25 +168,6 @@ class BaseModel(object):
         """
         raise NotImplementedError
 
-    def train(self):
-        raise NotImplementedError
-
-    def eval(self, eval_type):
-        raise NotImplementedError
-
-
-class unet(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(unet, self).__init__(config, logger)
-
-    def net_init(self):
-        self.net = smp.Unet(
-            encoder_name="resnet50",
-            encoder_weights="imagenet",
-            in_channels=self.num_channels,
-            classes=self.num_classes).to(self.device)
-        # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
-
     def train(self, epoch=1):
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net.train()
@@ -202,7 +178,6 @@ class unet(BaseModel):
                 imgs = Variable(imgs.to(self.device, torch.float32))
                 targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
                 assert imgs.shape[1] == self.num_channels, "imgs.shape[1]({})!=self.num_channels({})".format(imgs.shape[1], self.num_channels)
-                # 梯度累计，实现不增大显存而增大batch_size
 
                 preds = self.net(imgs)
                 assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
@@ -212,24 +187,17 @@ class unet(BaseModel):
 
                 loss.backward()
 
+                # grad_accumulate，increase batch_size without increasing gpu
                 if constants.GRAD_ACCUMULATE in self.config and self.config[constants.GRAD_ACCUMULATE] > 0 and iter % \
                         self.config[constants.GRAD_ACCUMULATE] == 0 or constants.GRAD_ACCUMULATE not in self.config or \
                         self.config[constants.GRAD_ACCUMULATE] <= 0:
                     if constants.GRAD_ACCUMULATE in self.config and self.config[constants.GRAD_ACCUMULATE] > 0:
-                        if self.logger:
-                            self.logger.info(
-                                "Accumulate Grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
-                        else:
-                            print("Accumulate Grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
+                        self.logger.info("Accumulate Grad : batch_size*{}".format(self.config[constants.GRAD_ACCUMULATE]))
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
                 if iter % self.config["log_interval_iter"] == 0 or iter == len(self.train_dataloader):
-                    if self.logger:
-                        self.logger.info(
-                            "Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
-                    else:
-                        print("Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
+                    self.logger.info("Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
             ep_loss = iter_losses / len(self.train_dataloader)
             ep_losses.append(ep_loss)
             if self.schedule is not None:
@@ -248,10 +216,6 @@ class unet(BaseModel):
         elif eval_type == constants.TEST:
             eval_dataloader = self.test_dataloader
         else:
-            if self.logger:
-                self.logger.error("Error Eval_type:{}".format(eval_type))
-            else:
-                print("Error Eval_type:{}".format(eval_type))
             raise AssertionError("eval_type:{}".format(eval_type))
 
         target_data_type = torch.long if self.num_classes > 1 else torch.float32
@@ -298,5 +262,83 @@ class unet(BaseModel):
         return eval_loss, eval_acc
 
 
+class unet(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(unet, self).__init__(config, logger)
+
+    def net_init(self):
+        self.net = smp.Unet(
+            encoder_name="resnet50",
+            encoder_weights="imagenet",
+            in_channels=self.num_channels,
+            classes=self.num_classes).to(self.device)
+        # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
+
+
+class unetplusplus(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(unetplusplus, self).__init__(config, logger)
+
+    def net_init(self):
+        self.net = smp.UnetPlusPlus(
+            encoder_name="resnet50",
+            encoder_weights="imagenet",
+            in_channels=self.num_channels,
+            classes=self.num_classes).to(self.device)
+
+
+class deeplabv3(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(deeplabv3, self).__init__(config, logger)
+
+    def net_init(self):
+        self.net = smp.DeepLabV3(
+            encoder_name="resnet50",
+            encoder_weights="imagenet",
+            in_channels=self.num_channels,
+            classes=self.num_classes).to(self.device)
+
+
+class deeplabv3plus(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(deeplabv3plus, self).__init__(config, logger)
+
+    def net_init(self):
+        self.net = smp.DeepLabV3Plus(
+            encoder_name="resnet50",
+            encoder_weights="imagenet",
+            in_channels=self.num_channels,
+            classes=self.num_classes).to(self.device)
+
+
+class fpn(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(fpn, self).__init__(config, logger)
+
+    def net_init(self):
+        self.net = smp.FPN(
+            encoder_name="resnet50",
+            encoder_weights="imagenet",
+            in_channels=self.num_channels,
+            classes=self.num_classes).to(self.device)
+
+
+class pspnet(BaseModel):
+    def __init__(self, config: dict, logger=None):
+        super(pspnet, self).__init__(config, logger)
+
+    def net_init(self):
+        self.net = smp.PSPNet(
+            encoder_name="resnet50",
+            encoder_weights="imagenet",
+            in_channels=self.num_channels,
+            classes=self.num_classes).to(self.device)
+
+
 class Models:
     unet = unet
+    unetplusplus = unetplusplus
+    deeplabv3 = deeplabv3
+    deeplabv3plus = deeplabv3plus
+    fpn = fpn
+    pspnet = pspnet

@@ -3,6 +3,7 @@
 """
 @author:mjx
 """
+import logging
 
 import cv2 as cv
 import numpy as np
@@ -12,6 +13,7 @@ from PIL import Image
 from torchvision import transforms
 
 import utils, preprocess, datasets
+from logger import Logger
 from loss import *
 from torch.nn import functional as F
 import segmentation_models_pytorch as smp
@@ -235,3 +237,19 @@ print(loss)
 print(loss1)
 print(loss1.backward())
 print(loss1)
+
+# test mylogger
+# a = logging.getLogger("sds")
+# sh = logging.StreamHandler()
+# log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
+# sh.setLevel(logging.DEBUG)
+# sh.setFormatter(log_formatter)
+# a.addHandler(sh)
+# a.setLevel(logging.DEBUG)
+#
+# A = Logger(None)
+# AA = Logger(A)
+#
+# a.info("sds")
+# A.info("sds")
+# AA.info("sds")

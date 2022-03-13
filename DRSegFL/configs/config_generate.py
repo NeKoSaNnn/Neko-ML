@@ -17,6 +17,7 @@ now_dir_name = sys.path[0]  # ...configs/
 sys.path.append(root_dir_name)
 
 from DRSegFL import utils, constants, datasets
+from DRSegFL.logger import Logger
 
 
 def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
@@ -63,21 +64,23 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
         raise ImportError
 
 
-def generate(base_config_path="./base_config.yaml", num_clients=None):
+def generate(base_config_path="./base_config.yaml", num_clients=None, logger=None):
     """
     generate configs
     :param base_config_path:
     :param num_clients:
+    :param logger: default is None ,which will use print
     :return:
     """
+    logger = Logger(logger)
     if not osp.exists(base_config_path):
-        print("please make sure base_config.yaml in {}".format(base_config_path))
+        logger.error("please make sure base_config.yaml in {}".format(base_config_path))
         exit(-1)
 
     config = utils.load_yaml(base_config_path)
     config[constants.SERVER][constants.NUM_CLIENTS] = config[constants.SERVER][constants.NUM_CLIENTS] \
         if num_clients is None else num_clients
-    print("Generating configs ...")
+    logger.info("Generating configs ...")
 
     now_time = utils.get_now_time()
     now_day = utils.get_now_day()
@@ -110,13 +113,13 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
         if constants.TEST in config[constants.MODEL][constants.DIR_DATASET] else None
 
     if not osp.exists(train_dataset_dir):
-        print("please put train dataset in {}".format(train_dataset_dir))
+        logger.error("please put train dataset in {}".format(train_dataset_dir))
         exit(-1)
     if val_dataset_dir and not osp.exists(val_dataset_dir):
-        print("please put val dataset in {}".format(val_dataset_dir))
+        logger.error("please put val dataset in {}".format(val_dataset_dir))
         exit(-1)
     if test_dataset_dir and not osp.exists(test_dataset_dir):
-        print("please put test dataset in {}".format(test_dataset_dir))
+        logger.error("please put test dataset in {}".format(test_dataset_dir))
         exit(-1)
 
     server_config_path = osp.join(config_dir, "server_config.json")
@@ -171,10 +174,10 @@ def generate(base_config_path="./base_config.yaml", num_clients=None):
             config[constants.CLIENT][constants.TEST] = test_dataset_txt_path
             json.dump(config[constants.CLIENT], f, indent=4)
 
-    print("Generate completed ~")
-    print("server_config_path:{}".format(server_config_path))
-    print("num_client_configs:{}".format(len(client_configs_path)))
-    [print("client_config_{}_path:{}".format(i + 1, client_configs_path[i])) for i in range(len(client_configs_path))]
+    logger.info("Generate completed ~")
+    logger.info("server_config_path:{}".format(server_config_path))
+    logger.info("num_client_configs:{}".format(len(client_configs_path)))
+    [logger.info("client_config_{}_path:{}".format(i + 1, client_configs_path[i])) for i in range(len(client_configs_path))]
     return server_config_path, client_configs_path
 
 
