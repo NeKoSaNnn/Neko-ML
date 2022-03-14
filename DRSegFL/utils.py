@@ -288,7 +288,8 @@ def ignore_background(array, num_classes, ignore=0):
     return array
 
 
-def draw_predict(classes: list, img: Image.Image, target_mask: Image.Image, predict_mask, save_path, draw_gt_one_hot=False, ignore_index=-1):
+def draw_predict(classes: list, img: Image.Image, target_mask: Image.Image, predict_mask, save_path, draw_gt_one_hot=False, ignore_index=-1,
+                 verbose=True):
     num_classes = len(classes)
     assert predict_mask.shape[0] == num_classes, "{}!={}".format(predict_mask.shape[0], num_classes)
     plt.figure(figsize=(25, 25))
@@ -335,5 +336,7 @@ def draw_predict(classes: list, img: Image.Image, target_mask: Image.Image, pred
         raise AssertionError("num_classes({}) >= 1".format(num_classes))
     plt.xticks([]), plt.yticks([])
     plt.savefig(save_path)
-    print("[Info]:predict result saved : {}".format(save_path))
+    if verbose:
+        print("[Info]:predict result saved : {}".format(save_path))
     plt.show()
+    plt.close()

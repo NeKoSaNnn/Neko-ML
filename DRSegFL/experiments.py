@@ -121,7 +121,7 @@ import torch.nn as nn
 # print(tensor_target2.shape)
 # print(torch.max(tensor_target2))
 # print(torch.min(tensor_target2))
-#
+# #
 # print("0:{}".format(torch.sum(torch.where(tensor_target2 == 0, 1, 0))))
 # print("1:{}".format(torch.sum(torch.where(tensor_target2 == 1, 1, 0))))
 # print("2:{}".format(torch.sum(torch.where(tensor_target2 == 2, 1, 0))))
@@ -130,13 +130,13 @@ import torch.nn as nn
 #
 # classes = ["EX", "HE", "MA", "SE"]
 # pil_img1 = Image.open("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/val/annotation/007-7210-400.png")
-# pil_img1 = utils.pil_crop_and_resize(pil_img1, crop_method="min", img_size=512, resize_method=Image.NEAREST)
+# pil_img1 = utils.pil_crop_and_resize(pil_img1, crop_method="min", img_size=1024, resize_method=Image.BILINEAR)
 # np_img1 = np.asarray(pil_img1)
 # for i, c in enumerate(classes):
 #     print("ann_{}:{}".format(c, np.sum(np.where(np_img1 == i + 1, 1, 0))))
 #
 #     pil_img2 = Image.open("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/val/label/{}/007-7210-400.tif".format(c))
-#     pil_img2 = utils.pil_crop_and_resize(pil_img2, crop_method="min", img_size=512, resize_method=Image.NEAREST)
+#     pil_img2 = utils.pil_crop_and_resize(pil_img2, crop_method="min", img_size=1024, resize_method=Image.BILINEAR)
 #     np_img2 = np.asarray(pil_img2)
 #     print("ori_{}:{}".format(c, np.sum(np.where(np_img2 > 0, 1, 0))))
 #
@@ -145,7 +145,7 @@ import torch.nn as nn
 # print(np.nan_to_num(a))
 # print(np.nan_to_num(b))
 #
-# print(datasets.get_loss_weights("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation", 5, "png"))
+print(datasets.get_loss_weights("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation", 5, "png"))
 #
 # class_weights = torch.FloatTensor([0.01, 1.])
 # loss_f0 = nn.CrossEntropyLoss(weight=class_weights, reduction="none")
@@ -178,7 +178,9 @@ import torch.nn as nn
 # # pred = torch.from_numpy(pred).float().requires_grad_(True)
 # pred = torch.from_numpy(pred).long()
 # target = torch.from_numpy(target).long()
-# all_acc, accs, ious, dices, f_values = metrics.cal_metric(pred, target, 1)
+# pred = pred.unsqueeze(1)
+# target = target.unsqueeze(1)
+# all_acc, accs, ious, dices, f_values = metrics.cal_metric(pred, target, 2)
 # print(all_acc, accs, ious, dices, f_values)
 # mAcc = np.nanmean(accs)
 # mDice = np.nanmean(dices)
@@ -278,10 +280,10 @@ import torch.nn as nn
 # AA.info("sds")
 
 
-dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
-
-lesions = ["EX", "HE", "MA", "SE"]
-_types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
+# dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
+#
+# lesions = ["EX", "HE", "MA", "SE"]
+# _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
 
 # for lesion in lesions:
 #     root_dir = osp.join(dataset_dir, lesion)
@@ -324,11 +326,11 @@ _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
 #             pil_img, _ = pil_trans(pil_img)
 #             pil_img.save(osp.join(img_dir, osp.basename(img_path)))
 
-for lesion in lesions:
-    root_dir = osp.join(dataset_dir, lesion)
-    for _type in _types:
-        dir = osp.join(dataset_dir, lesion, _type)
-        img_paths = sorted(glob.glob(osp.join(dir, "image", "*.jpg")))
-        label_paths = sorted(glob.glob(osp.join(dir, "label", "*.png")))
-        print("{}_{}_image={}".format(lesion, _type, len(img_paths)))
-        print("{}_{}_label={}".format(lesion, _type, len(label_paths)))
+# for lesion in lesions:
+#     root_dir = osp.join(dataset_dir, lesion)
+#     for _type in _types:
+#         dir = osp.join(dataset_dir, lesion, _type)
+#         img_paths = sorted(glob.glob(osp.join(dir, "image", "*.jpg")))
+#         label_paths = sorted(glob.glob(osp.join(dir, "label", "*.png")))
+#         print("{}_{}_image={}".format(lesion, _type, len(img_paths)))
+#         print("{}_{}_label={}".format(lesion, _type, len(label_paths)))

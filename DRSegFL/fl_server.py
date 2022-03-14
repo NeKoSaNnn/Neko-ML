@@ -139,10 +139,16 @@ class GlobalModel(object):
         now_global_loss = self.global_stats[best_type][constants.LOSS][-1]
         now_global_acc = self.global_stats[best_type][constants.ACC][-1]
         global_metric = self.config[constants.GLOBAL_EVAL][best_type]
+        # init
         if self.best[best_type][constants.ACC] is None:
             self.best[best_type][constants.ACC] = now_global_acc
         if self.best[best_type][constants.LOSS] is None:
             self.best[best_type][constants.LOSS] = now_global_loss
+        if self.best[best_type][constants.WEIGHTS] is None:
+            self.best[best_type][constants.WEIGHTS] = copy.deepcopy(self.global_weights)
+        if self.best[best_type][constants.EPOCH] == 0:
+            self.best[best_type][constants.EPOCH] = self.now_global_epoch
+        # compare with global_eval metric
         if (global_metric in now_global_acc.keys() and now_global_acc[global_metric] > self.best[best_type][constants.ACC][global_metric]) \
                 or (global_metric == constants.LOSS and now_global_loss < self.best[best_type][constants.LOSS]):
             # default is loss
@@ -334,8 +340,9 @@ class FederatedServer(object):
                 self.logger.info(
                     "Now Ready Client(s)_Num:{} < {}(num_clients) , Waiting Enough Clients To Run...".format(len(self.ready_client_sids),
                                                                                                              self.NUM_CLIENTS))
-            else:
-                self.logger.error("Now GlobalEpoch != 0 , Please Restart Server ~")
+            # 注释原因:client可中途加入
+            # else:
+            #     self.logger.error("Now GlobalEpoch != 0 , Please Restart Server ~")
 
         @self.socketio.on("client_check_resource_complete")
         def client_check_resource_complete_handle(data):

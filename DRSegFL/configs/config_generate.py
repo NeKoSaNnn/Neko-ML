@@ -69,9 +69,9 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
             datasets.dataset_augment(img_dir, target_dir, "jpg", "png", dataset_type)
 
         if isinstance(dataset_txt_path, list):
-            datasets.iid_dataset_txt_generate(img_dir, "jpg", target_dir, "tif", dataset_txt_path, is_augment)
+            datasets.iid_dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)
         else:
-            datasets.dataset_txt_generate(img_dir, "jpg", target_dir, "tif", dataset_txt_path, is_augment)
+            datasets.dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)
     else:
         raise ValueError(config[constants.MODEL][constants.NAME_DATASET])
 

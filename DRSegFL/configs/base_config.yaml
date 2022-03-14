@@ -1,9 +1,9 @@
 #model
 model:
   model_name: res_unet
-  dataset_name: DDR
-  img_size: 512
-  data_augment: True
+  dataset_name: DDR_EX
+  img_size: 224
+  data_augment: False
 
   optim:
     type: "SGD"
@@ -18,19 +18,15 @@ model:
     min_lr: 1e-5
 
   dataset_dir:
-    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train"
-    val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/val"
-    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/test"
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train"
+    val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/val"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/test"
   num_workers: 4
 
   num_channels: 3
-  num_classes: 5
+  num_classes: 1
   classes:
-    - "bg"
     - "EX"
-    - "HE"
-    - "MA"
-    - "SE"
 
 #client
 client:
@@ -50,7 +46,7 @@ server:
   port: 9191
   gpu: "5"
 
-  epoch: 200
+  epoch: 500
   num_clients: 2
 
   global_eval:
@@ -66,7 +62,7 @@ server:
 
   tolerate:
     val:
-      num: 5
+      num: 10
       metric: "mIoU"
 
   log_interval_iter: 10

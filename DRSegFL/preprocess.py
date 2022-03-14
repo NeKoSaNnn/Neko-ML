@@ -117,6 +117,7 @@ def DDR_OneLesion_preprocess(img_path: str, target_path: str, img_size: int, is_
     pil_img, pil_target = pil_trans(pil_img, pil_target)
 
     tensor_img, tensor_target = tensor_trans(pil_img, pil_target)
+    tensor_target = tensor_target.unsqueeze(0)
 
     return tensor_img, tensor_target, pil_img, pil_target
 
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     # print(torch.typename(ttarget))
 
     image_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/image/007-3399-200.jpg"
-    target_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/label/007-3399-200.tif"
+    target_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/label/007-3399-200.png"
     timg, ttarget, pimg, ptarget = DDR_OneLesion_preprocess(image_path, target_path, 224, is_train=False)
     pimg.save("./tmp.jpg")
     ptarget.save("./tmp.png")

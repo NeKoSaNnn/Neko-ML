@@ -125,8 +125,7 @@ class BaseModel(object):
             class_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
             self.loss_f.append(nn.CrossEntropyLoss(weight=class_weights))
             self.loss_f.append(smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0))
-
-            self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights))
+            # self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights))
             # self.loss_f.append(CrossEntropyLoss(class_weight=[0.01, 1., 1., 1., 1.]))
             # self.loss_f.append(BinaryLoss(loss_type="dice", class_weight=[0.01, 1., 1., 1., 1.]))
             # self.loss_f.append(FocalLoss(gamma=2.0, alpha=0.25, class_weight=[0.01, 1., 1., 1., 1.]))
@@ -136,10 +135,14 @@ class BaseModel(object):
             # self.loss_f.append(smp.losses.SoftCrossEntropyLoss(smooth_factor=0, ignore_index=0))
             # self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights))
         elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
-            self.loss_f.append(smp.losses.FocalLoss(mode=smp.losses.constants.BINARY_MODE, alpha=3, gamma=1))
+            self.loss_weight = 1
+            self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=torch.FloatTensor([100.]).to(self.device)))
+            # self.loss_f.append(smp.losses.FocalLoss(mode=smp.losses.constants.BINARY_MODE, alpha=3, gamma=2))
         else:
             raise AssertionError("dataset error:{}".format(self.dataset_name))
-        assert isinstance(self.loss_weight, (int, float)) or isinstance(self.loss_weight, list) and (len(self.loss_f) == len(self.loss_weight))
+        assert self.loss_weight is None \
+               or isinstance(self.loss_weight, (int, float)) \
+               or isinstance(self.loss_weight, list) and (len(self.loss_f) == len(self.loss_weight))
 
     def cal_loss(self, pred, target, weight=None):
         """
@@ -185,7 +188,7 @@ class BaseModel(object):
 
                 preds = self.net(imgs)
                 assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
-                loss = self.cal_loss(preds, targets, weight=self.loss_weight)
+                loss = self.cal_loss(preds, targets.float(), weight=self.loss_weight)  # BCE target must be float
 
                 iter_losses += loss.item()
 
@@ -234,7 +237,7 @@ class BaseModel(object):
 
                 preds = self.net(imgs)  # [N,C,H,W]
                 assert preds.shape[1] == self.num_classes, "{}!={}".format(preds.shape[1], self.num_classes)
-                loss = self.cal_loss(preds, targets, weight=self.loss_weight)
+                loss = self.cal_loss(preds, targets.float(), weight=self.loss_weight)  # BCE target must be float
 
                 eval_loss += loss.item()
 
@@ -257,10 +260,10 @@ class BaseModel(object):
                 # eval_acc = {"mDice": mDice, "mIoU": mIoU}
             else:
                 all_acc, accs, ious, dices, f_scores = metrics.cal_metric(list_preds, list_targets, self.num_classes, -1)
-            self.logger.debug("accs={}".format(accs))
-            self.logger.debug("ious={}".format(ious))
-            self.logger.debug("dices={}".format(dices))
-            self.logger.debug("f_scores={}".format(f_scores))
+            self.logger.debug("accs  =    {}".format(np.around(accs, 5)))
+            self.logger.debug("ious  =    {}".format(np.around(ious, 5)))
+            self.logger.debug("dices =    {}".format(np.around(dices, 5)))
+            self.logger.debug("f_scores = {}".format(np.around(f_scores, 5)))
             mIoU = np.around(np.nanmean(ious), 4)
             mAcc = np.around(np.nanmean(accs), 4)
             mDice = np.around(np.nanmean(dices), 4)
