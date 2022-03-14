@@ -48,17 +48,22 @@ class RandomCrop(object):
 
 
 class RandomResizedCrop(object):
-    def __init__(self, size: int, scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.), interpolation=F.InterpolationMode.BILINEAR):
+    def __init__(self, size: int, prob=1.0, scale=(0.08, 1.0), ratio=(3. / 4., 4. / 3.), interpolation=F.InterpolationMode.BILINEAR):
         self.size = size
+        self.prob = prob
         self.scale = scale
         self.ratio = ratio
         self.interpolation = interpolation
 
     def __call__(self, image, target=None):
-        rrc_params = T.RandomResizedCrop.get_params(image, self.scale, self.ratio)
-        image = F.resized_crop(image, *rrc_params, size=[self.size, self.size], interpolation=self.interpolation)
-        if target is not None:
-            target = F.resized_crop(target, *rrc_params, size=[self.size, self.size], interpolation=self.interpolation)
+        if self.prob is None or (isinstance(self.prob, float) and random.random() < self.prob):
+            rrc_params = T.RandomResizedCrop.get_params(image, self.scale, self.ratio)
+            image = F.resized_crop(image, *rrc_params, size=[self.size, self.size], interpolation=self.interpolation)
+            if target is not None:
+                target = F.resized_crop(target, *rrc_params, size=[self.size, self.size], interpolation=self.interpolation)
+        else:
+            image, target = CenterCrop(min(image.size))(image, target)
+            image, target = Resize(self.size, self.interpolation)(image, target)
         return image, target
 
 

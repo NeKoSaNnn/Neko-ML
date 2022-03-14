@@ -18,6 +18,7 @@ sys.path.append(root_dir_name)
 
 from DRSegFL import utils, constants, preprocess
 from DRSegFL.models import Models
+from DRSegFL.logger import Logger
 
 
 class Predictor(object):
@@ -78,6 +79,7 @@ class Predictor(object):
 
 
 if __name__ == "__main__":
+    logger = Logger()
     config_path = input("input config_path:").strip()
     weights_path = input("input weights_path:").strip()
     predictor = Predictor(config_path, weights_path)
@@ -91,5 +93,5 @@ if __name__ == "__main__":
             ground_truth_path = input("input ground_truth_path:").strip()
             predictor.reference(predict_img_path, ground_truth_path)
         else:
-            print("predict over.")
+            logger.info("predict over.")
             exit(0)

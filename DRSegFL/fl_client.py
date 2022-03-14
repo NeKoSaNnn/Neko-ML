@@ -239,6 +239,7 @@ class FederatedClient(object):
 
             emit_data = {}
 
+            self.logger.info("Eval [{}] Start ...".format(".".join(eval_type)))
             if constants.TRAIN in eval_type:
                 train_loss, train_acc = self.local_model.eval(constants.TRAIN)
                 self.logger.info(

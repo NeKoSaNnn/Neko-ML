@@ -6,7 +6,7 @@
 
 
 class Logger(object):
-    def __init__(self, logger):
+    def __init__(self, logger=None):
         self.logger = logger
 
     def debug(self, msg):

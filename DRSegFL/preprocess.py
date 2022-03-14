@@ -67,7 +67,7 @@ def DDR_preprocess(img_path: str, target_path: str, img_size: int, is_train: boo
     pil_target = Image.open(target_path)
     if is_train:
         pil_trans = T.Compose([
-            T.RandomResizedCrop(img_size),
+            T.RandomResizedCrop(img_size, prob=0.5, interpolation=transforms.InterpolationMode.BICUBIC),
             T.RandomHorizontalFlip(),
         ])
     else:

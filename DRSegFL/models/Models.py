@@ -36,7 +36,7 @@ class BaseModel(object):
 
         if constants.TRAIN in self.config:
             self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
-                                             num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
+                                             num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=True)
             self.train_dataloader = DataLoader(self.train_dataset, self.config[constants.BATCH_SIZE], shuffle=True,
                                                num_workers=self.config[constants.NUM_WORKERS])
             self.train_contribution = len(self.train_dataset)
@@ -251,7 +251,7 @@ class BaseModel(object):
                 mIoU = metrics.Dice2IoU(mDice)
                 eval_acc = {"mDice": mDice, "mIoU": mIoU}
             else:
-                all_acc, accs, ious = metrics.mIoU(list_preds, list_targets, self.num_classes, 0)
+                all_acc, accs, ious = metrics.mIoU(list_preds, list_targets, self.num_classes, -1)
                 self.logger.debug("accs={}".format(accs))
                 self.logger.debug("ious={}".format(ious))
                 mIoU = np.nanmean(ious)

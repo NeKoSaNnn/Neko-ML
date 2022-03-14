@@ -95,7 +95,9 @@ def label2annotation(img_path: str, label_paths: list, ann_path: str):
     return ann_pil
 
 
-def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, classes, dataset_type, custom_target_name=False, force=False):
+def labels2annotations(img_dir: str, target_dir: str, ann_dir: str, img_suffix: str, target_suffix: str, classes: list, dataset_type: str,
+                       custom_target_name=False,
+                       force=False):
     """
     Attention:img_name should be equal to target_name
     :param img_dir:.../img_files
@@ -126,7 +128,7 @@ def labels2annotations(img_dir, target_dir, ann_dir, img_suffix, target_suffix, 
         label2annotation(img_path, label_paths, ann_path)
 
 
-def get_loss_weights(ann_dir, num_classes, ann_suffix):
+def get_loss_weights(ann_dir: str, num_classes: int, ann_suffix: str):
     label_counts = [0] * num_classes
     files = glob.glob(osp.join(ann_dir, "*.{}".format(ann_suffix)))
     print(len(files))
@@ -143,7 +145,7 @@ def get_loss_weights(ann_dir, num_classes, ann_suffix):
     return loss_weights
 
 
-def dataset_augment(img_dir, target_dir, img_suffix, target_suffix, dataset_type):
+def dataset_augment(img_dir: str, target_dir: str, img_suffix: str, target_suffix: str, dataset_type: str):
     imgs = sorted(glob.glob(osp.join(img_dir, "*.{}".format(img_suffix))))
     targets = sorted(glob.glob(osp.join(target_dir, "*.{}".format(target_suffix))))
     augment_img_dir = osp.join(img_dir, "augment")
