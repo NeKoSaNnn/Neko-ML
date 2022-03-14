@@ -87,10 +87,56 @@ def DDR_preprocess(img_path: str, target_path: str, img_size: int, is_train: boo
     return tensor_img, tensor_target, pil_img, pil_target
 
 
+def DDR_OneLesion_preprocess(img_path: str, target_path: str, img_size: int, is_train: bool):
+    """
+    :param img_path: str
+    :param target_path: str
+    :param img_size: int
+    :param is_train: bool
+    :return: tensor_img [Channel,H,W] ; tensor_target [H,W]:values in [0,num_classes); pil_img ; pil_target
+    """
+
+    assert utils.is_img(target_path), "target must be img"
+    pil_img = Image.open(img_path)
+    pil_target = Image.open(target_path)
+    if is_train:
+        pil_trans = T.Compose([
+            T.RandomResizedCrop(img_size, prob=0.5),
+            T.RandomHorizontalFlip(),
+        ])
+    else:
+        pil_trans = T.Compose([
+            T.Resize(img_size)
+        ])
+
+    tensor_trans = T.Compose([
+        T.ToTensor(),
+        T.Normalize(mean=[0.4211, 0.2640, 0.1104], std=[0.3133, 0.2094, 0.1256]),
+    ])
+
+    pil_img, pil_target = pil_trans(pil_img, pil_target)
+
+    tensor_img, tensor_target = tensor_trans(pil_img, pil_target)
+
+    return tensor_img, tensor_target, pil_img, pil_target
+
+
 if __name__ == "__main__":
-    image_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image/007-3399-200.jpg"
-    target_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation/007-3399-200.png"
-    timg, ttarget, pimg, ptarget = DDR_preprocess(image_path, target_path, 1024, is_train=True)
+    # image_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image/007-3399-200.jpg"
+    # target_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation/007-3399-200.png"
+    # timg, ttarget, pimg, ptarget = DDR_preprocess(image_path, target_path, 1024, is_train=False)
+    # pimg.save("./tmp.jpg")
+    # ptarget.save("./tmp.png")
+    # print(torch.max(timg))
+    # print(torch.min(timg))
+    # print(torch.typename(timg))
+    # print(torch.max(ttarget))
+    # print(torch.min(ttarget))
+    # print(torch.typename(ttarget))
+
+    image_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/image/007-3399-200.jpg"
+    target_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/label/007-3399-200.tif"
+    timg, ttarget, pimg, ptarget = DDR_OneLesion_preprocess(image_path, target_path, 224, is_train=False)
     pimg.save("./tmp.jpg")
     ptarget.save("./tmp.png")
     print(torch.max(timg))

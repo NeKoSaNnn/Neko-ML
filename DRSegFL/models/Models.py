@@ -125,6 +125,8 @@ class BaseModel(object):
             class_weights = torch.FloatTensor([0.01, 1., 1., 1., 1.]).to(self.device)
             self.loss_f.append(nn.CrossEntropyLoss(weight=class_weights))
             self.loss_f.append(smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0))
+
+            self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights))
             # self.loss_f.append(CrossEntropyLoss(class_weight=[0.01, 1., 1., 1., 1.]))
             # self.loss_f.append(BinaryLoss(loss_type="dice", class_weight=[0.01, 1., 1., 1., 1.]))
             # self.loss_f.append(FocalLoss(gamma=2.0, alpha=0.25, class_weight=[0.01, 1., 1., 1., 1.]))
@@ -133,6 +135,8 @@ class BaseModel(object):
             # self.loss_f.append(smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0))
             # self.loss_f.append(smp.losses.SoftCrossEntropyLoss(smooth_factor=0, ignore_index=0))
             # self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights))
+        elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
+            self.loss_f.append(smp.losses.FocalLoss(mode=smp.losses.constants.BINARY_MODE, alpha=3, gamma=1))
         else:
             raise AssertionError("dataset error:{}".format(self.dataset_name))
         assert isinstance(self.loss_weight, (int, float)) or isinstance(self.loss_weight, list) and (len(self.loss_f) == len(self.loss_weight))
@@ -169,14 +173,14 @@ class BaseModel(object):
         raise NotImplementedError
 
     def train(self, epoch=1):
-        target_data_type = torch.long if self.num_classes > 1 else torch.float32
+        # target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net.train()
         ep_losses = []
         for ep in range(1, epoch + 1):
             iter_losses = 0
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
                 imgs = Variable(imgs.to(self.device, torch.float32))
-                targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
+                targets = Variable(targets.to(self.device, torch.long), requires_grad=False)
                 assert imgs.shape[1] == self.num_channels, "imgs.shape[1]({})!=self.num_channels({})".format(imgs.shape[1], self.num_channels)
 
                 preds = self.net(imgs)
@@ -218,15 +222,15 @@ class BaseModel(object):
         else:
             raise AssertionError("eval_type:{}".format(eval_type))
 
-        target_data_type = torch.long if self.num_classes > 1 else torch.float32
+        # target_data_type = torch.long if self.num_classes > 1 else torch.float32
         with torch.no_grad():
             eval_loss = 0
-            acc_score = 0
+            # acc_score = 0
             list_preds = []
             list_targets = []
             for iter, (imgs, targets) in enumerate(eval_dataloader, start=1):
                 imgs = Variable(imgs.to(self.device, torch.float32), requires_grad=False)
-                targets = Variable(targets.to(self.device, target_data_type), requires_grad=False)
+                targets = Variable(targets.to(self.device, torch.long), requires_grad=False)
 
                 preds = self.net(imgs)  # [N,C,H,W]
                 assert preds.shape[1] == self.num_classes, "{}!={}".format(preds.shape[1], self.num_classes)
@@ -235,29 +239,34 @@ class BaseModel(object):
                 eval_loss += loss.item()
 
                 if self.num_classes == 1:
-                    preds = (torch.sigmoid(preds) > 0.5).float()
-                    acc_score += metrics.dice_coeff(preds, targets).item()
+                    preds = (torch.sigmoid(preds) > 0.5).float().cpu().numpy()
+                    # acc_score += metrics.dice_coeff(preds, targets).item()
                 else:
                     preds = torch.softmax(preds, dim=1).cpu().numpy()  # [N,C,H,W]
                     preds = np.argmax(preds, axis=1)  # [N,1,H,W]
                     # acc_score += F.cross_entropy(preds, targets, ignore_index=self.num_classes).item()
                     # acc_score += metrics.multi_dice_coeff(preds, targets).item()
-                    list_preds.extend(preds[:, ])
-                    list_targets.extend(targets[:, ].cpu().numpy())
+                list_preds.extend(preds[:, ])
+                list_targets.extend(targets[:, ].cpu().numpy())
 
             eval_loss /= len(eval_dataloader)
             if self.num_classes == 1:
-                mDice = acc_score / len(eval_dataloader)
-                mIoU = metrics.Dice2IoU(mDice)
-                eval_acc = {"mDice": mDice, "mIoU": mIoU}
+                all_acc, accs, ious, dices, f_scores = metrics.cal_metric(list_preds, list_targets, 2, -1)
+                # mDice = acc_score / len(eval_dataloader)
+                # mIoU = metrics.Dice2IoU(mDice)
+                # eval_acc = {"mDice": mDice, "mIoU": mIoU}
             else:
-                all_acc, accs, ious = metrics.mIoU(list_preds, list_targets, self.num_classes, -1)
-                self.logger.debug("accs={}".format(accs))
-                self.logger.debug("ious={}".format(ious))
-                mIoU = np.nanmean(ious)
-                mAcc = np.nanmean(accs)
-                mDice = metrics.IoU2Dice(mIoU)
-                eval_acc = {"mIoU": mIoU, "mDice": mDice, "mAcc": mAcc, "all_acc": all_acc}
+                all_acc, accs, ious, dices, f_scores = metrics.cal_metric(list_preds, list_targets, self.num_classes, -1)
+            self.logger.debug("accs={}".format(accs))
+            self.logger.debug("ious={}".format(ious))
+            self.logger.debug("dices={}".format(dices))
+            self.logger.debug("f_scores={}".format(f_scores))
+            mIoU = np.around(np.nanmean(ious), 4)
+            mAcc = np.around(np.nanmean(accs), 4)
+            mDice = np.around(np.nanmean(dices), 4)
+            F_score = np.around(np.nanmean(f_scores), 4)
+            all_acc = np.around(all_acc, 4)
+            eval_acc = {"mIoU": mIoU, "mDice": mDice, "F_score": F_score, "mAcc": mAcc, "all_acc": all_acc}
         self.net.train()
         return eval_loss, eval_acc
 

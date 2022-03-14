@@ -4,6 +4,7 @@
 @author:mjx
 """
 import numpy as np
+import torch
 
 
 def intersect_and_union(pred_label, label, num_classes, ignore_index):
@@ -37,7 +38,24 @@ def intersect_and_union(pred_label, label, num_classes, ignore_index):
     return area_intersect, area_union, area_pred_label, area_label
 
 
-def mIoU(results, gt_seg_maps, num_classes, ignore_index, nan_to_num=None):
+def f_score(precision, recall, beta=1):
+    """calculate the f-score value.
+
+    Args:
+        precision (float | torch.Tensor): The precision value.
+        recall (float | torch.Tensor): The recall value.
+        beta (int): Determines the weight of recall in the combined score.
+            Default: False.
+
+    Returns:
+        [float]: The f-score value.
+    """
+    score = (1 + beta ** 2) * (precision * recall) / (
+            (beta ** 2 * precision) + recall)
+    return score
+
+
+def cal_metric(results, gt_seg_maps, num_classes, ignore_index=-1, nan_to_num=None):
     """Calculate Intersection and Union (IoU)
 
     Args:
@@ -68,11 +86,20 @@ def mIoU(results, gt_seg_maps, num_classes, ignore_index, nan_to_num=None):
         total_area_pred_label += area_pred_label
         total_area_label += area_label
     all_acc = total_area_intersect.sum() / total_area_label.sum()
-    accs = total_area_intersect / total_area_label
+    pixaccs = total_area_intersect / total_area_label
+
     ious = total_area_intersect / total_area_union
+
+    dices = 2 * total_area_intersect / (total_area_pred_label + total_area_label)
+
+    precision = total_area_intersect / total_area_pred_label
+    recall = total_area_intersect / total_area_label
+    f_values = [f_score(x[0], x[1], 1) for x in zip(precision, recall)]
+
     if nan_to_num is not None:
-        return all_acc, np.nan_to_num(accs, nan=nan_to_num), np.nan_to_num(ious, nan=nan_to_num)
-    return all_acc, accs, ious
+        return all_acc, np.nan_to_num(pixaccs, nan=nan_to_num), np.nan_to_num(ious, nan=nan_to_num), \
+               np.nan_to_num(dices, nan=nan_to_num), np.nan_to_num(f_values, nan=nan_to_num)
+    return all_acc, pixaccs, ious, dices, f_values
 
 
 def Dice2IoU(dice):
@@ -94,6 +121,15 @@ def dice_coeff(preds, targets, epsilon=1e-6):
     intersection = (pred * truth).double().sum(1)
     dice = (2.0 * intersection + epsilon) / (pred.double().sum(1) + truth.double().sum(1) + epsilon)
     return dice.mean()
+
+
+# def dice_coeff(pred, target):
+#     smooth = 1.
+#     num = pred.size(0)
+#     m1 = pred.view(num, -1)  # Flatten
+#     m2 = target.view(num, -1)  # Flatten
+#     intersection = (m1 * m2).sum()
+#     return (2. * intersection + smooth) / (m1.sum() + m2.sum() + smooth)
 
 
 def multi_dice_coeff(preds, targets, epsilon=1e-6):

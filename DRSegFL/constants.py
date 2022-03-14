@@ -62,3 +62,7 @@ FIN = "fin."
 
 ISIC = "ISIC"
 DDR = "DDR"
+DDR_EX = "DDR_EX"
+DDR_HE = "DDR_HE"
+DDR_MA = "DDR_MA"
+DDR_SE = "DDR_SE"

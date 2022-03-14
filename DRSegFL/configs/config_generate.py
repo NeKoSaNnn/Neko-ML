@@ -60,8 +60,20 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
             datasets.iid_dataset_txt_generate(img_dir, "jpg", ann_dir, "png", dataset_txt_path, is_augment)
         else:
             datasets.dataset_txt_generate(img_dir, "jpg", ann_dir, "png", dataset_txt_path, is_augment)
+    # DDR SingleLesion
+    elif config[constants.MODEL][constants.NAME_DATASET] in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
+        img_dir = osp.join(dataset_dir, "image")
+        target_dir = osp.join(dataset_dir, "label")
+
+        if is_augment and dataset_type == constants.TRAIN:
+            datasets.dataset_augment(img_dir, target_dir, "jpg", "png", dataset_type)
+
+        if isinstance(dataset_txt_path, list):
+            datasets.iid_dataset_txt_generate(img_dir, "jpg", target_dir, "tif", dataset_txt_path, is_augment)
+        else:
+            datasets.dataset_txt_generate(img_dir, "jpg", target_dir, "tif", dataset_txt_path, is_augment)
     else:
-        raise ImportError
+        raise ValueError(config[constants.MODEL][constants.NAME_DATASET])
 
 
 def generate(base_config_path="./base_config.yaml", num_clients=None, logger=None):
@@ -155,11 +167,11 @@ def generate(base_config_path="./base_config.yaml", num_clients=None, logger=Non
             config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH]))
         config[constants.SERVER][constants.DIR_PREDICT] = predict_dir
         config[constants.SERVER][constants.PATH_BEST_WEIGHTS] = {
-            constants.TRAIN: osp.join(best_weights_dir, "best_fed_train_c{}_ep{}.pt".format(
+            constants.TRAIN: osp.join(best_weights_dir, "fed_train_c{}_ep{}.pt".format(
                 config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH])),
-            constants.VALIDATION: osp.join(best_weights_dir, "best_fed_val_c{}_ep{}.pt".format(
+            constants.VALIDATION: osp.join(best_weights_dir, "fed_val_c{}_ep{}.pt".format(
                 config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH])),
-            constants.TEST: osp.join(best_weights_dir, "best_fed_test_c{}_ep{}.pt".format(
+            constants.TEST: osp.join(best_weights_dir, "fed_test_c{}_ep{}.pt".format(
                 config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH]))}
         json.dump(config[constants.SERVER], f, indent=4)
 

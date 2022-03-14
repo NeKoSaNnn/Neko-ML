@@ -112,7 +112,7 @@ def pickle2obj(pickle_or_filepath):
     return obj
 
 
-def get_dataset_norm(dataset_dir: str, img_suffix: str, img_size: int):
+def cal_dataset_norm(dataset_dir: str, img_suffix: str, img_size: None):
     means, stdevs = [], []
     img_list = []
 
@@ -120,10 +120,11 @@ def get_dataset_norm(dataset_dir: str, img_suffix: str, img_size: int):
 
     for path in tqdm(imgs_path_list, desc="dataset normalize"):
         img = Image.open(path)  # C,H,W
-        img = transforms.Compose([
-            transforms.CenterCrop(min(img.size)),
-            transforms.Resize((img_size, img_size), interpolation=InterpolationMode.BICUBIC)
-        ])(img)
+        if isinstance(img_size, int):
+            img = transforms.Compose([
+                transforms.CenterCrop(min(img.size)),
+                transforms.Resize((img_size, img_size), interpolation=InterpolationMode.BICUBIC)
+            ])(img)
         img = np.asarray(img)  # H,W,C  RGB
         img = img[:, :, :, np.newaxis]
         img_list.append(img)
@@ -334,5 +335,5 @@ def draw_predict(classes: list, img: Image.Image, target_mask: Image.Image, pred
         raise AssertionError("num_classes({}) >= 1".format(num_classes))
     plt.xticks([]), plt.yticks([])
     plt.savefig(save_path)
-    print("predict result saved to {}".format(save_path))
+    print("[Info]:predict result saved : {}".format(save_path))
     plt.show()

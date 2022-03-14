@@ -22,7 +22,7 @@ from DRSegFL.logger import Logger
 
 
 class Predictor(object):
-    def __init__(self, config_path, weights_path):
+    def __init__(self, config_path: str, weights_path: str):
         assert ".json" in config_path, "config type error :{} ,expect jon".format(config_path)
         now_day = utils.get_now_day()
 
@@ -32,6 +32,7 @@ class Predictor(object):
         model_name = config[constants.NAME_MODEL]
         self.num_classes = config[constants.NUM_CLASSES]
         self.classes = config[constants.CLASSES] if constants.CLASSES in config else None
+        self.weights_path = weights_path
 
         os.environ["CUDA_VISIBLE_DEVICES"] = config["gpu"]
 
@@ -47,7 +48,17 @@ class Predictor(object):
 
     def reference(self, predict_img_path, ground_truth_path, out_threshold=0.5):
         now_time = utils.get_now_time()
-        save_path = osp.join(self.predict_dir, "predict_{}_{}.jpg".format(osp.basename(predict_img_path), now_time))
+        now_weight_name = "_".join(self.weights_path.rsplit("/", 6)[1:])
+        if constants.TRAIN in predict_img_path:
+            save_dir = osp.join(self.predict_dir, now_weight_name, constants.TRAIN)
+        elif constants.VALIDATION in predict_img_path:
+            save_dir = osp.join(self.predict_dir, now_weight_name, constants.VALIDATION)
+        elif constants.TEST in predict_img_path:
+            save_dir = osp.join(self.predict_dir, now_weight_name, constants.TEST)
+        else:
+            save_dir = osp.join(self.predict_dir, now_weight_name)
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = osp.join(save_dir, "t{}_{}.jpg".format(now_time, predict_img_path.rsplit(".", 1)[0]))
 
         if self.dataset_name == constants.ISIC:
             tensor_img, _, pil_img, pil_gt = preprocess.ISIC_preprocess(predict_img_path, ground_truth_path, self.img_size)
