@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
     image_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/image/007-3399-200.jpg"
     target_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/label/007-3399-200.png"
-    timg, ttarget, pimg, ptarget = DDR_OneLesion_preprocess(image_path, target_path, 224, is_train=False)
+    timg, ttarget, pimg, ptarget = DDR_OneLesion_preprocess(image_path, target_path, 224, is_train=True)
     pimg.save("./tmp.jpg")
     ptarget.save("./tmp.png")
     print(torch.max(timg))

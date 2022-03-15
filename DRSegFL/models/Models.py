@@ -43,7 +43,7 @@ class BaseModel(object):
         if constants.TRAIN in self.config:
             if self.is_slide_inference:
                 self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
-                                                 num_classes=self.num_classes, img_size=self.config[constants.SLIDE_CROP_SIZE], is_train=True)
+                                                 num_classes=self.num_classes, img_size=self.slide_crop_size, is_train=True)
             else:
                 self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
                                                  num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
