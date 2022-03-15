@@ -2,8 +2,8 @@
 model:
   model_name: res_unet
   dataset_name: DDR_EX
-  img_size: 224
-  data_augment: False
+  img_size: 1024
+  data_augment: True
 
   optim:
     type: "SGD"
@@ -28,13 +28,17 @@ model:
   classes:
     - "EX"
 
+  slide_inference:
+    slide_crop_size: 224
+    slide_stride: 112
+
 #client
 client:
   gpu: "4"
 
   epoch: 2
-  batch_size: 8
-  eval_batch_size: 8
+  batch_size: 16
+  eval_batch_size: 16
 
   log_interval_iter: 10
 
@@ -46,7 +50,7 @@ server:
   port: 9191
   gpu: "5"
 
-  epoch: 500
+  epoch: 200
   num_clients: 2
 
   global_eval:
@@ -62,7 +66,7 @@ server:
 
   tolerate:
     val:
-      num: 10
+      num: 5
       metric: "mIoU"
 
   log_interval_iter: 10

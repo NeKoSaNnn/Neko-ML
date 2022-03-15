@@ -145,7 +145,7 @@ import torch.nn as nn
 # print(np.nan_to_num(a))
 # print(np.nan_to_num(b))
 #
-print(datasets.get_loss_weights("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation", 5, "png"))
+# print(datasets.get_loss_weights("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation", 5, "png"))
 #
 # class_weights = torch.FloatTensor([0.01, 1.])
 # loss_f0 = nn.CrossEntropyLoss(weight=class_weights, reduction="none")

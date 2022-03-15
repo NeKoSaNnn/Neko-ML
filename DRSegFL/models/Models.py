@@ -16,7 +16,7 @@ from torch.backends.cudnn import benchmark
 from torch.utils.data import DataLoader
 
 import segmentation_models_pytorch as smp
-from DRSegFL import metrics, constants
+from DRSegFL import metrics, constants, inference
 from DRSegFL.datasets import ListDataset
 from DRSegFL.logger import Logger
 from DRSegFL.loss import *
@@ -33,10 +33,20 @@ class BaseModel(object):
         self.num_classes = self.config[constants.NUM_CLASSES]
         self.num_channels = self.config[constants.NUM_CHANNELS]
         self.dataset_name = self.config[constants.NAME_DATASET]
+        if constants.SLIDE_INFERENCE in self.config:
+            self.is_slide_inference = True
+            self.slide_crop_size = self.config[constants.SLIDE_INFERENCE][constants.SLIDE_CROP_SIZE]
+            self.slide_stride = self.config[constants.SLIDE_INFERENCE][constants.SLIDE_STRIDE]
+        else:
+            self.is_slide_inference = False
 
         if constants.TRAIN in self.config:
-            self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
-                                             num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=True)
+            if self.is_slide_inference:
+                self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
+                                                 num_classes=self.num_classes, img_size=self.config[constants.SLIDE_CROP_SIZE], is_train=True)
+            else:
+                self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
+                                                 num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
             self.train_dataloader = DataLoader(self.train_dataset, self.config[constants.BATCH_SIZE], shuffle=True,
                                                num_workers=self.config[constants.NUM_WORKERS])
             self.train_contribution = len(self.train_dataset)
@@ -137,6 +147,7 @@ class BaseModel(object):
         elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
             self.loss_weight = 1
             self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=torch.FloatTensor([100.]).to(self.device)))
+            # self.loss_f.append(BinaryFocalLoss())
             # self.loss_f.append(smp.losses.FocalLoss(mode=smp.losses.constants.BINARY_MODE, alpha=3, gamma=2))
         else:
             raise AssertionError("dataset error:{}".format(self.dataset_name))
@@ -235,14 +246,19 @@ class BaseModel(object):
                 imgs = Variable(imgs.to(self.device, torch.float32), requires_grad=False)
                 targets = Variable(targets.to(self.device, torch.long), requires_grad=False)
 
-                preds = self.net(imgs)  # [N,C,H,W]
+                # preds = self.net(imgs)  # [N,C,H,W]
+                if self.is_slide_inference:
+                    preds = inference.slide_inference(imgs, self.net, self.num_classes, self.slide_crop_size, self.slide_stride)
+                else:
+                    preds = inference.whole_inference(imgs, self.net)
+
                 assert preds.shape[1] == self.num_classes, "{}!={}".format(preds.shape[1], self.num_classes)
                 loss = self.cal_loss(preds, targets.float(), weight=self.loss_weight)  # BCE target must be float
 
                 eval_loss += loss.item()
 
                 if self.num_classes == 1:
-                    preds = (torch.sigmoid(preds) > 0.5).float().cpu().numpy()
+                    preds = (torch.sigmoid(preds) > 0.5).long().cpu().numpy()
                     # acc_score += metrics.dice_coeff(preds, targets).item()
                 else:
                     preds = torch.softmax(preds, dim=1).cpu().numpy()  # [N,C,H,W]

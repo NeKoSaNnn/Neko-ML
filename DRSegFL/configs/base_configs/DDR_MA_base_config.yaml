@@ -2,8 +2,8 @@
 model:
   model_name: res_unet
   dataset_name: DDR_MA
-  img_size: 512
-  data_augment: False
+  img_size: 1024
+  data_augment: True
 
   optim:
     type: "SGD"
@@ -28,13 +28,17 @@ model:
   classes:
     - "MA"
 
+  slide_inference:
+    slide_crop_size: 224
+    slide_stride: 112
+
 #client
 client:
   gpu: "4"
 
   epoch: 2
-  batch_size: 8
-  eval_batch_size: 8
+  batch_size: 16
+  eval_batch_size: 16
 
   log_interval_iter: 10
 

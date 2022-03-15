@@ -17,8 +17,12 @@ class Resize(object):
         self.interpolation = interpolation
 
     def __call__(self, image, target=None):
-        image = F.resize(image, [self.size, self.size])
+        if image.size[0] == image.size[1] == self.size:
+            return image
+        image = F.resize(image, [self.size, self.size], interpolation=self.interpolation)
         if target is not None:
+            if target.size[0] == target.size[1] == self.size:
+                return target
             target = F.resize(target, [self.size, self.size], interpolation=self.interpolation)
         return image, target
 

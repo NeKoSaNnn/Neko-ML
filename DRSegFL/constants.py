@@ -41,6 +41,9 @@ CONTRIB = "contribution"
 EVAL_BATCH_SIZE = "eval_batch_size"
 
 GRAD_ACCUMULATE = "accumulate_grad"
+SLIDE_INFERENCE = "slide_inference"
+SLIDE_CROP_SIZE = "slide_crop_size"
+SLIDE_STRIDE = "slide_stride"
 
 NUM = "num"
 NUM_WORKERS = "num_workers"
