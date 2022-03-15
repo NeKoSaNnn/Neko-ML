@@ -101,7 +101,8 @@ def DDR_OneLesion_preprocess(img_path: str, target_path: str, img_size: int, is_
     pil_target = Image.open(target_path)
     if is_train:
         pil_trans = T.Compose([
-            T.RandomResizedCrop(img_size),
+            # T.RandomResizedCrop(img_size),
+            T.RandomCrop(img_size),
             T.RandomHorizontalFlip(),
         ])
     else:
@@ -111,7 +112,7 @@ def DDR_OneLesion_preprocess(img_path: str, target_path: str, img_size: int, is_
 
     tensor_trans = T.Compose([
         T.ToTensor(),
-        T.Normalize(mean=[0.4211, 0.2640, 0.1104], std=[0.3133, 0.2094, 0.1256]),
+        # T.Normalize(mean=[0.4211, 0.2640, 0.1104], std=[0.3133, 0.2094, 0.1256]),
     ])
 
     pil_img, pil_target = pil_trans(pil_img, pil_target)
@@ -137,7 +138,7 @@ if __name__ == "__main__":
 
     image_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/image/007-3399-200.jpg"
     target_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train/label/007-3399-200.png"
-    timg, ttarget, pimg, ptarget = DDR_OneLesion_preprocess(image_path, target_path, 224, is_train=True)
+    timg, ttarget, pimg, ptarget = DDR_OneLesion_preprocess(image_path, target_path, 1024, is_train=False)
     pimg.save("./tmp.jpg")
     ptarget.save("./tmp.png")
     print(torch.max(timg))

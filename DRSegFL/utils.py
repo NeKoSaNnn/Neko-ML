@@ -288,6 +288,46 @@ def ignore_background(array, num_classes, ignore=0):
     return array
 
 
+def getContours(img_path: str, new_path: str, threshold=20):
+    img = cv.imread(img_path)
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    h, w = gray.shape
+    ret, binary = cv.threshold(gray, threshold, 255, cv.THRESH_BINARY)
+
+    contours, hierarchy = cv.findContours(binary, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)  # 输出为三个参数
+    # print(len(contours))
+    max_index = 0
+    max_size = 0
+    for i, contour in enumerate(contours):
+        contour = np.array(contour)
+        # print(contour.shape)
+        c = 0
+        for s in contour.shape:
+            c += s
+        if c > max_size:
+            max_size = c
+            max_index = i
+
+    contours = [contours[max_index]]
+    # print("=======")
+    np_contours = np.array(contours)
+    print(np_contours.shape)
+    cv.drawContours(img, contours, 0, (0, 0, 255), 3)
+    cv.imwrite(new_path, img)
+
+    np_contours = np.squeeze(np_contours, axis=None)
+    minx = np.min(np_contours[:, 0])
+    maxx = np.max(np_contours[:, 0])
+    miny = np.min(np_contours[:, 1])
+    maxy = np.max(np_contours[:, 1])
+
+    x_len = 2 * (max(abs(w // 2 - minx), abs(maxx - w // 2)))
+    y_len = 2 * (max(abs(h // 2 - miny), abs(maxy - h // 2)))
+
+    size = max(x_len, y_len)
+    return size, contours
+
+
 def draw_predict(classes: list, img: Image.Image, target_mask: Image.Image, predict_mask, save_path, draw_gt_one_hot=False, ignore_index=-1,
                  verbose=True):
     num_classes = len(classes)

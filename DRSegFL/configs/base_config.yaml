@@ -37,8 +37,8 @@ client:
   gpu: "4"
 
   epoch: 2
-  batch_size: 16
-  eval_batch_size: 16
+  batch_size: 32
+  eval_batch_size: 32
 
   log_interval_iter: 10
 
