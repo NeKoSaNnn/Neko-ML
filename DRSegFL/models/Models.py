@@ -77,28 +77,30 @@ class BaseModel(object):
         self.loss_weight = None
         self.schedule = None
 
-        self.logger.info("Model:{} init ......".format(self.config["model_name"]))
+        self.logger.info("Model:{} init ......".format(self.config[constants.NAME_MODEL]))
 
         self.net_init()
         self.loss_init()
-
-        # default is adam optimizer
-        self.optimizer = torch.optim.Adam(self.net.parameters())
 
         if "optim" in self.config.keys() and self.config["optim"] is not None:
             if self.config["optim"]["type"] == "SGD":
                 self.optimizer = torch.optim.SGD(self.net.parameters(), lr=float(self.config["optim"]["lr"]),
                                                  momentum=float(self.config["optim"]["momentum"]),
                                                  weight_decay=float(self.config["optim"]["weight_decay"]))
+        else:
+            # default is adam optimizer
+            self.optimizer = torch.optim.Adam(self.net.parameters())
 
         if "lr_schedule" in self.config.keys() and self.config["lr_schedule"] is not None:
-            self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
-                                                                       mode=self.config["lr_schedule"]["mode"],
-                                                                       factor=float(self.config["lr_schedule"]["factor"]),
-                                                                       patience=int(self.config["lr_schedule"]["patience"]),
-                                                                       min_lr=float(self.config["lr_schedule"]["min_lr"]))
+            self.schedule = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.config["lr_schedule"]["t_max"],
+                                                                       eta_min=float(self.config["lr_schedule"]["min_lr"]))
+            # self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+            #                                                            mode=self.config["lr_schedule"]["mode"],
+            #                                                            factor=float(self.config["lr_schedule"]["factor"]),
+            #                                                            patience=int(self.config["lr_schedule"]["patience"]),
+            #                                                            min_lr=float(self.config["lr_schedule"]["min_lr"]))
 
-        self.logger.info("Model:{} Construct and Init Completed.".format(self.config["model_name"]))
+        self.logger.info("Model:{} Construct and Init Completed.".format(self.config[constants.NAME_MODEL]))
 
     def __del__(self):
         self.optimizer = None
@@ -145,9 +147,11 @@ class BaseModel(object):
             # self.loss_f.append(smp.losses.SoftCrossEntropyLoss(smooth_factor=0, ignore_index=0))
             # self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights))
         elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
-            self.loss_weight = 1
-            self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=torch.FloatTensor([100.]).to(self.device)))
-            # self.loss_f.append(BinaryFocalLoss())
+            self.loss_weight = [1]
+            # self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=torch.FloatTensor([100.]).to(self.device)))
+            # self.loss_f.append(nn.CrossEntropyLoss(weight=torch.FloatTensor([0.01, 1.]).to(self.device)))
+            # self.loss_f.append(smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE))
+            self.loss_f.append(FocalLoss())
             # self.loss_f.append(smp.losses.FocalLoss(mode=smp.losses.constants.BINARY_MODE, alpha=3, gamma=2))
         else:
             raise AssertionError("dataset error:{}".format(self.dataset_name))
@@ -191,6 +195,8 @@ class BaseModel(object):
         self.net.train()
         ep_losses = []
         for ep in range(1, epoch + 1):
+            self.logger.info("Train -- LocalEpoch:{} -- lr:{}".format(ep, self.optimizer.state_dict()['param_groups'][0]['lr']))
+            self.logger.info("Train -- LocalEpoch:{} -- last_epoch:{}".format(ep, self.schedule.last_epoch))
             iter_losses = 0
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
                 imgs = Variable(imgs.to(self.device, torch.float32))
@@ -199,7 +205,7 @@ class BaseModel(object):
 
                 preds = self.net(imgs)
                 assert preds.shape[1] == self.num_classes, "preds.shape[1]({})!=self.num_classes({})".format(preds.shape[1], self.num_classes)
-                loss = self.cal_loss(preds, targets.float(), weight=self.loss_weight)  # BCE target must be float
+                loss = self.cal_loss(preds, targets, weight=self.loss_weight)
 
                 iter_losses += loss.item()
 
@@ -219,7 +225,7 @@ class BaseModel(object):
             ep_loss = iter_losses / len(self.train_dataloader)
             ep_losses.append(ep_loss)
             if self.schedule is not None:
-                self.schedule.step(ep_loss)
+                self.schedule.step()
         return ep_losses
 
     def eval(self, eval_type):
@@ -253,7 +259,7 @@ class BaseModel(object):
                     preds = inference.whole_inference(imgs, self.net)
 
                 assert preds.shape[1] == self.num_classes, "{}!={}".format(preds.shape[1], self.num_classes)
-                loss = self.cal_loss(preds, targets.float(), weight=self.loss_weight)  # BCE target must be float
+                loss = self.cal_loss(preds, targets, weight=self.loss_weight)
 
                 eval_loss += loss.item()
 

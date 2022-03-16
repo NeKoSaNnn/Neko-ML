@@ -4,6 +4,7 @@
 @author:mjx
 """
 import argparse
+import copy
 import glob
 import os
 import os.path as osp
@@ -19,7 +20,7 @@ root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
 now_dir_name = sys.path[0]  # ...DRSegFL/
 sys.path.append(root_dir_name)
 
-from DRSegFL import utils, constants, preprocess
+from DRSegFL import utils, constants, preprocess, inference
 from DRSegFL.models import Models
 from DRSegFL.logger import Logger
 
@@ -36,6 +37,13 @@ class Predictor(object):
         self.num_classes = config[constants.NUM_CLASSES]
         self.classes = config[constants.CLASSES] if constants.CLASSES in config else None
         self.weights_path = weights_path
+
+        if constants.SLIDE_INFERENCE in config:
+            self.is_slide_inference = True
+            self.slide_crop_size = config[constants.SLIDE_INFERENCE][constants.SLIDE_CROP_SIZE]
+            self.slide_stride = config[constants.SLIDE_INFERENCE][constants.SLIDE_STRIDE]
+        else:
+            self.is_slide_inference = False
 
         os.environ["CUDA_VISIBLE_DEVICES"] = config["gpu"]
 
@@ -108,7 +116,11 @@ class Predictor(object):
         batch_img = batch_img.to(self.device)
 
         with torch.no_grad():
-            output = self.net(batch_img)
+            if self.is_slide_inference:
+                output = inference.slide_inference(batch_img, self.net, self.num_classes, self.slide_crop_size, self.slide_stride)
+            else:
+                output = inference.whole_inference(batch_img, self.net)
+
             if self.num_classes > 1:
                 predict_mask = F.softmax(output, dim=1)[0]
                 predict_mask = F.one_hot(predict_mask.argmax(dim=0), self.num_classes).permute(2, 0, 1).cpu().numpy()
@@ -126,7 +138,10 @@ class Predictor(object):
             utils.draw_predict(self.classes, pil_img, pil_gt, predict_mask, save_path, draw_gt_one_hot=True, ignore_index=0,
                                verbose=not is_batch)  # ignore bg
         elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
-            utils.draw_predict(self.classes, pil_img, pil_gt, predict_mask, save_path, verbose=not is_batch)
+            no_bg_classes = copy.deepcopy(self.classes)
+            if "bg" in no_bg_classes:
+                no_bg_classes.remove("bg")  # ignore background
+            utils.draw_predict(no_bg_classes, pil_img, pil_gt, np.expand_dims(predict_mask[1], 0), save_path, verbose=not is_batch)
         else:
             raise AssertionError("no such dataset:{}".format(self.dataset_name))
 

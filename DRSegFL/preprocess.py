@@ -112,14 +112,12 @@ def DDR_OneLesion_preprocess(img_path: str, target_path: str, img_size: int, is_
 
     tensor_trans = T.Compose([
         T.ToTensor(),
-        # T.Normalize(mean=[0.4211, 0.2640, 0.1104], std=[0.3133, 0.2094, 0.1256]),
+        T.Normalize(mean=[0.4211, 0.2640, 0.1104], std=[0.3133, 0.2094, 0.1256]),
     ])
 
     pil_img, pil_target = pil_trans(pil_img, pil_target)
-
     tensor_img, tensor_target = tensor_trans(pil_img, pil_target)
-    tensor_target = tensor_target.unsqueeze(0)
-
+    # tensor_target = tensor_target.unsqueeze(0)
     return tensor_img, tensor_target, pil_img, pil_target
 
 

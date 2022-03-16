@@ -39,7 +39,7 @@ class GlobalModel(object):
 
         self.weights_path = self.config[constants.PATH_WEIGHTS]
         self.best_weights_path = self.config[constants.PATH_BEST_WEIGHTS]
-        self.tolerate = self.config["tolerate"]
+        self.tolerate = self.config["tolerate"] if "tolerate" in self.config else None
 
         self.global_stats = {constants.TRAIN: {constants.ACC: [], constants.LOSS: []},
                              constants.VALIDATION: {constants.ACC: [], constants.LOSS: []},
@@ -59,7 +59,7 @@ class GlobalModel(object):
         self.global_weights = copy.deepcopy(fed.FedAvg(clients_weights, clients_contribution))
 
     def get_init_weights(self):
-        model = getattr(Models, self.config["model_name"])(self.config, self.logger)
+        model = getattr(Models, self.config[constants.NAME_MODEL])(self.config, self.logger)
         init_weights = copy.deepcopy(model.get_weights())
         self.logger.info("Init Weights Load Completed")
         del model
@@ -92,40 +92,44 @@ class GlobalModel(object):
             "aggre_stats": self.aggre_stats
         }
 
-    def update_tolerate(self):
+    def update_tolerate(self, now_type):
         self.logger.debug("tolerate:{}".format(self.tolerate))
+        if self.tolerate is None:
+            return None
         assert len(self.tolerate.keys()) == 1, "tolerate parameter must just have one"
         tolerate_type = list(self.tolerate.keys())[0]
         assert tolerate_type in [constants.TRAIN, constants.VALIDATION, constants.TEST]
-        tolerate_metric = self.tolerate[tolerate_type][constants.METRIC]
-        tolerate_num = self.tolerate[tolerate_type][constants.NUM]
+        if now_type == tolerate_type:
+            tolerate_metric = self.tolerate[tolerate_type][constants.METRIC]
+            tolerate_num = self.tolerate[tolerate_type][constants.NUM]
 
-        now_stats = {constants.LOSS: self.global_stats[tolerate_type][constants.LOSS][-1],
-                     constants.ACC: self.global_stats[tolerate_type][constants.ACC][-1]}
-        assert tolerate_metric == constants.LOSS or tolerate_metric in now_stats[constants.ACC].keys(), \
-            "metric_tolerate error:{}".format(tolerate_metric)
-        if tolerate_metric == constants.LOSS:
-            preLoss = self.prev[tolerate_type][constants.LOSS]
-            nowLoss = now_stats[constants.LOSS]
-            if preLoss and nowLoss > preLoss:
-                self.now_tolerate += 1
+            now_stats = {constants.LOSS: self.global_stats[tolerate_type][constants.LOSS][-1],
+                         constants.ACC: self.global_stats[tolerate_type][constants.ACC][-1]}
+            assert tolerate_metric == constants.LOSS or tolerate_metric in now_stats[constants.ACC].keys(), \
+                "metric_tolerate error:{}".format(tolerate_metric)
+            if tolerate_metric == constants.LOSS:
+                preLoss = self.prev[tolerate_type][constants.LOSS]
+                nowLoss = now_stats[constants.LOSS]
+                if preLoss and nowLoss > preLoss:
+                    self.now_tolerate += 1
+                else:
+                    self.now_tolerate = 0
             else:
-                self.now_tolerate = 0
-        else:
-            preAcc = self.prev[tolerate_type][constants.ACC]
-            nowAcc = now_stats[constants.ACC]
-            if preAcc and nowAcc[tolerate_metric] < preAcc[tolerate_metric]:
-                self.now_tolerate += 1
-            else:
-                self.now_tolerate = 0
+                preAcc = self.prev[tolerate_type][constants.ACC]
+                nowAcc = now_stats[constants.ACC]
+                if preAcc and nowAcc[tolerate_metric] < preAcc[tolerate_metric]:
+                    self.now_tolerate += 1
+                else:
+                    self.now_tolerate = 0
 
-        self.prev[tolerate_type][constants.LOSS] = self.global_stats[tolerate_type][constants.LOSS][-1]
-        self.prev[tolerate_type][constants.ACC] = self.global_stats[tolerate_type][constants.ACC][-1]
+            self.prev[tolerate_type][constants.LOSS] = self.global_stats[tolerate_type][constants.LOSS][-1]
+            self.prev[tolerate_type][constants.ACC] = self.global_stats[tolerate_type][constants.ACC][-1]
 
-        if self.now_tolerate >= tolerate_num > 0:
-            self.logger.info("{}(metric:{}) Tending To Convergence.".format(tolerate_type, tolerate_metric))
-            return True
-        return False
+            if self.now_tolerate >= tolerate_num > 0:
+                self.logger.info("{}(metric:{}) Tending To Convergence.".format(tolerate_type, tolerate_metric))
+                return True
+            return False
+        return None
 
     def update_best(self, best_type: str):
         """
@@ -134,11 +138,11 @@ class GlobalModel(object):
         :return:
         """
         self.logger.debug("best_type:{}".format(best_type))
-        assert self.now_global_epoch == len(self.global_stats[best_type][constants.LOSS])
+        # assert self.now_global_epoch == len(self.global_stats[best_type][constants.LOSS])
         assert best_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], "best_type:{} error".format(best_type)
         now_global_loss = self.global_stats[best_type][constants.LOSS][-1]
         now_global_acc = self.global_stats[best_type][constants.ACC][-1]
-        global_metric = self.config[constants.GLOBAL_EVAL][best_type]
+        global_metric = self.config[constants.GLOBAL_EVAL][best_type][constants.METRIC]
         # init
         if self.best[best_type][constants.ACC] is None:
             self.best[best_type][constants.ACC] = now_global_acc
@@ -406,8 +410,14 @@ class FederatedServer(object):
                     now_weights_pickle = utils.obj2pickle(self.global_model.global_weights,
                                                           self.global_model.weights_path)  # weights path
                     emit_data = {"now_global_epoch": self.global_model.now_global_epoch,
-                                 "now_weights": now_weights_pickle,
-                                 "eval_type": list(self.GLOBAL_EVAL.keys())}
+                                 "now_weights": now_weights_pickle}
+                    if constants.TRAIN in self.GLOBAL_EVAL:
+                        emit_data[constants.TRAIN] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.TRAIN][constants.NUM] == 0
+                    if constants.VALIDATION in self.GLOBAL_EVAL:
+                        emit_data[constants.VALIDATION] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.VALIDATION][
+                            constants.NUM] == 0
+                    if constants.TEST in self.GLOBAL_EVAL:
+                        emit_data[constants.TEST] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.TEST][constants.NUM] == 0
 
                     self.client_eval_datas = []  # empty eval datas for next eval epoch
                     for sid in self.ready_client_sids:
@@ -427,16 +437,23 @@ class FederatedServer(object):
                 if constants.TRAIN in global_eval_types:
                     self._global_eval(constants.TRAIN)
                     self.global_model.update_best(constants.TRAIN)
+                    tolerate_res = self.global_model.update_tolerate(constants.TRAIN)
+                    if isinstance(tolerate_res, bool):
+                        self.fin = tolerate_res
 
                 if constants.VALIDATION in global_eval_types:
                     self._global_eval(constants.VALIDATION)
                     self.global_model.update_best(constants.VALIDATION)
+                    tolerate_res = self.global_model.update_tolerate(constants.VALIDATION)
+                    if isinstance(tolerate_res, bool):
+                        self.fin = tolerate_res
 
                 if constants.TEST in global_eval_types:
                     self._global_eval(constants.TEST)
                     self.global_model.update_best(constants.TEST)
-
-                self.fin = self.global_model.update_tolerate()
+                    tolerate_res = self.global_model.update_tolerate(constants.TEST)
+                    if isinstance(tolerate_res, bool):
+                        self.fin = tolerate_res
 
                 self.global_model.save_ckpt(self.SAVE_CKPT_EPOCH)
 

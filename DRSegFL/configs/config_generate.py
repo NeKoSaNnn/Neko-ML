@@ -177,13 +177,14 @@ def generate(base_config_path="./base_config.yaml", num_clients=None, logger=Non
 
     for i in range(config[constants.SERVER][constants.NUM_CLIENTS]):
         with open(client_configs_path[i], "w+") as f:
-            config[constants.CLIENT][constants.PATH_LOGFILE] = osp.join(logfile_dir,
-                                                                        "client_{}.log".format(i + 1))
-            config[constants.CLIENT][constants.PATH_WEIGHTS] = osp.join(weights_dir,
-                                                                        "local_c{}.pkl".format(i + 1))
-            config[constants.CLIENT][constants.TRAIN] = iid_train_dataset_txt_path[i]
-            config[constants.CLIENT][constants.VALIDATION] = val_dataset_txt_path
-            config[constants.CLIENT][constants.TEST] = test_dataset_txt_path
+            config[constants.CLIENT][constants.PATH_LOGFILE] = osp.join(logfile_dir, "client_{}.log".format(i + 1))
+            config[constants.CLIENT][constants.PATH_WEIGHTS] = osp.join(weights_dir, "local_c{}.pkl".format(i + 1))
+            if iid_train_dataset_txt_path[i] is not None:
+                config[constants.CLIENT][constants.TRAIN] = iid_train_dataset_txt_path[i]
+            if val_dataset_txt_path is not None:
+                config[constants.CLIENT][constants.VALIDATION] = val_dataset_txt_path
+            if test_dataset_txt_path is not None:
+                config[constants.CLIENT][constants.TEST] = test_dataset_txt_path
             json.dump(config[constants.CLIENT], f, indent=4)
 
     logger.info("Generate completed ~")

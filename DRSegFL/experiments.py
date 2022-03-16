@@ -286,57 +286,78 @@ dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segme
 lesions = ["EX", "HE", "MA", "SE"]
 _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
 
-for lesion in lesions:
-    root_dir = osp.join(dataset_dir, lesion)
-    for _type in _types:
-        dir = osp.join(root_dir, _type)
-        img_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "crop", "image", "*.jpg")))
-        label_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "crop", "label", lesion, "*.tif")))
-        img_dir = osp.join(dir, "image")
-        label_dir = osp.join(dir, "label")
-        os.makedirs(img_dir, exist_ok=True)
-        os.makedirs(label_dir, exist_ok=True)
-        assert len(img_paths) == len(label_paths)
-
-        ignore = []
-        for i, label_path in tqdm(enumerate(label_paths), desc="label_{}_{}".format(lesion, _type)):
-            if _type != constants.TRAIN:
-                label = Image.open(label_path).convert("1")
-                np_label = np.asarray(label)
-                np_label = np.where(np_label > 0, 1, 0)
-                if np.sum(np_label) == 0:
-                    ignore.append(i)
-                    continue
-
-            label = cv.imread(label_path, cv.IMREAD_GRAYSCALE)
-            label[label > 0] = 1
-            pil_label = Image.fromarray(label.astype(np.uint8), mode="P")
-            pil_trans = T.Compose([
-                # T.CenterCrop(min(pil_label.size)),
-                T.Resize(1024, interpolation=transforms.InterpolationMode.BICUBIC)])
-            pil_label, _ = pil_trans(pil_label)
-            color_map = imgviz.label_colormap()
-            pil_label.putpalette(color_map)
-            pil_label.save(osp.join(label_dir, osp.basename(label_path).rsplit(".", 1)[0] + ".png"))
-
-        for i, img_path in tqdm(enumerate(img_paths), desc="image_{}_{}".format(lesion, _type)):
-            if _type != constants.TRAIN and i in ignore:
-                continue
-            pil_img = Image.open(img_path)
-            pil_trans = T.Compose([
-                # T.CenterCrop(min(pil_img.size)),
-                T.Resize(1024, interpolation=transforms.InterpolationMode.BICUBIC)])
-            pil_img, _ = pil_trans(pil_img)
-            pil_img.save(osp.join(img_dir, osp.basename(img_path)))
-
 # for lesion in lesions:
 #     root_dir = osp.join(dataset_dir, lesion)
 #     for _type in _types:
-#         dir = osp.join(dataset_dir, lesion, _type)
-#         img_paths = sorted(glob.glob(osp.join(dir, "image", "*.jpg")))
-#         label_paths = sorted(glob.glob(osp.join(dir, "label", "*.png")))
-#         print("{}_{}_image={}".format(lesion, _type, len(img_paths)))
-#         print("{}_{}_label={}".format(lesion, _type, len(label_paths)))
+#         dir = osp.join(root_dir, _type)
+#         img_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "crop", "image", "*.jpg")))
+#         label_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "crop", "label", lesion, "*.tif")))
+#         img_dir = osp.join(dir, "image")
+#         label_dir = osp.join(dir, "label")
+#         os.makedirs(img_dir, exist_ok=True)
+#         os.makedirs(label_dir, exist_ok=True)
+#         assert len(img_paths) == len(label_paths)
+#
+#         ignore = []
+#         for i, label_path in tqdm(enumerate(label_paths), desc="label_{}_{}".format(lesion, _type)):
+#             label = Image.open(label_path).convert("1")
+#             np_label = np.asarray(label)
+#             np_label = np.where(np_label > 0, 1, 0)
+#             if np.sum(np_label) == 0:
+#                 ignore.append(i)
+#                 continue
+#
+#             label = cv.imread(label_path, cv.IMREAD_GRAYSCALE)
+#             label[label > 0] = 1
+#             pil_label = Image.fromarray(label.astype(np.uint8), mode="P")
+#             pil_trans = T.Compose([
+#                 # T.CenterCrop(min(pil_label.size)),
+#                 T.Resize(1024, interpolation=transforms.InterpolationMode.BICUBIC)])
+#             pil_label, _ = pil_trans(pil_label)
+#             color_map = imgviz.label_colormap()
+#             pil_label.putpalette(color_map)
+#             pil_label.save(osp.join(label_dir, osp.basename(label_path).rsplit(".", 1)[0] + ".png"))
+#
+#         for i, img_path in tqdm(enumerate(img_paths), desc="image_{}_{}".format(lesion, _type)):
+#             if i in ignore:
+#                 continue
+#             pil_img = Image.open(img_path)
+#             pil_trans = T.Compose([
+#                 # T.CenterCrop(min(pil_img.size)),
+#                 T.Resize(1024, interpolation=transforms.InterpolationMode.BICUBIC)])
+#             pil_img, _ = pil_trans(pil_img)
+#             pil_img.save(osp.join(img_dir, osp.basename(img_path)))
+#
+
+
+for lesion in lesions:
+    root_dir = osp.join(dataset_dir, lesion)
+    for _type in _types:
+        dir = osp.join(dataset_dir, lesion, _type)
+        img_paths = sorted(glob.glob(osp.join(dir, "image", "*.jpg")))
+        label_paths = sorted(glob.glob(osp.join(dir, "label", "*.png")))
+        print("{}_{}_image={}".format(lesion, _type, len(img_paths)))
+        print("{}_{}_label={}".format(lesion, _type, len(label_paths)))
+
+# val merge to test
+# dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
+#
+# lesions = ["EX", "HE", "MA", "SE"]
+# _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
+# for lesion in lesions:
+#     root_dir = osp.join(dataset_dir, lesion)
+#     test_dir = osp.join(root_dir, constants.TEST)
+#     val_dir = osp.join(root_dir, constants.VALIDATION)
+#
+#     val_image_dir = osp.join(root_dir, constants.VALIDATION, "image")
+#     val_label_dir = osp.join(root_dir, constants.VALIDATION, "label")
+#     test_image_dir = osp.join(root_dir, constants.TEST, "image")
+#     test_label_dir = osp.join(root_dir, constants.TEST, "label")
+#
+#     for val_image in glob.glob(osp.join(val_image_dir, "*.jpg")):
+#         shutil.move(val_image, test_image_dir)
+#     for val_label in glob.glob(osp.join(val_label_dir, "*.png")):
+#         shutil.move(val_label, test_label_dir)
 
 # dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
 #

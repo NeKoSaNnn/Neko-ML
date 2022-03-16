@@ -235,34 +235,31 @@ class FederatedClient(object):
             self.local_model.set_weights(global_weights)
             self.logger.info("Update Local Weights Completed.")
 
-            eval_type = data["eval_type"]
-
             emit_data = {}
 
-            self.logger.info("Eval [{}] Start ...".format(",".join(eval_type)))
-            if constants.TRAIN in eval_type:
+            if constants.TRAIN in data and data[constants.TRAIN]:
+                self.logger.info("Eval [{}] Start ...".format(constants.TRAIN))
                 train_loss, train_acc = self.local_model.eval(constants.TRAIN)
-                self.logger.info(
-                    "Train with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
-                        now_global_epoch, sid, train_loss, " , ".join(f"{k} : {v:.4f}" for k, v in train_acc.items())))
+                self.logger.info("Train with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
+                    now_global_epoch, sid, train_loss, " , ".join(f"{k} : {v:.4f}" for k, v in train_acc.items())))
                 emit_data[constants.TRAIN] = {
                     constants.LOSS: train_loss, constants.ACC: train_acc,
                     constants.CONTRIB: self.local_model.get_contribution(constants.TRAIN)}
 
-            if constants.VALIDATION in eval_type:
+            if constants.VALIDATION in data and data[constants.VALIDATION]:
+                self.logger.info("Eval [{}] Start ...".format(constants.VALIDATION))
                 val_loss, val_acc = self.local_model.eval(constants.VALIDATION)
-                self.logger.info(
-                    "Val with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
-                        now_global_epoch, sid, val_loss, " , ".join(f"{k} : {v:.4f}" for k, v in val_acc.items())))
+                self.logger.info("Val with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
+                    now_global_epoch, sid, val_loss, " , ".join(f"{k} : {v:.4f}" for k, v in val_acc.items())))
                 emit_data[constants.VALIDATION] = {
                     constants.LOSS: val_loss, constants.ACC: val_acc,
                     constants.CONTRIB: self.local_model.get_contribution(constants.VALIDATION)}
 
-            if constants.TEST in eval_type:
+            if constants.TEST in data and data[constants.TEST]:
+                self.logger.info("Eval [{}] Start ...".format(constants.TEST))
                 test_loss, test_acc = self.local_model.eval(constants.TEST)
-                self.logger.info(
-                    "Test with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
-                        now_global_epoch, sid, test_loss, " , ".join(f"{k} : {v:.4f}" for k, v in test_acc.items())))
+                self.logger.info("Test with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
+                    now_global_epoch, sid, test_loss, " , ".join(f"{k} : {v:.4f}" for k, v in test_acc.items())))
                 emit_data[constants.TEST] = {
                     constants.LOSS: test_loss, constants.ACC: test_acc,
                     constants.CONTRIB: self.local_model.get_contribution(constants.TEST)}

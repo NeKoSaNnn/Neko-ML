@@ -3,7 +3,7 @@ model:
   model_name: res_unet
   dataset_name: DDR_EX
   img_size: 1024
-  data_augment: True
+  data_augment: False
 
   optim:
     type: "SGD"
@@ -12,20 +12,21 @@ model:
     weight_decay: 0.0005
 
   lr_schedule:
-    mode: "min"
-    factor: 0.1
-    patience: 10
-    min_lr: 1e-5
+#    mode: "min"
+#    factor: 0.1
+#    patience: 10
+    min_lr: 0.0001
+    t_max: 1000
 
   dataset_dir:
     train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train"
-    val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/val"
     test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/test"
   num_workers: 4
 
   num_channels: 3
-  num_classes: 1
+  num_classes: 2
   classes:
+    - "bg"
     - "EX"
 
   slide_inference:
@@ -36,9 +37,9 @@ model:
 client:
   gpu: "4"
 
-  epoch: 2
-  batch_size: 16
-  eval_batch_size: 16
+  epoch: 1
+  batch_size: 8
+  eval_batch_size: 8
 
   log_interval_iter: 10
 
@@ -50,22 +51,24 @@ server:
   port: 9191
   gpu: "5"
 
-  epoch: 200
+  epoch: 1000
   num_clients: 2
 
   global_eval:
     # {type : metric to best}
-    train: "loss"
-    val: "mIoU"
-    test: "mIoU"
+    train:
+      num: 100
+      metric: "loss"
+    test:
+      num: 100
+      metric: "mIoU"
 
   local_eval:
     # {type : global ep interval to eval}
-    val: 5
-    test: 5
+    test: 50
 
   tolerate:
-    val:
+    test:
       num: 5
       metric: "mIoU"
 
