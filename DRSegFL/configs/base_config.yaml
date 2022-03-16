@@ -1,9 +1,9 @@
 #model
 model:
   model_name: res_unet
-  dataset_name: DDR_SE
+  dataset_name: DDR_EX
   img_size: 1024
-  data_augment: False
+  data_augment: True
 
   optim:
     type: "SGD"
@@ -16,18 +16,18 @@ model:
 #    factor: 0.1
 #    patience: 10
     min_lr: 0.0001
-    t_max: 1000
+    t_max: 5000
 
   dataset_dir:
-    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/SE/train"
-    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/SE/test"
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/test"
   num_workers: 4
 
   num_channels: 3
   num_classes: 2
   classes:
     - "bg"
-    - "SE"
+    - "EX"
 
   slide_inference:
     slide_crop_size: 224
@@ -51,27 +51,27 @@ server:
   port: 9191
   gpu: "5"
 
-  epoch: 1000
+  epoch: 5000
   num_clients: 2
 
   global_eval:
     # {type : metric to best}
     train:
-      num: 100
-      metric: "loss"
+      num: 500
+      metric: "mIoU"
     test:
-      num: 100
+      num: 500
       metric: "mIoU"
 
   local_eval:
     # {type : global ep interval to eval}
-    test: 50
+    test: 250
 
   tolerate:
     test:
-      num: 5
+      num: 10
       metric: "mIoU"
 
   log_interval_iter: 10
-  save_ckpt_epoch: 40
+  save_ckpt_epoch: 250
   per_client_max_loadavg: 0.8

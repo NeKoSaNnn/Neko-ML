@@ -281,10 +281,10 @@ import torch.nn as nn
 # AA.info("sds")
 
 
-dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
-
-lesions = ["EX", "HE", "MA", "SE"]
-_types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
+# dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
+#
+# lesions = ["EX", "HE", "MA", "SE"]
+# _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
 
 # for lesion in lesions:
 #     root_dir = osp.join(dataset_dir, lesion)
@@ -330,14 +330,14 @@ _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
 #
 
 
-for lesion in lesions:
-    root_dir = osp.join(dataset_dir, lesion)
-    for _type in _types:
-        dir = osp.join(dataset_dir, lesion, _type)
-        img_paths = sorted(glob.glob(osp.join(dir, "image", "*.jpg")))
-        label_paths = sorted(glob.glob(osp.join(dir, "label", "*.png")))
-        print("{}_{}_image={}".format(lesion, _type, len(img_paths)))
-        print("{}_{}_label={}".format(lesion, _type, len(label_paths)))
+# for lesion in lesions:
+#     root_dir = osp.join(dataset_dir, lesion)
+#     for _type in _types:
+#         dir = osp.join(dataset_dir, lesion, _type)
+#         img_paths = sorted(glob.glob(osp.join(dir, "image", "*.jpg")))
+#         label_paths = sorted(glob.glob(osp.join(dir, "label", "*.png")))
+#         print("{}_{}_image={}".format(lesion, _type, len(img_paths)))
+#         print("{}_{}_label={}".format(lesion, _type, len(label_paths)))
 
 # val merge to test
 # dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
@@ -359,52 +359,94 @@ for lesion in lesions:
 #     for val_label in glob.glob(osp.join(val_label_dir, "*.png")):
 #         shutil.move(val_label, test_label_dir)
 
-# dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
-#
-# lesions = ["EX", "HE", "MA", "SE"]
-# _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
-#
-# for lesion in lesions:
-#     for _type in _types:
-#         contour_dir = osp.join(dataset_dir, _type, "contour")
-#         crop_dir = osp.join(dataset_dir, _type, "crop")
-#
-#         img_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "image", "*.jpg")))
-#         label_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "label", lesion, "*.tif")))
-#
-#         contour_img_dir = osp.join(contour_dir, "image")
-#         contour_label_dir = osp.join(contour_dir, "label", lesion)
-#
-#         crop_img_dir = osp.join(crop_dir, "image")
-#         crop_label_dir = osp.join(crop_dir, "label", lesion)
-#
-#         os.makedirs(contour_img_dir, exist_ok=True)
-#         os.makedirs(contour_label_dir, exist_ok=True)
-#         os.makedirs(crop_img_dir, exist_ok=True)
-#         os.makedirs(crop_label_dir, exist_ok=True)
-#
-#         assert len(img_paths) == len(label_paths)
-#
-#         for i, img_path in tqdm(enumerate(img_paths), desc="{}_{}".format(lesion, _type)):
-#             contour_img_path = osp.join(contour_img_dir, osp.basename(img_path))
-#             crop_img_path = osp.join(crop_img_dir, osp.basename(img_path))
-#             size, contours = utils.getContours(img_path, contour_img_path, 30)
-#
-#             pil_trans = T.Compose([T.CenterCrop(size)])
-#
-#             label_path = label_paths[i]
-#             contour_label_path = osp.join(contour_label_dir, osp.basename(label_path))
-#             crop_label_path = osp.join(crop_label_dir, osp.basename(label_path))
-#
-#             label = cv.imread(label_path)
-#             cv.drawContours(label, contours, -1, (0, 0, 255), 3)
-#             cv.imwrite(contour_label_path, label)
-#
-#             pil_img = Image.open(img_path)
-#             pil_label = Image.open(label_path)
-#             pil_img, pil_label = pil_trans(pil_img, pil_label)
-#             pil_img.save(crop_img_path)
-#             pil_label.save(crop_label_path)
+dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
+
+lesions = ["EX", "HE", "MA", "SE"]
+_types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
+
+for lesion in lesions:
+    for _type in _types:
+        contour_dir = osp.join(dataset_dir, _type, "contour")
+        crop_dir = osp.join(dataset_dir, _type, "crop")
+        crop_resize_dir = osp.join(dataset_dir, _type, "crop_resize")
+
+        img_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "image", "*.jpg")))
+        label_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "label", lesion, "*.tif")))
+        annotation_paths = sorted(glob.glob(osp.join(dataset_dir, _type, "annotation", "*.png")))
+
+        assert len(img_paths) == len(label_paths) == len(annotation_paths)
+
+        contour_img_dir = osp.join(contour_dir, "image")
+        contour_label_dir = osp.join(contour_dir, "label", lesion)
+        contour_annotation_dir = osp.join(contour_dir, "annotation")
+
+        crop_img_dir = osp.join(crop_dir, "image")
+        crop_label_dir = osp.join(crop_dir, "label", lesion)
+        crop_annotation_dir = osp.join(crop_dir, "annotation")
+
+        crop_resize_img_dir = osp.join(crop_resize_dir, "image")
+        crop_resize_label_dir = osp.join(crop_resize_dir, "label", lesion)
+        crop_resize_annotation_dir = osp.join(crop_resize_dir, "annotation")
+
+        os.makedirs(contour_img_dir, exist_ok=True)
+        os.makedirs(contour_label_dir, exist_ok=True)
+        os.makedirs(contour_annotation_dir, exist_ok=True)
+
+        os.makedirs(crop_img_dir, exist_ok=True)
+        os.makedirs(crop_label_dir, exist_ok=True)
+        os.makedirs(crop_annotation_dir, exist_ok=True)
+
+        os.makedirs(crop_resize_img_dir, exist_ok=True)
+        os.makedirs(crop_resize_label_dir, exist_ok=True)
+        os.makedirs(crop_resize_annotation_dir, exist_ok=True)
+
+        for i, img_path in tqdm(enumerate(img_paths), desc="{}_{}".format(_type, lesion)):
+            contour_img_path = osp.join(contour_img_dir, osp.basename(img_path))
+            crop_img_path = osp.join(crop_img_dir, osp.basename(img_path))
+            crop_resize_img_path = osp.join(crop_resize_img_dir, osp.basename(img_path))
+
+            size, contours = utils.getContours(img_path, contour_img_path, 30)
+
+            crop_trans = T.CenterCrop(size)
+            resize_trans = T.Resize(1024, interpolation=transforms.InterpolationMode.BICUBIC)
+
+            label_path = label_paths[i]
+            annotation_path = annotation_paths[i]
+
+            contour_label_path = osp.join(contour_label_dir, osp.basename(label_path))
+            contour_annotation_path = osp.join(contour_annotation_dir, osp.basename(annotation_path))
+
+            crop_label_path = osp.join(crop_label_dir, osp.basename(label_path))
+            crop_annotation_path = osp.join(crop_annotation_dir, osp.basename(annotation_path))
+
+            crop_resize_label_path = osp.join(crop_resize_label_dir, osp.basename(label_path))
+            crop_resize_annotation_path = osp.join(crop_resize_annotation_dir, osp.basename(annotation_path))
+
+            label = cv.imread(label_path)
+            cv.drawContours(label, contours, -1, (0, 0, 255), 3)
+            cv.imwrite(contour_label_path, label)
+
+            annotation = cv.imread(annotation_path)
+            cv.drawContours(annotation, contours, -1, (0, 0, 255), 3)
+            cv.imwrite(contour_annotation_path, annotation)
+
+            pil_img = Image.open(img_path)
+            pil_label = Image.open(label_path)
+            pil_annotation = Image.open(annotation_path)
+
+            crop_img, crop_label = crop_trans(pil_img, pil_label)
+            crop_annotation, _ = crop_trans(pil_annotation)
+
+            crop_resize_img, crop_resize_label = resize_trans(crop_img, crop_label)
+            crop_resize_annotation, _ = resize_trans(crop_annotation)
+
+            crop_img.save(crop_img_path)
+            crop_label.save(crop_label_path)
+            crop_annotation.save(crop_annotation_path)
+
+            crop_resize_img.save(crop_resize_img_path)
+            crop_resize_label.save(crop_resize_label_path)
+            crop_resize_annotation.save(crop_resize_annotation_path)
 
 # "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image/007-1831-100.jpg"
 # "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image/007-1889-100.jpg"
