@@ -162,6 +162,7 @@ if __name__ == "__main__":
             num = int(input("predict num:"))
             predictor.batch_reference(predict_img_dir, ground_truth_dir, num=num)
         logger.info("predict over.")
+        exit(0)
     else:
         predict_img_path = input("input predict_img_path:").strip()
         ground_truth_path = input("input ground_truth_path:").strip()

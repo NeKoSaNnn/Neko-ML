@@ -1,7 +1,7 @@
 #model
 model:
   model_name: res_unet
-  dataset_name: DDR_EX
+  dataset_name: DDR_SE
   img_size: 1024
   data_augment: False
 
@@ -19,15 +19,15 @@ model:
     t_max: 1000
 
   dataset_dir:
-    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train"
-    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/test"
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/SE/train"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/SE/test"
   num_workers: 4
 
   num_channels: 3
   num_classes: 2
   classes:
     - "bg"
-    - "EX"
+    - "SE"
 
   slide_inference:
     slide_crop_size: 224
