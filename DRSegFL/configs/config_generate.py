@@ -103,6 +103,7 @@ def generate(base_config_path="./base_config.yaml", num_clients=None, logger=Non
     logfile_dir = osp.join(sub_root_dir_name, "logs",
                            config[constants.MODEL][constants.NAME_MODEL],
                            config[constants.MODEL][constants.NAME_DATASET], now_day, now_time)
+    tbX_logfile_dir = osp.join(logfile_dir, "tbX")
     weights_dir = osp.join(sub_root_dir_name, "saves", "weights",
                            config[constants.MODEL][constants.NAME_MODEL],
                            config[constants.MODEL][constants.NAME_DATASET], now_day, now_time)
@@ -114,6 +115,7 @@ def generate(base_config_path="./base_config.yaml", num_clients=None, logger=Non
 
     os.makedirs(config_dir, exist_ok=True)
     os.makedirs(logfile_dir, exist_ok=True)
+    os.makedirs(tbX_logfile_dir, exist_ok=True)
     os.makedirs(weights_dir, exist_ok=True)
     os.makedirs(best_weights_dir, exist_ok=True)
     os.makedirs(generate_dataset_txt_dir, exist_ok=True)
@@ -163,6 +165,8 @@ def generate(base_config_path="./base_config.yaml", num_clients=None, logger=Non
 
     with open(server_config_path, "w+") as f:
         config[constants.SERVER][constants.PATH_LOGFILE] = osp.join(logfile_dir, "server.log")
+        config[constants.SERVER][constants.DIR_TBX_LOGFILE] = osp.join(tbX_logfile_dir, "server")
+        os.makedirs(config[constants.SERVER][constants.DIR_TBX_LOGFILE])
         config[constants.SERVER][constants.PATH_WEIGHTS] = osp.join(weights_dir, "fed_c{}_ep{}.pkl".format(
             config[constants.SERVER][constants.NUM_CLIENTS], config[constants.SERVER][constants.EPOCH]))
         config[constants.SERVER][constants.DIR_PREDICT] = predict_dir
@@ -178,6 +182,8 @@ def generate(base_config_path="./base_config.yaml", num_clients=None, logger=Non
     for i in range(config[constants.SERVER][constants.NUM_CLIENTS]):
         with open(client_configs_path[i], "w+") as f:
             config[constants.CLIENT][constants.PATH_LOGFILE] = osp.join(logfile_dir, "client_{}.log".format(i + 1))
+            config[constants.CLIENT][constants.DIR_TBX_LOGFILE] = osp.join(tbX_logfile_dir, "client_{}".format(i + 1))
+            os.makedirs(config[constants.CLIENT][constants.DIR_TBX_LOGFILE])
             config[constants.CLIENT][constants.PATH_WEIGHTS] = osp.join(weights_dir, "local_c{}.pkl".format(i + 1))
             if iid_train_dataset_txt_path[i] is not None:
                 config[constants.CLIENT][constants.TRAIN] = iid_train_dataset_txt_path[i]

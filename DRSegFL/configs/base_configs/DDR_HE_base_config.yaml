@@ -35,7 +35,7 @@ model:
 
 #client
 client:
-  gpu: "4"
+  gpu: "3"
 
   epoch: 1
   batch_size: 8
@@ -48,7 +48,7 @@ client:
 #server
 server:
   host: "127.0.0.1"
-  port: 9191
+  port: 9192
   gpu: "5"
 
   epoch: 5000

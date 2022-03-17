@@ -7,11 +7,11 @@ import argparse
 import logging
 import os
 import os.path as osp
-import random
 import sys
 
 import numpy as np
 import socketio
+from tensorboardX import SummaryWriter
 
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
 now_dir_name = sys.path[0]  # ...DRSegFL/
@@ -51,8 +51,8 @@ class LocalModel(object):
         else:
             raise TypeError
 
-    def train(self, local_epoch):
-        losses = self.model.train(local_epoch)
+    def train(self, local_epoch, tbX=None):
+        losses = self.model.train(local_epoch, tbX)
         return self.get_weights(), np.mean(losses)
 
     def eval(self, eval_type):
@@ -69,10 +69,14 @@ class FederatedClient(object):
         os.environ["CUDA_VISIBLE_DEVICES"] = self.client_config["gpu"]
 
         self.local_epoch = self.client_config[constants.EPOCH]
+        self.logfile_path = self.client_config[constants.PATH_LOGFILE]
+
+        tbX_dir = self.client_config[constants.DIR_TBX_LOGFILE]
+        self.tbX = SummaryWriter(logdir=tbX_dir)
 
         self.logger = logging.getLogger(constants.CLIENT)
         log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
-        fh = logging.FileHandler(self.client_config[constants.PATH_LOGFILE])
+        fh = logging.FileHandler(self.logfile_path)
         fh.setLevel(logging.DEBUG) if DEBUG else fh.setLevel(logging.INFO)
         fh.setFormatter(log_formatter)
         self.logger.addHandler(fh)
@@ -103,6 +107,30 @@ class FederatedClient(object):
         self.logger.info("Client Start {}:{}".format(self.server_host, self.server_port))
         self.socketio.emit("client_wakeup")
         self.socketio.wait()
+
+    def _local_eval(self, eval_type, emit_data, now_global_epoch, sid):
+        assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST]
+        self.logger.info("Local Eval [{}] Start ...".format(eval_type))
+        loss, acc = self.local_model.eval(eval_type)
+        emit_data[eval_type] = {
+            constants.LOSS: loss, constants.ACC: acc,
+            constants.CONTRIB: self.local_model.get_contribution(eval_type)}
+        self.logger.info("Eval-{} with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] --  Loss:{:.4f} , {}".
+                         format(eval_type, now_global_epoch, sid, loss, " , ".join(f"{k} : {v:.4f}" for k, v in acc.items())))
+        self.tbX.add_scalar("local_eval/{}_loss".format(eval_type), loss, now_global_epoch)
+        self.tbX.add_scalars("local_eval/{}_acc".format(eval_type), acc, now_global_epoch)
+
+    def _global_eval(self, eval_type, emit_data, now_global_epoch, sid):
+        assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST]
+        self.logger.info("Global Eval [{}] Start ...".format(eval_type))
+        loss, acc = self.local_model.eval(eval_type)
+        emit_data[eval_type] = {
+            constants.LOSS: loss, constants.ACC: acc,
+            constants.CONTRIB: self.local_model.get_contribution(eval_type)}
+        self.logger.info("Eval-{} with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}"
+                         .format(eval_type, now_global_epoch, sid, loss, " , ".join(f"{k} : {v:.4f}" for k, v in acc.items())))
+        self.tbX.add_scalar("global_eval/{}_loss".format(eval_type), loss, now_global_epoch)
+        self.tbX.add_scalars("global_eval/{}_acc".format(eval_type), acc, now_global_epoch)
 
     def register_handles(self):
         @self.socketio.on("connect")
@@ -174,7 +202,7 @@ class FederatedClient(object):
 
             # train local_epoch
             self.logger.info("GlobalEpoch:{} -- Local Train Start ...".format(now_global_epoch))
-            weights, loss = self.local_model.train(self.local_epoch)
+            weights, loss = self.local_model.train(self.local_epoch, self.tbX)
 
             pickle_weights = utils.obj2pickle(weights, self.local_model.weights_path)  # pickle weights path
 
@@ -190,28 +218,13 @@ class FederatedClient(object):
                 "Train with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- AvgLoss:{:.4f}".format(now_global_epoch, sid, loss))
 
             if constants.TRAIN in data and data[constants.TRAIN]:
-                train_loss, train_acc = self.local_model.eval(constants.TRAIN)
-                emit_data[constants.TRAIN] = {
-                    constants.LOSS: train_loss, constants.ACC: train_acc,
-                    constants.CONTRIB: self.local_model.get_contribution(constants.TRAIN)}
-                self.logger.info("Eval-Train with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] --  Loss:{:.4f} , {}".format(
-                    now_global_epoch, sid, train_loss, " , ".join(f"{k} : {v:.4f}" for k, v in train_acc.items())))
+                self._local_eval(constants.TRAIN, emit_data, now_global_epoch, sid)
 
             if constants.VALIDATION in data and data[constants.VALIDATION]:
-                val_loss, val_acc = self.local_model.eval(constants.VALIDATION)
-                emit_data[constants.VALIDATION] = {
-                    constants.LOSS: val_loss, constants.ACC: val_acc,
-                    constants.CONTRIB: self.local_model.get_contribution(constants.VALIDATION)}
-                self.logger.info("Eval-Val with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] --  Loss:{:.4f} , {}".format(
-                    now_global_epoch, sid, val_loss, " , ".join(f"{k} : {v:.4f}" for k, v in val_acc.items())))
+                self._local_eval(constants.VALIDATION, emit_data, now_global_epoch, sid)
 
             if constants.TEST in data and data[constants.TEST]:
-                test_loss, test_acc = self.local_model.eval(constants.TEST)
-                emit_data[constants.TEST] = {
-                    constants.LOSS: test_loss, constants.ACC: test_acc,
-                    constants.CONTRIB: self.local_model.get_contribution(constants.TEST)}
-                self.logger.info("Eval-Test with_local_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
-                    now_global_epoch, sid, test_loss, " , ".join(f"{k} : {v:.4f}" for k, v in test_acc.items())))
+                self._local_eval(constants.TEST, emit_data, now_global_epoch, sid)
 
             self.logger.info("Local Update Complete.")
             self.logger.info("Emit Local Update To Server ...")
@@ -238,31 +251,13 @@ class FederatedClient(object):
             emit_data = {}
 
             if constants.TRAIN in data and data[constants.TRAIN]:
-                self.logger.info("Eval [{}] Start ...".format(constants.TRAIN))
-                train_loss, train_acc = self.local_model.eval(constants.TRAIN)
-                self.logger.info("Train with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
-                    now_global_epoch, sid, train_loss, " , ".join(f"{k} : {v:.4f}" for k, v in train_acc.items())))
-                emit_data[constants.TRAIN] = {
-                    constants.LOSS: train_loss, constants.ACC: train_acc,
-                    constants.CONTRIB: self.local_model.get_contribution(constants.TRAIN)}
+                self._global_eval(constants.TRAIN, emit_data, now_global_epoch, sid)
 
             if constants.VALIDATION in data and data[constants.VALIDATION]:
-                self.logger.info("Eval [{}] Start ...".format(constants.VALIDATION))
-                val_loss, val_acc = self.local_model.eval(constants.VALIDATION)
-                self.logger.info("Val with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
-                    now_global_epoch, sid, val_loss, " , ".join(f"{k} : {v:.4f}" for k, v in val_acc.items())))
-                emit_data[constants.VALIDATION] = {
-                    constants.LOSS: val_loss, constants.ACC: val_acc,
-                    constants.CONTRIB: self.local_model.get_contribution(constants.VALIDATION)}
+                self._global_eval(constants.VALIDATION, emit_data, now_global_epoch, sid)
 
             if constants.TEST in data and data[constants.TEST]:
-                self.logger.info("Eval [{}] Start ...".format(constants.TEST))
-                test_loss, test_acc = self.local_model.eval(constants.TEST)
-                self.logger.info("Test with_global_weights -- GlobalEpoch:{} -- Client-sid:[{}] -- Loss:{:.4f} , {}".format(
-                    now_global_epoch, sid, test_loss, " , ".join(f"{k} : {v:.4f}" for k, v in test_acc.items())))
-                emit_data[constants.TEST] = {
-                    constants.LOSS: test_loss, constants.ACC: test_acc,
-                    constants.CONTRIB: self.local_model.get_contribution(constants.TEST)}
+                self._global_eval(constants.TEST, emit_data, now_global_epoch, sid)
 
             self.socketio.emit("eval_with_global_weights_complete", emit_data)
 
@@ -270,6 +265,7 @@ class FederatedClient(object):
         def fin(*args):
             data = args[0]
             if data[constants.FIN]:
+                self.tbX.close()
                 self.logger.info("Federated Learning Client Fin.")
                 self.socketio.emit("client_fin", {"sid": data["sid"]})
 

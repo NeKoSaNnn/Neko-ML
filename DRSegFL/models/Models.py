@@ -26,13 +26,14 @@ torch.set_num_threads(4)
 
 
 class BaseModel(object):
-    def __init__(self, config: dict, logger=None):
+    def __init__(self, config: dict, logger=None, tbX=None):
         self.config = config
         self.logger = Logger(logger)
 
         self.num_classes = self.config[constants.NUM_CLASSES]
         self.num_channels = self.config[constants.NUM_CHANNELS]
         self.dataset_name = self.config[constants.NAME_DATASET]
+        self.classes = self.config[constants.CLASSES]
         if constants.SLIDE_INFERENCE in self.config:
             self.is_slide_inference = True
             self.slide_crop_size = self.config[constants.SLIDE_INFERENCE][constants.SLIDE_CROP_SIZE]
@@ -190,7 +191,7 @@ class BaseModel(object):
         """
         raise NotImplementedError
 
-    def train(self, epoch=1):
+    def train(self, epoch=1, tbX=None):
         # target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net.train()
         ep_losses = []
@@ -223,6 +224,8 @@ class BaseModel(object):
                 if iter % self.config["log_interval_iter"] == 0 or iter == len(self.train_dataloader):
                     self.logger.info("Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
             ep_loss = iter_losses / len(self.train_dataloader)
+            if tbX is not None:
+                tbX.add_scalar("train/local_loss", ep_loss, self.schedule.last_epoch + 1)
             ep_losses.append(ep_loss)
             if self.schedule is not None:
                 self.schedule.step()
@@ -291,7 +294,14 @@ class BaseModel(object):
             mDice = np.around(np.nanmean(dices), 4)
             F_score = np.around(np.nanmean(f_scores), 4)
             all_acc = np.around(all_acc, 4)
+            class_iou = {}
+            class_dice = {}
+            for i, c in enumerate(self.classes):
+                class_iou["{}_IoU".format(c)] = np.around(np.nan_to_num(ious[i]), 5)
+                class_dice["{}_Dice".format(c)] = np.around(np.nan_to_num(dices[i]), 5)
             eval_acc = {"mIoU": mIoU, "mDice": mDice, "F_score": F_score, "mAcc": mAcc, "all_acc": all_acc}
+            eval_acc.update(class_iou)
+            eval_acc.update(class_dice)
         self.net.train()
         return eval_loss, eval_acc
 

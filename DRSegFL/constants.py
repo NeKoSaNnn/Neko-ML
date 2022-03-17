@@ -57,6 +57,7 @@ PATH_BEST_WEIGHTS = "best_weights_path"
 
 DIR_DATASET = "dataset_dir"
 DIR_PREDICT = "predict_dir"
+DIR_TBX_LOGFILE = "tbX_logfile_dir"
 
 GLOBAL_EVAL = "global_eval"
 LOCAL_EVAL = "local_eval"

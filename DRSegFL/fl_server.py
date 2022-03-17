@@ -18,6 +18,8 @@ from flask import Flask, request, render_template
 from flask_socketio import SocketIO, emit, disconnect
 from typing import List
 
+from tensorboardX import SummaryWriter
+
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
 now_dir_name = sys.path[0]  # ...DRSegFL/
 sys.path.append(root_dir_name)
@@ -192,6 +194,10 @@ class FederatedServer(object):
         self.server_config = utils.load_json(server_config_path)
         self.server_host = self.server_config[constants.HOST] if host is None else host
         self.server_port = self.server_config[constants.PORT] if port is None else port
+        self.logfile_path = self.server_config[constants.PATH_LOGFILE]
+
+        tbX_dir = self.server_config[constants.DIR_TBX_LOGFILE]
+        self.tbX = SummaryWriter(logdir=tbX_dir)
 
         os.environ["CUDA_VISIBLE_DEVICES"] = self.server_config["gpu"]
 
@@ -200,7 +206,7 @@ class FederatedServer(object):
 
         self.logger = logging.getLogger(constants.SERVER)
         log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
-        fh = logging.FileHandler(self.server_config[constants.PATH_LOGFILE])
+        fh = logging.FileHandler(self.logfile_path)
         fh.setLevel(logging.DEBUG) if DEBUG else fh.setLevel(logging.INFO)
         fh.setFormatter(log_formatter)
         self.logger.addHandler(fh)
@@ -294,6 +300,8 @@ class FederatedServer(object):
         self.logger.info("Eval-{} with_locals_weights -- GlobalEpoch:{} -- AvgLoss:{:.4f} , Avg : {}".format(
             eval_type, self.global_model.now_global_epoch, avg_loss,
             " , ".join(f"{k} : {v:.4f}" for k, v in avg_acc.items())))
+        self.tbX.add_scalar("local_eval/{}_loss".format(eval_type), avg_loss, self.global_model.now_global_epoch)
+        self.tbX.add_scalars("local_eval/{}_acc".format(eval_type), avg_acc, self.global_model.now_global_epoch)
 
     def _global_eval(self, eval_type):
         assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], "eval_type:{} error".format(eval_type)
@@ -306,6 +314,8 @@ class FederatedServer(object):
         self.logger.info("Eval-{} with_global_weights -- GlobalEpoch:{} -- Loss:{:.4f} , {}".format(
             eval_type, self.global_model.now_global_epoch, global_loss,
             " , ".join(f"{k} : {v:.4f}" for k, v in global_acc.items())))
+        self.tbX.add_scalar("global_eval/{}_loss".format(eval_type), global_loss, self.global_model.now_global_epoch)
+        self.tbX.add_scalars("global_eval/{}_acc".format(eval_type), global_acc, self.global_model.now_global_epoch)
 
     def start(self):
         self.logger.info("Server Start {}:{}".format(self.server_host, self.server_port))
@@ -397,6 +407,7 @@ class FederatedServer(object):
 
                     self.logger.info(
                         "Train -- GlobalEpoch:{} -- AvgLoss:{:.4f}".format(self.global_model.now_global_epoch, global_train_loss))
+                    self.tbX.add_scalar("train/global_loss", global_train_loss, self.global_model.now_global_epoch)
 
                     if constants.TRAIN in local_eval_types:
                         self._local_eval(constants.TRAIN)
@@ -407,8 +418,7 @@ class FederatedServer(object):
                     if constants.TEST in local_eval_types:
                         self._local_eval(constants.TEST)
 
-                    now_weights_pickle = utils.obj2pickle(self.global_model.global_weights,
-                                                          self.global_model.weights_path)  # weights path
+                    now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)  # weights path
                     emit_data = {"now_global_epoch": self.global_model.now_global_epoch,
                                  "now_weights": now_weights_pickle}
                     if constants.TRAIN in self.GLOBAL_EVAL:
@@ -478,8 +488,10 @@ class FederatedServer(object):
             if sid in self.ready_client_sids:
                 self.ready_client_sids.remove(sid)
             if len(self.ready_client_sids) == 0:
+                self.tbX.close()
                 self.logger.info("All Clients Fin. Federated Learning Server Fin.")
                 self.socketio.stop()
+                exit(0)
 
 
 if __name__ == "__main__":
