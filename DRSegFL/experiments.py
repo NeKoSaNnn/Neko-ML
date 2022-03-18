@@ -340,24 +340,40 @@ import torch.nn as nn
 #         print("{}_{}_label={}".format(lesion, _type, len(label_paths)))
 
 # val merge to test
-# dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
+dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
 #
-# lesions = ["EX", "HE", "MA", "SE"]
-# _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
-# for lesion in lesions:
-#     root_dir = osp.join(dataset_dir, lesion)
-#     test_dir = osp.join(root_dir, constants.TEST)
-#     val_dir = osp.join(root_dir, constants.VALIDATION)
-#
-#     val_image_dir = osp.join(root_dir, constants.VALIDATION, "image")
-#     val_label_dir = osp.join(root_dir, constants.VALIDATION, "label")
-#     test_image_dir = osp.join(root_dir, constants.TEST, "image")
-#     test_label_dir = osp.join(root_dir, constants.TEST, "label")
-#
-#     for val_image in glob.glob(osp.join(val_image_dir, "*.jpg")):
-#         shutil.move(val_image, test_image_dir)
-#     for val_label in glob.glob(osp.join(val_label_dir, "*.png")):
-#         shutil.move(val_label, test_label_dir)
+lesions = ["EX", "HE", "MA", "SE"]
+_types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
+
+test_dir = osp.join(dataset_dir, constants.TEST, "crop_resize")
+val_dir = osp.join(dataset_dir, constants.VALIDATION, "crop_resize")
+
+val_image_dir = osp.join(val_dir, "image")
+val_label_dir = osp.join(val_dir, "label")
+val_annotation_dir = osp.join(val_dir, "annotation")
+test_image_dir = osp.join(test_dir, "image")
+test_label_dir = osp.join(test_dir, "label")
+test_annotation_dir = osp.join(test_dir, "annotation")
+
+print(len(glob.glob(osp.join(test_image_dir, "*.jpg"))))
+print(len(glob.glob(osp.join(test_annotation_dir, "*.png"))))
+
+# for val_image in glob.glob(osp.join(val_image_dir, "*.jpg")):
+#     shutil.copy(val_image, test_image_dir)
+# for val_annotation in glob.glob(osp.join(val_annotation_dir, "*.png")):
+#     shutil.copy(val_annotation, test_annotation_dir)
+
+for lesion in lesions:
+    lesion_val_label_dir = osp.join(val_label_dir, lesion)
+    lesion_test_label_dir = osp.join(test_label_dir, lesion)
+
+    print(len(glob.glob(osp.join(lesion_test_label_dir, "*.tif"))))
+    # for val_label in glob.glob(osp.join(lesion_val_label_dir, "*.tif")):
+    #     shutil.copy(val_label, lesion_test_label_dir)
+    print(len(glob.glob(osp.join(lesion_test_label_dir, "*.tif"))))
+
+print(len(glob.glob(osp.join(test_image_dir, "*.jpg"))))
+print(len(glob.glob(osp.join(test_annotation_dir, "*.png"))))
 
 # dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
 #

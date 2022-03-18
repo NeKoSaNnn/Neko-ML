@@ -7,17 +7,15 @@ import argparse
 import copy
 import json
 import logging
-import math
 import os
 import os.path as osp
 import sys
 import time
+from typing import List
 
 import numpy as np
 from flask import Flask, request, render_template
 from flask_socketio import SocketIO, emit, disconnect
-from typing import List
-
 from tensorboardX import SummaryWriter
 
 root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
@@ -29,6 +27,7 @@ from DRSegFL.logger import Logger
 from DRSegFL.models.Models import Models
 
 DEBUG = True
+sleep_time = 0  # for ui
 
 
 class GlobalModel(object):
@@ -201,8 +200,10 @@ class FederatedServer(object):
 
         os.environ["CUDA_VISIBLE_DEVICES"] = self.server_config["gpu"]
 
-        self.app = Flask(__name__)
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        self.app = Flask(__name__, template_folder=osp.join(now_dir_name, "static", "templates"),
+                         static_folder=osp.join(now_dir_name, "static"))
+        async_mode = None
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode=async_mode)
 
         self.logger = logging.getLogger(constants.SERVER)
         log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
@@ -246,7 +247,7 @@ class FederatedServer(object):
 
         @self.app.route("/")
         def home_page():
-            return render_template('dashboard.html')
+            return render_template("dashboard.html", async_mode=self.socketio.async_mode)
 
         @self.app.route("/stats")
         def stats_page():
@@ -260,6 +261,8 @@ class FederatedServer(object):
         else:
             check_client_sids = np.random.choice(list(self.ready_client_sids), self.NUM_CLIENTS, replace=False)
             for sid in check_client_sids:
+                emit("c_check_resource", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
+                time.sleep(sleep_time)
                 emit("client_check_resource", {"now_global_epoch": self.global_model.now_global_epoch}, room=sid)
 
     def global_train_next_epoch(self, runnable_client_sids):
@@ -286,6 +289,7 @@ class FederatedServer(object):
             if self.global_model.now_global_epoch == 1:
                 self.logger.info("First GlobalEpoch , Send Init Weights To Client-sid:[{}]".format(sid))
             emit_data["sid"] = sid
+            emit("c_train", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
             emit("local_update", emit_data, room=sid)
 
     def _local_eval(self, eval_type):
@@ -320,25 +324,30 @@ class FederatedServer(object):
     def start(self):
         self.logger.info("Server Start {}:{}".format(self.server_host, self.server_port))
         self.socketio.run(self.app, host=self.server_host, port=self.server_port)
+        emit("s_connect", broadcast=True, namespace="/ui")  # for ui
 
     def register_handles(self):
         @self.socketio.on("connect")
         def connect_handle():
             self.logger.info("[{}] Connect".format(request.sid))
+            emit("c_connect", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
 
         @self.socketio.on("reconnect")
         def reconnect_handle():
             self.logger.info("[{}] Re Connect".format(request.sid))
+            emit("c_reconnect", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
 
         @self.socketio.on("disconnect")
         def disconnect_handle():
             self.logger.info("[{}] Close Connect.".format(request.sid))
             if request.sid in self.ready_client_sids:
                 self.ready_client_sids.remove(request.sid)
+            emit("c_disconnect", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
 
         @self.socketio.on("client_wakeup")
         def client_wakeup_handle():
             self.logger.info("[{}] Wake Up".format(request.sid))
+            emit("c_wakeup", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
             emit("client_init")
 
         @self.socketio.on("client_ready")
@@ -361,6 +370,8 @@ class FederatedServer(object):
         @self.socketio.on("client_check_resource_complete")
         def client_check_resource_complete_handle(data):
             if data["now_global_epoch"] == self.global_model.now_global_epoch:
+                emit("c_check_resource_complete", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
+                time.sleep(sleep_time)
                 self.client_resource[request.sid] = data["loadavg"]
                 # up to NUM_CLIENTS , begin next step
                 if len(self.client_resource) == self.NUM_CLIENTS:
@@ -376,22 +387,24 @@ class FederatedServer(object):
                     # over half clients runnable
                     if len(runnable_client_sids) / len(self.client_resource) > 0.5:
                         self.wait_time = min(self.wait_time, 3)
-                        time.sleep(self.wait_time)
                         self.global_train_next_epoch(runnable_client_sids)
                     else:
                         self.wait_time += 1 if self.wait_time < 10 else 0
-                        time.sleep(self.wait_time)
                         self.clients_check_resource()
 
         @self.socketio.on("client_update_complete")
         def client_update_complete_handle(data):
             self.logger.debug("Received Client-sid:[{}] Update-Data:{} ".format(request.sid, data))
+            emit("c_train_complete", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
+            time.sleep(sleep_time)
 
             if self.global_model.now_global_epoch == data["now_global_epoch"]:
                 data["now_weights"] = copy.deepcopy(utils.pickle2obj(data["now_weights"]))
                 self.client_update_datas.append(data)
                 # all clients upload complete
                 if self.NUM_CLIENTS == len(self.client_update_datas):
+                    emit("s_train_aggre", broadcast=True, namespace="/ui")  # for ui
+                    time.sleep(sleep_time)
                     local_eval_types = list(self.client_update_datas[0].keys())
 
                     self.global_model.update_global_weights(
@@ -429,19 +442,27 @@ class FederatedServer(object):
                     if constants.TEST in self.GLOBAL_EVAL:
                         emit_data[constants.TEST] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.TEST][constants.NUM] == 0
 
+                    emit("s_train_aggre_complete", broadcast=True, namespace="/ui")  # for ui
+                    time.sleep(sleep_time)
                     self.client_eval_datas = []  # empty eval datas for next eval epoch
                     for sid in self.ready_client_sids:
                         emit_data["sid"] = sid
+                        emit("c_eval", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
+                        time.sleep(sleep_time)
                         emit("eval_with_global_weights", emit_data, room=sid)
                         self.logger.info("Server Send Federated Weights To Client-sid:[{}]".format(sid))
 
         @self.socketio.on("eval_with_global_weights_complete")
         def eval_with_global_weights_complete_handle(data):
-            self.logger.info("Receive Client-sid:[{}] Eval Datas:{}".format(request.sid, data))
+            self.logger.debug("Receive Client-sid:[{}] Eval Datas:{}".format(request.sid, data))
+            emit("c_eval_complete", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
+            time.sleep(sleep_time)
 
             self.client_eval_datas.append(data)
 
             if len(self.client_eval_datas) == self.NUM_CLIENTS:
+                emit("s_eval_aggre", broadcast=True, namespace="/ui")  # for ui
+                time.sleep(sleep_time)
                 global_eval_types = list(self.client_eval_datas[0].keys())
 
                 if constants.TRAIN in global_eval_types:
@@ -467,6 +488,9 @@ class FederatedServer(object):
 
                 self.global_model.save_ckpt(self.SAVE_CKPT_EPOCH)
 
+                emit("s_eval_aggre_complete", broadcast=True, namespace="/ui")  # for ui
+                time.sleep(sleep_time)
+
                 if self.global_model.now_global_epoch >= self.NUM_GLOBAL_EPOCH > 0:
                     self.fin = True
                     self.logger.info("Go to NUM_GLOBAL_EPOCH:{}".format(self.NUM_GLOBAL_EPOCH))
@@ -475,7 +499,11 @@ class FederatedServer(object):
                     # next global epoch
                     self.logger.info("Start Next Global-Epoch Training ...")
                 else:
+                    emit("s_summary", broadcast=True, namespace="/ui")  # for ui
+                    time.sleep(sleep_time)
                     self.global_model.fin_summary(global_eval_types)
+                    emit("s_summary_complete", broadcast=True, namespace="/ui")  # for ui
+                    time.sleep(sleep_time)
 
                 self.clients_check_resource()
 
@@ -487,11 +515,13 @@ class FederatedServer(object):
             disconnect(sid)
             if sid in self.ready_client_sids:
                 self.ready_client_sids.remove(sid)
+                emit("c_fin", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
             if len(self.ready_client_sids) == 0:
                 self.tbX.close()
                 self.logger.info("All Clients Fin. Federated Learning Server Fin.")
-                self.socketio.stop()
-                exit(0)
+                emit("s_fin", broadcast=True, namespace="/ui")  # for ui
+                # self.socketio.stop()
+                # exit(0)
 
 
 if __name__ == "__main__":

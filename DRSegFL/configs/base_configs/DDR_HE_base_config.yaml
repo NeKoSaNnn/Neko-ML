@@ -48,7 +48,7 @@ client:
 #server
 server:
   host: "127.0.0.1"
-  port: 9192
+  port: 9193
   gpu: "5"
 
   epoch: 5000

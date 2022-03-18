@@ -55,7 +55,7 @@ def f_score(precision, recall, beta=1):
     return score
 
 
-def cal_metric(results, gt_seg_maps, num_classes, ignore_index=-1, nan_to_num=None):
+def cal_metric(results, gt_seg_maps, num_classes, ignore_index=-1, nan_to_num=None, multi=1):
     """Calculate Intersection and Union (IoU)
 
     Args:
@@ -65,6 +65,7 @@ def cal_metric(results, gt_seg_maps, num_classes, ignore_index=-1, nan_to_num=No
         ignore_index (int): Index that will be ignored in evaluation.
         nan_to_num (int, optional): If specified, NaN values will be replaced
             by the numbers defined by the user. Default: None.
+        multi:multi a value to show the result , 1 or 100
 
      Returns:
          float: Overall accuracy on all images.
@@ -85,16 +86,17 @@ def cal_metric(results, gt_seg_maps, num_classes, ignore_index=-1, nan_to_num=No
         total_area_union += area_union
         total_area_pred_label += area_pred_label
         total_area_label += area_label
-    all_acc = total_area_intersect.sum() / total_area_label.sum()
-    pixaccs = total_area_intersect / total_area_label
 
-    ious = total_area_intersect / total_area_union
+    all_acc = (total_area_intersect.sum() / total_area_label.sum()) * multi
+    pixaccs = (total_area_intersect / total_area_label) * multi
 
-    dices = 2 * total_area_intersect / (total_area_pred_label + total_area_label)
+    ious = (total_area_intersect / total_area_union) * multi
 
-    precision = total_area_intersect / total_area_pred_label
-    recall = total_area_intersect / total_area_label
-    f_values = [f_score(x[0], x[1], 1) for x in zip(precision, recall)]
+    dices = (2 * total_area_intersect / (total_area_pred_label + total_area_label)) * multi
+
+    precision = (total_area_intersect / total_area_pred_label) * multi
+    recall = (total_area_intersect / total_area_label) * multi
+    f_values = [f_score(x[0], x[1], 1) * multi for x in zip(precision, recall)]
 
     if nan_to_num is not None:
         return all_acc, np.nan_to_num(pixaccs, nan=nan_to_num), np.nan_to_num(ious, nan=nan_to_num), \
