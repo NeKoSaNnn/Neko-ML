@@ -289,7 +289,7 @@ class FederatedServer(object):
             if self.global_model.now_global_epoch == 1:
                 self.logger.info("First GlobalEpoch , Send Init Weights To Client-sid:[{}]".format(sid))
             emit_data["sid"] = sid
-            emit("c_train", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
+            emit("c_train", {"sid": sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
             emit("local_update", emit_data, room=sid)
 
     def _local_eval(self, eval_type):
@@ -395,7 +395,8 @@ class FederatedServer(object):
         @self.socketio.on("client_update_complete")
         def client_update_complete_handle(data):
             self.logger.debug("Received Client-sid:[{}] Update-Data:{} ".format(request.sid, data))
-            emit("c_train_complete", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
+            emit("c_train_complete", {"sid": request.sid, "gep": self.global_model.now_global_epoch}, broadcast=True,
+                 namespace="/ui")  # for ui
             time.sleep(sleep_time)
 
             if self.global_model.now_global_epoch == data["now_global_epoch"]:
@@ -403,7 +404,7 @@ class FederatedServer(object):
                 self.client_update_datas.append(data)
                 # all clients upload complete
                 if self.NUM_CLIENTS == len(self.client_update_datas):
-                    emit("s_train_aggre", broadcast=True, namespace="/ui")  # for ui
+                    emit("s_train_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                     time.sleep(sleep_time)
                     local_eval_types = list(self.client_update_datas[0].keys())
 
@@ -442,12 +443,12 @@ class FederatedServer(object):
                     if constants.TEST in self.GLOBAL_EVAL:
                         emit_data[constants.TEST] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.TEST][constants.NUM] == 0
 
-                    emit("s_train_aggre_complete", broadcast=True, namespace="/ui")  # for ui
+                    emit("s_train_aggre_complete", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                     time.sleep(sleep_time)
                     self.client_eval_datas = []  # empty eval datas for next eval epoch
                     for sid in self.ready_client_sids:
                         emit_data["sid"] = sid
-                        emit("c_eval", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
+                        emit("c_eval", {"sid": sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                         time.sleep(sleep_time)
                         emit("eval_with_global_weights", emit_data, room=sid)
                         self.logger.info("Server Send Federated Weights To Client-sid:[{}]".format(sid))
@@ -455,13 +456,13 @@ class FederatedServer(object):
         @self.socketio.on("eval_with_global_weights_complete")
         def eval_with_global_weights_complete_handle(data):
             self.logger.debug("Receive Client-sid:[{}] Eval Datas:{}".format(request.sid, data))
-            emit("c_eval_complete", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
+            emit("c_eval_complete", {"sid": request.sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
             time.sleep(sleep_time)
 
             self.client_eval_datas.append(data)
 
             if len(self.client_eval_datas) == self.NUM_CLIENTS:
-                emit("s_eval_aggre", broadcast=True, namespace="/ui")  # for ui
+                emit("s_eval_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                 time.sleep(sleep_time)
                 global_eval_types = list(self.client_eval_datas[0].keys())
 
@@ -488,7 +489,7 @@ class FederatedServer(object):
 
                 self.global_model.save_ckpt(self.SAVE_CKPT_EPOCH)
 
-                emit("s_eval_aggre_complete", broadcast=True, namespace="/ui")  # for ui
+                emit("s_eval_aggre_complete", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                 time.sleep(sleep_time)
 
                 if self.global_model.now_global_epoch >= self.NUM_GLOBAL_EPOCH > 0:

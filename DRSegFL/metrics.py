@@ -96,7 +96,7 @@ def cal_metric(results, gt_seg_maps, num_classes, ignore_index=-1, nan_to_num=No
 
     precision = (total_area_intersect / total_area_pred_label) * multi
     recall = (total_area_intersect / total_area_label) * multi
-    f_values = [f_score(x[0], x[1], 1) * multi for x in zip(precision, recall)]
+    f_values = [f_score(x[0], x[1], 1) for x in zip(precision, recall)]
 
     if nan_to_num is not None:
         return all_acc, np.nan_to_num(pixaccs, nan=nan_to_num), np.nan_to_num(ious, nan=nan_to_num), \

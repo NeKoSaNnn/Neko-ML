@@ -29,10 +29,9 @@ var options = {
     },
     layout: {
         randomSeed: 1,//配置每次生成的节点位置都一样，参数为数字1、2等
-    },
+    }
 };
 
-var lock = false;
 
 function update_network(all_nodes, server_nodes_to, client_nodes_to) {
     console.log(all_nodes)
@@ -198,20 +197,21 @@ socket.on("c_check_resource", function (res) {
     console.log("check_resource")
     let sid = res["sid"];
     let task_id = "check_resource_" + sid;
+    if (!all_nodes.hasOwnProperty(sid)) {
+        now_nodes++;
+        now_client++;
+        let now_label = "<b>client_" + now_client + "</b>";
+        all_nodes[sid] = {
+            "id": now_nodes,
+            "label": now_label,
+            "value": 1,
+            "color": green,
+        };
+    }
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = green;
+        all_nodes[task_id].label = now_client_id + "\n<i>check_resource</i>";
     } else {
-        if (!all_nodes.hasOwnProperty(sid)) {
-            now_nodes++;
-            now_client++;
-            let now_label = "<b>client_" + now_client + "</b>";
-            all_nodes[sid] = {
-                "id": now_nodes,
-                "label": now_label,
-                "value": 1,
-                "color": green,
-            };
-        }
         now_nodes++;
         let now_client_id = all_nodes[sid].label;
         let now_label = now_client_id + "\n<i>check_resource</i>";
@@ -240,26 +240,27 @@ socket.on("c_check_resource_complete", function (res) {
     console.log("check_resource_complete")
     let sid = res["sid"];
     let task_id = "check_resource_" + sid;
+    if (!all_nodes.hasOwnProperty(sid)) {
+        now_nodes++;
+        now_client++;
+        let now_label = "<b>client_" + now_client + "</b>";
+        all_nodes[sid] = {
+            "id": now_nodes,
+            "label": now_label,
+            "value": 1,
+            "color": green,
+        };
+    }
+    let now_client_id = all_nodes[sid].label;
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = {
             "border": gray,
             "background": "#F8F8F8"
         };
+        all_nodes[task_id].label = now_client_id + "\n<i>check_resource</i>\n<b>complete</b>";
     } else {
-        if (!all_nodes.hasOwnProperty(sid)) {
-            now_nodes++;
-            now_client++;
-            let now_label = "<b>client_" + now_client + "</b>";
-            all_nodes[sid] = {
-                "id": now_nodes,
-                "label": now_label,
-                "value": 1,
-                "color": green,
-            };
-        }
         now_nodes++;
-        let now_client_id = all_nodes[sid].label;
-        let now_label = now_client_id + "\n<i>check_resource</i>";
+        let now_label = now_client_id + "\n<i>check_resource</i>\n<b>complete</b>";
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
@@ -287,24 +288,26 @@ socket.on("c_check_resource_complete", function (res) {
 socket.on("c_train", function (res) {
     console.log("train")
     let sid = res["sid"];
+    let gep = res["gep"];
     let task_id = "train_" + sid;
+    if (!all_nodes.hasOwnProperty(sid)) {
+        now_nodes++;
+        now_client++;
+        let now_label = "<b>client_" + now_client + "</b>";
+        all_nodes[sid] = {
+            "id": now_nodes,
+            "label": now_label,
+            "value": 1,
+            "color": green,
+        };
+    }
+    let now_client_id = all_nodes[sid].label;
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = green;
+        all_nodes[task_id].label = now_client_id + "\n<i>train:</i><b>" + gep + "</b>";
     } else {
-        if (!all_nodes.hasOwnProperty(sid)) {
-            now_nodes++;
-            now_client++;
-            let now_label = "<b>client_" + now_client + "</b>";
-            all_nodes[sid] = {
-                "id": now_nodes,
-                "label": now_label,
-                "value": 1,
-                "color": green,
-            };
-        }
         now_nodes++;
-        let now_client_id = all_nodes[sid].label;
-        let now_label = now_client_id + "\n<i>train</i>";
+        let now_label = now_client_id + "\n<i>train:</i><b>" + gep + "</b>";
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
@@ -329,27 +332,29 @@ socket.on("c_train", function (res) {
 socket.on("c_train_complete", function (res) {
     console.log("train_complete")
     let sid = res["sid"];
+    let gep = res["gep"];
     let task_id = "train_" + sid;
+    if (!all_nodes.hasOwnProperty(sid)) {
+        now_nodes++;
+        now_client++;
+        let now_label = "<b>client_" + now_client + "</b>";
+        all_nodes[sid] = {
+            "id": now_nodes,
+            "label": now_label,
+            "value": 1,
+            "color": green,
+        };
+    }
+    let now_client_id = all_nodes[sid].label;
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = {
             "border": gray,
             "background": "#F8F8F8"
         };
+        all_nodes[task_id].label = now_client_id + "\n<i>train:</i><b>" + gep + "</b>\n<b>complete</b>";
     } else {
-        if (!all_nodes.hasOwnProperty(sid)) {
-            now_nodes++;
-            now_client++;
-            let now_label = "<b>client_" + now_client + "</b>";
-            all_nodes[sid] = {
-                "id": now_nodes,
-                "label": now_label,
-                "value": 1,
-                "color": green,
-            };
-        }
         now_nodes++;
-        let now_client_id = all_nodes[sid].label;
-        let now_label = now_client_id + "\n<i>train</i>";
+        let now_label = now_client_id + "\n<i>train:</i><b>" + gep + "</b>\n<b>complete</b>";
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
@@ -374,16 +379,18 @@ socket.on("c_train_complete", function (res) {
     update_client_nodes_to(client_nodes_to, sid, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to);
 });
-socket.on("s_train_aggre", function () {
+socket.on("s_train_aggre", function (res) {
     console.log("train_aggre")
+    let gep = res["gep"];
     let task_id = "train_aggre";
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = green;
+        all_nodes[task_id].label = "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
             "id": now_nodes,
-            "label": "<b>server</b>\n<i>train_aggre</i>",
+            "label": "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>",
             "value": 1,
             "color": green,
         };
@@ -401,19 +408,21 @@ socket.on("s_train_aggre", function () {
     update_server_nodes_to(server_nodes_to, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to);
 });
-socket.on("s_train_aggre_complete", function () {
+socket.on("s_train_aggre_complete", function (res) {
     console.log("train_aggre_complete")
+    let gep = res["gep"];
     let task_id = "train_aggre";
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = {
             "border": gray,
             "background": "#F8F8F8"
         };
+        all_nodes[task_id].label = "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>\n<b>complete</b>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
             "id": now_nodes,
-            "label": "<b>server</b>\n<i>train_aggre</i>",
+            "label": "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>\n<b>complete</b>",
             "value": 1,
             "color": {
                 "border": gray,
@@ -437,24 +446,27 @@ socket.on("s_train_aggre_complete", function () {
 socket.on("c_eval", function (res) {
     console.log("eval")
     let sid = res["sid"];
+    let gep = res["gep"];
     let task_id = "eval_" + sid;
+    if (!all_nodes.hasOwnProperty(sid)) {
+        now_nodes++;
+        now_client++;
+        let now_label = "<b>client_" + now_client + "</b>";
+        all_nodes[sid] = {
+            "id": now_nodes,
+            "label": now_label,
+            "value": 1,
+            "color": green,
+        };
+    }
+    let now_client_id = all_nodes[sid].label;
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = green;
+        all_nodes[task_id].label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>";
     } else {
-        if (!all_nodes.hasOwnProperty(sid)) {
-            now_nodes++;
-            now_client++;
-            let now_label = "<b>client_" + now_client + "</b>";
-            all_nodes[sid] = {
-                "id": now_nodes,
-                "label": now_label,
-                "value": 1,
-                "color": green,
-            };
-        }
         now_nodes++;
         let now_client_id = all_nodes[sid].label;
-        let now_label = now_client_id + "\n<i>eval</i>";
+        let now_label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>";
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
@@ -479,27 +491,29 @@ socket.on("c_eval", function (res) {
 socket.on("c_eval_complete", function (res) {
     console.log("eval_complete")
     let sid = res["sid"];
+    let gep = res["gep"];
     let task_id = "eval_" + sid;
+    if (!all_nodes.hasOwnProperty(sid)) {
+        now_nodes++;
+        now_client++;
+        let now_label = "<b>client_" + now_client + "</b>";
+        all_nodes[sid] = {
+            "id": now_nodes,
+            "label": now_label,
+            "value": 1,
+            "color": green,
+        };
+    }
+    let now_client_id = all_nodes[sid].label;
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = {
             "border": gray,
             "background": "#F8F8F8"
         };
+        all_nodes[task_id].label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>\n<b>complete</b>";
     } else {
-        if (!all_nodes.hasOwnProperty(sid)) {
-            now_nodes++;
-            now_client++;
-            let now_label = "<b>client_" + now_client + "</b>";
-            all_nodes[sid] = {
-                "id": now_nodes,
-                "label": now_label,
-                "value": 1,
-                "color": green,
-            };
-        }
         now_nodes++;
-        let now_client_id = all_nodes[sid].label;
-        let now_label = now_client_id + "\n<i>eval</i>";
+        let now_label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>\n<b>complete</b>";
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
@@ -524,16 +538,18 @@ socket.on("c_eval_complete", function (res) {
     update_client_nodes_to(client_nodes_to, sid, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to);
 });
-socket.on("s_eval_aggre", function () {
+socket.on("s_eval_aggre", function (res) {
     console.log("eval_aggre")
+    let gep = res["gep"];
     let task_id = "eval_aggre";
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = green;
+        all_nodes[task_id].label = "<b>server</b>\n<i>eval_aggre:</i><b>" + gep + "</b>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
             "id": now_nodes,
-            "label": "<b>server</b>\n<i>eval_aggre</i>",
+            "label": "<b>server</b>\n<i>eval_aggre:</i><b>" + gep + "</b>",
             "value": 1,
             "color": green,
         }
@@ -551,14 +567,27 @@ socket.on("s_eval_aggre", function () {
     update_server_nodes_to(server_nodes_to, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to);
 });
-socket.on("s_eval_aggre_complete", function () {
+socket.on("s_eval_aggre_complete", function (res) {
     console.log("eval_aggre_complete")
+    let gep = res["gep"];
     let task_id = "eval_aggre";
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = {
             "border": gray,
             "background": "#F8F8F8"
         };
+        all_nodes[task_id].label = "<b>server</b>\n<i>eval_aggre:</i><b>" + gep + "</b>\n<b>complete</b>";
+    } else {
+        now_nodes++;
+        all_nodes[task_id] = {
+            "id": now_nodes,
+            "label": "<b>server</b>\n<i>eval_aggre:</i><b>" + gep + "</b>\n<b>complete</b>",
+            "value": 1,
+            "color": {
+                "border": gray,
+                "background": "#F8F8F8"
+            },
+        }
     }
     if (!all_nodes.hasOwnProperty("server")) {
         now_nodes++;
@@ -578,6 +607,7 @@ socket.on("s_summary", function () {
     let task_id = "summary";
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = green;
+        all_nodes[task_id].label = "<b>server</b>\n<i>summary</i>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
@@ -608,6 +638,18 @@ socket.on("s_summary_complete", function () {
             "border": gray,
             "background": "#F8F8F8"
         };
+        all_nodes[task_id].label = "<b>server</b>\n<i>summary complete</i>";
+    } else {
+        now_nodes++;
+        all_nodes[task_id] = {
+            "id": now_nodes,
+            "label": "<b>server</b>\n<i>summary complete</i>",
+            "value": 1,
+            "color": {
+                "border": gray,
+                "background": "#F8F8F8"
+            },
+        }
     }
     if (!all_nodes.hasOwnProperty("server")) {
         now_nodes++;
