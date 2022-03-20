@@ -126,7 +126,7 @@ socket.on("c_connect", function (res) {
     } else {
         now_client++;
         now_nodes++;
-        let now_label = "<b>client_" + now_client + "</b>";
+        let now_label = "<b>client-" + now_client + "</b>";
         all_nodes[sid] = {
             "id": now_nodes,
             "label": now_label,
@@ -159,7 +159,7 @@ socket.on("c_wakeup", async function (res) {
     } else {
         now_client++;
         now_nodes++;
-        let now_label = "<b>client_" + now_client + "</b>";
+        let now_label = "<b>client-" + now_client + "</b>";
         all_nodes[sid] = {
             "id": now_nodes,
             "label": now_label,
@@ -200,7 +200,7 @@ socket.on("c_check_resource", function (res) {
     if (!all_nodes.hasOwnProperty(sid)) {
         now_nodes++;
         now_client++;
-        let now_label = "<b>client_" + now_client + "</b>";
+        let now_label = "<b>client-" + now_client + "</b>";
         all_nodes[sid] = {
             "id": now_nodes,
             "label": now_label,
@@ -243,7 +243,7 @@ socket.on("c_check_resource_complete", function (res) {
     if (!all_nodes.hasOwnProperty(sid)) {
         now_nodes++;
         now_client++;
-        let now_label = "<b>client_" + now_client + "</b>";
+        let now_label = "<b>client-" + now_client + "</b>";
         all_nodes[sid] = {
             "id": now_nodes,
             "label": now_label,
@@ -293,7 +293,7 @@ socket.on("c_train", function (res) {
     if (!all_nodes.hasOwnProperty(sid)) {
         now_nodes++;
         now_client++;
-        let now_label = "<b>client_" + now_client + "</b>";
+        let now_label = "<b>client-" + now_client + "</b>";
         all_nodes[sid] = {
             "id": now_nodes,
             "label": now_label,
@@ -337,7 +337,7 @@ socket.on("c_train_complete", function (res) {
     if (!all_nodes.hasOwnProperty(sid)) {
         now_nodes++;
         now_client++;
-        let now_label = "<b>client_" + now_client + "</b>";
+        let now_label = "<b>client-" + now_client + "</b>";
         all_nodes[sid] = {
             "id": now_nodes,
             "label": now_label,
@@ -451,7 +451,7 @@ socket.on("c_eval", function (res) {
     if (!all_nodes.hasOwnProperty(sid)) {
         now_nodes++;
         now_client++;
-        let now_label = "<b>client_" + now_client + "</b>";
+        let now_label = "<b>client-" + now_client + "</b>";
         all_nodes[sid] = {
             "id": now_nodes,
             "label": now_label,
@@ -496,7 +496,7 @@ socket.on("c_eval_complete", function (res) {
     if (!all_nodes.hasOwnProperty(sid)) {
         now_nodes++;
         now_client++;
-        let now_label = "<b>client_" + now_client + "</b>";
+        let now_label = "<b>client-" + now_client + "</b>";
         all_nodes[sid] = {
             "id": now_nodes,
             "label": now_label,
