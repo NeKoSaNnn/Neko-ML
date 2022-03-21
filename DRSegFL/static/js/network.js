@@ -32,16 +32,26 @@ var options = {
     }
 };
 
+var nodes = new vis.DataSet();
+var edges = new vis.DataSet();
 
-function update_network(all_nodes, server_nodes_to, client_nodes_to) {
+var edge_nums = 0;
+var now_edges = new Set();
+
+var data = {
+    nodes: nodes,
+    edges: edges
+};
+var container = document.getElementById('mynetwork');
+var network = new vis.Network(container, data, options);
+
+function update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges) {
     console.log(all_nodes)
     console.log(server_nodes_to)
     console.log(client_nodes_to)
-    var now_nodes = Array();
-    var now_edges = Array();
 
     for (let key in all_nodes) {
-        now_nodes.push(all_nodes[key]);
+        nodes.update(all_nodes[key]);
     }
     // server
 
@@ -49,7 +59,11 @@ function update_network(all_nodes, server_nodes_to, client_nodes_to) {
         let server = all_nodes["server"];
         for (let v of server_nodes_to) {
             if (all_nodes.hasOwnProperty(v)) {
-                now_edges.push({from: server.id, to: all_nodes[v].id});
+                let edge = "from" + server.id + "to" + all_nodes[v].id;
+                if (!all_edges.has(edge)) {
+                    all_edges.add(edge);
+                    edges.add({from: server.id, to: all_nodes[v].id});
+                }
             }
         }
     }
@@ -59,21 +73,16 @@ function update_network(all_nodes, server_nodes_to, client_nodes_to) {
             if (client_nodes_to.hasOwnProperty(k)) {
                 for (let v of client_nodes_to[k]) {
                     if (all_nodes.hasOwnProperty(v)) {
-                        now_edges.push({from: client.id, to: all_nodes[v].id});
+                        let edge = "from" + client.id + "to" + all_nodes[v].id;
+                        if (!all_edges.has(edge)) {
+                            all_edges.add(edge);
+                            edges.add({from: client.id, to: all_nodes[v].id});
+                        }
                     }
                 }
             }
         }
     }
-    var nodes = new vis.DataSet(now_nodes);
-    var edges = new vis.DataSet(now_edges);
-
-    var data = {
-        nodes: nodes,
-        edges: edges
-    };
-    var container = document.getElementById('mynetwork');
-    var network = new vis.Network(container, data, options);
 }
 
 function update_client_nodes_to(client_nodes_to, sid, task_id) {
@@ -101,6 +110,7 @@ console.log(location.protocol + "//" + document.domain + ":" + location.port + n
 var all_nodes = Array();
 var server_nodes_to = new Set();
 var client_nodes_to = new Set();
+var all_edges = new Set();
 var now_nodes = 0;
 var now_client = 0;
 socket.on("s_connect", function () {
@@ -149,7 +159,7 @@ socket.on("c_connect", function (res) {
         server_nodes_to = new Set();
     }
     update_client_nodes_to(client_nodes_to, sid, "server")
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_wakeup", async function (res) {
     console.log("wakeup")
@@ -180,7 +190,7 @@ socket.on("c_wakeup", async function (res) {
     }
     update_client_nodes_to(client_nodes_to, sid, "server")
     update_client_nodes_to(client_nodes_to, sid, "server");
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 })
 socket.on("c_reconnect", function (res) {
 
@@ -191,7 +201,7 @@ socket.on("c_disconnect", function (res) {
     if (all_nodes.hasOwnProperty(sid)) {
         all_nodes[sid].color = red;
     }
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_check_resource", function (res) {
     console.log("check_resource")
@@ -234,7 +244,7 @@ socket.on("c_check_resource", function (res) {
     }
     update_client_nodes_to(client_nodes_to, sid, "server")
     update_client_nodes_to(client_nodes_to, sid, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_check_resource_complete", function (res) {
     console.log("check_resource_complete")
@@ -283,7 +293,7 @@ socket.on("c_check_resource_complete", function (res) {
     }
     update_client_nodes_to(client_nodes_to, sid, "server")
     update_client_nodes_to(client_nodes_to, sid, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_train", function (res) {
     console.log("train")
@@ -327,7 +337,7 @@ socket.on("c_train", function (res) {
     }
     update_client_nodes_to(client_nodes_to, sid, "server")
     update_client_nodes_to(client_nodes_to, sid, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_train_complete", function (res) {
     console.log("train_complete")
@@ -377,7 +387,7 @@ socket.on("c_train_complete", function (res) {
     }
     update_client_nodes_to(client_nodes_to, sid, "server")
     update_client_nodes_to(client_nodes_to, sid, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("s_train_aggre", function (res) {
     console.log("train_aggre")
@@ -406,7 +416,7 @@ socket.on("s_train_aggre", function (res) {
         server_nodes_to = new Set();
     }
     update_server_nodes_to(server_nodes_to, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("s_train_aggre_complete", function (res) {
     console.log("train_aggre_complete")
@@ -441,7 +451,7 @@ socket.on("s_train_aggre_complete", function (res) {
         server_nodes_to = new Set();
     }
     update_server_nodes_to(server_nodes_to, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_eval", function (res) {
     console.log("eval")
@@ -485,7 +495,7 @@ socket.on("c_eval", function (res) {
     }
     update_client_nodes_to(client_nodes_to, sid, "server")
     update_client_nodes_to(client_nodes_to, sid, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_eval_complete", function (res) {
     console.log("eval_complete")
@@ -535,7 +545,7 @@ socket.on("c_eval_complete", function (res) {
     }
     update_client_nodes_to(client_nodes_to, sid, "server")
     update_client_nodes_to(client_nodes_to, sid, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("s_eval_aggre", function (res) {
     console.log("eval_aggre")
@@ -564,7 +574,7 @@ socket.on("s_eval_aggre", function (res) {
         server_nodes_to = new Set();
     }
     update_server_nodes_to(server_nodes_to, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("s_eval_aggre_complete", function (res) {
     console.log("eval_aggre_complete")
@@ -599,7 +609,7 @@ socket.on("s_eval_aggre_complete", function (res) {
         server_nodes_to = new Set();
     }
     update_server_nodes_to(server_nodes_to, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("s_summary", function () {
     console.log("summary")
@@ -627,7 +637,7 @@ socket.on("s_summary", function () {
         server_nodes_to = new Set();
     }
     update_server_nodes_to(server_nodes_to, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("s_summary_complete", function () {
     console.log("summary_complete")
@@ -661,7 +671,7 @@ socket.on("s_summary_complete", function () {
         server_nodes_to = new Set();
     }
     update_server_nodes_to(server_nodes_to, task_id);
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_fin", function (res) {
     console.log("client_fin")
@@ -672,7 +682,7 @@ socket.on("c_fin", function (res) {
             "background": "#F8F8F8"
         };
     }
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("s_fin", function () {
     console.log("server_fin")
@@ -682,7 +692,7 @@ socket.on("s_fin", function () {
             "background": "#F8F8F8"
         };
     }
-    update_network(all_nodes, server_nodes_to, client_nodes_to);
+    update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 
 
