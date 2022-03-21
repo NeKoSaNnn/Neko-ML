@@ -24,7 +24,7 @@ var options = {
     },
     edges: {
         color: {color: gray},
-        smooth: false,
+        smooth: true,
         width: 3
     },
     layout: {
@@ -208,12 +208,12 @@ socket.on("c_check_resource", function (res) {
             "color": green,
         };
     }
+    let now_client_id = all_nodes[sid].label;
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = green;
         all_nodes[task_id].label = now_client_id + "\n<i>check_resource</i>";
     } else {
         now_nodes++;
-        let now_client_id = all_nodes[sid].label;
         let now_label = now_client_id + "\n<i>check_resource</i>";
         all_nodes[task_id] = {
             "id": now_nodes,
@@ -465,7 +465,6 @@ socket.on("c_eval", function (res) {
         all_nodes[task_id].label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>";
     } else {
         now_nodes++;
-        let now_client_id = all_nodes[sid].label;
         let now_label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>";
         all_nodes[task_id] = {
             "id": now_nodes,
