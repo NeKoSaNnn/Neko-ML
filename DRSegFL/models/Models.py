@@ -49,7 +49,7 @@ class BaseModel(object):
                 self.train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
                                                  num_classes=self.num_classes, img_size=self.config[constants.IMG_SIZE], is_train=False)
             self.train_dataloader = DataLoader(self.train_dataset, self.config[constants.BATCH_SIZE], shuffle=True,
-                                               num_workers=self.config[constants.NUM_WORKERS])
+                                               num_workers=self.config[constants.NUM_WORKERS], drop_last=True)
             self.train_contribution = len(self.train_dataset)
 
         if constants.VALIDATION in self.config:

@@ -2,6 +2,21 @@ body {
     height: 100vh;
     width: 100vw;
     margin: 0;
+    background: linear-gradient(-45deg, rgba(255, 209, 148, 0.73), rgba(112, 225, 245, 0.68), rgba(80, 173, 213, 0.73), rgba(99, 208, 241, 0.73));
+    background-size: 400% 400%;
+    animation: gradient 30s ease infinite;
+}
+
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 #mynetwork {

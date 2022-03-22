@@ -1,31 +1,33 @@
 // create an array with nodes
-const green = '#94BFA2';
-const orange = '#F9A657';
-const gray = '#EAEAEB';
+const green = '#c2e59c';
+const deepgreen = 'rgba(181,252,145,0.9)';
+const blue = '#64b3f4';
+const deepblue = 'rgba(55,166,248,0.87)';
+const orange = '#FEAC5E';
+const gray = '#d7d2cc';
 const red = '#E59393';
 
 var options = {
     nodes: {
         value: 1,
-        shape: 'dot',
         font: {
-            size: 12,
+            size: 13,
             multi: true,
-            strokeWidth: 3,
+            strokeWidth: 2,
         },
         scaling: {
-            min: 10,
-            max: 40,
+            min: 35,
+            max: 45,
             label: {
                 enabled: false,
-                maxVisible: 5
+                maxVisible: 25
             }
         },
     },
     edges: {
-        color: {color: gray},
+        // color: {color: gray},
         smooth: true,
-        width: 3
+        width: 2
     },
     layout: {
         randomSeed: 1,//配置每次生成的节点位置都一样，参数为数字1、2等
@@ -62,7 +64,7 @@ function update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges) 
                 let edge = "from" + server.id + "to" + all_nodes[v].id;
                 if (!all_edges.has(edge)) {
                     all_edges.add(edge);
-                    edges.add({from: server.id, to: all_nodes[v].id});
+                    edges.add({from: server.id, to: all_nodes[v].id, color: deepblue});
                 }
             }
         }
@@ -76,7 +78,7 @@ function update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges) 
                         let edge = "from" + client.id + "to" + all_nodes[v].id;
                         if (!all_edges.has(edge)) {
                             all_edges.add(edge);
-                            edges.add({from: client.id, to: all_nodes[v].id});
+                            edges.add({from: client.id, to: all_nodes[v].id, color: deepgreen});
                         }
                     }
                 }
@@ -120,7 +122,8 @@ socket.on("s_connect", function () {
         "id": now_nodes,
         "label": "<b>server</b>",
         "value": 1,
-        "color": green,
+        "color": blue,
+        "shape": "hexagon",
     };
     server_nodes_to = new Set();
     update_network(all_nodes, server_nodes_to, client_nodes_to);
@@ -131,7 +134,7 @@ socket.on("c_connect", function (res) {
     if (all_nodes.hasOwnProperty(sid)) {
         all_nodes[sid].color = {
             "border": gray,
-            "background": "#F8F8F8"
+            "background": "#F8F8F8",
         };
     } else {
         now_client++;
@@ -145,6 +148,7 @@ socket.on("c_connect", function (res) {
                 "border": gray,
                 "background": "#F8F8F8"
             },
+            "shape": "dot",
         };
         client_nodes_to[sid] = new Set();
     }
@@ -154,7 +158,8 @@ socket.on("c_connect", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -175,6 +180,7 @@ socket.on("c_wakeup", async function (res) {
             "label": now_label,
             "value": 1,
             "color": green,
+            "shape": "dot",
         };
         client_nodes_to[sid] = new Set();
     }
@@ -184,7 +190,8 @@ socket.on("c_wakeup", async function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -201,6 +208,9 @@ socket.on("c_disconnect", function (res) {
     if (all_nodes.hasOwnProperty(sid)) {
         all_nodes[sid].color = red;
     }
+    for (let child of client_nodes_to[sid]) {
+        all_nodes[child].color = red;
+    }
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
 socket.on("c_check_resource", function (res) {
@@ -216,6 +226,7 @@ socket.on("c_check_resource", function (res) {
             "label": now_label,
             "value": 1,
             "color": green,
+            "shape": "dot",
         };
     }
     let now_client_id = all_nodes[sid].label;
@@ -228,8 +239,9 @@ socket.on("c_check_resource", function (res) {
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
-            "value": 1,
+            "value": 2,
             "color": green,
+            "shape": "box",
         };
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -238,7 +250,8 @@ socket.on("c_check_resource", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -259,6 +272,7 @@ socket.on("c_check_resource_complete", function (res) {
             "label": now_label,
             "value": 1,
             "color": green,
+            "shape": "dot",
         };
     }
     let now_client_id = all_nodes[sid].label;
@@ -267,18 +281,19 @@ socket.on("c_check_resource_complete", function (res) {
             "border": gray,
             "background": "#F8F8F8"
         };
-        all_nodes[task_id].label = now_client_id + "\n<i>check_resource</i>\n<b>complete</b>";
+        all_nodes[task_id].label = now_client_id + "\n<i>check_resource complete</i>";
     } else {
         now_nodes++;
-        let now_label = now_client_id + "\n<i>check_resource</i>\n<b>complete</b>";
+        let now_label = now_client_id + "\n<i>check_resource complete</i>";
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
-            "value": 1,
+            "value": 2,
             "color": {
                 "border": gray,
                 "background": "#F8F8F8"
             },
+            "shape": "box",
         };
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -287,7 +302,8 @@ socket.on("c_check_resource_complete", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -309,6 +325,7 @@ socket.on("c_train", function (res) {
             "label": now_label,
             "value": 1,
             "color": green,
+            "shape": "dot",
         };
     }
     let now_client_id = all_nodes[sid].label;
@@ -321,8 +338,10 @@ socket.on("c_train", function (res) {
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
-            "value": 1,
+            "value": 2,
             "color": green,
+            "shape": "box",
+            "title": "train",
         };
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -331,7 +350,8 @@ socket.on("c_train", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -353,6 +373,7 @@ socket.on("c_train_complete", function (res) {
             "label": now_label,
             "value": 1,
             "color": green,
+            "shape": "dot",
         };
     }
     let now_client_id = all_nodes[sid].label;
@@ -361,18 +382,20 @@ socket.on("c_train_complete", function (res) {
             "border": gray,
             "background": "#F8F8F8"
         };
-        all_nodes[task_id].label = now_client_id + "\n<i>train:</i><b>" + gep + "</b>\n<b>complete</b>";
+        all_nodes[task_id].label = now_client_id + "\n<i>train: " + gep + " complete</i>";
     } else {
         now_nodes++;
-        let now_label = now_client_id + "\n<i>train:</i><b>" + gep + "</b>\n<b>complete</b>";
+        let now_label = now_client_id + "\n<i>train: " + gep + " complete</i>";
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
-            "value": 1,
+            "value": 2,
             "color": {
                 "border": gray,
                 "background": "#F8F8F8"
             },
+            "shape": "box",
+            "title": "train",
         };
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -381,7 +404,8 @@ socket.on("c_train_complete", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -394,15 +418,16 @@ socket.on("s_train_aggre", function (res) {
     let gep = res["gep"];
     let task_id = "train_aggre";
     if (all_nodes.hasOwnProperty(task_id)) {
-        all_nodes[task_id].color = green;
-        all_nodes[task_id].label = "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>";
+        all_nodes[task_id].color = blue;
+        all_nodes[task_id].label = "<b>server</b>\n<i>train_aggre:</i><b>" + +"</b>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>",
-            "value": 1,
-            "color": green,
+            "value": 3,
+            "color": blue,
+            "shape": "box",
         };
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -411,7 +436,8 @@ socket.on("s_train_aggre", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -427,17 +453,18 @@ socket.on("s_train_aggre_complete", function (res) {
             "border": gray,
             "background": "#F8F8F8"
         };
-        all_nodes[task_id].label = "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>\n<b>complete</b>";
+        all_nodes[task_id].label = "<b>server</b>\n<i>train_aggre: " + gep + " complete</i>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
             "id": now_nodes,
-            "label": "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>\n<b>complete</b>",
-            "value": 1,
+            "label": "<b>server</b>\n<i>train_aggre: " + gep + " complete</i>",
+            "value": 3,
             "color": {
                 "border": gray,
                 "background": "#F8F8F8"
             },
+            "shape": "box",
         };
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -446,7 +473,8 @@ socket.on("s_train_aggre_complete", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -467,6 +495,7 @@ socket.on("c_eval", function (res) {
             "label": now_label,
             "value": 1,
             "color": green,
+            "shape": "dot",
         };
     }
     let now_client_id = all_nodes[sid].label;
@@ -479,8 +508,9 @@ socket.on("c_eval", function (res) {
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
-            "value": 1,
+            "value": 2,
             "color": green,
+            "shape": "box",
         };
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -489,7 +519,8 @@ socket.on("c_eval", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -511,6 +542,7 @@ socket.on("c_eval_complete", function (res) {
             "label": now_label,
             "value": 1,
             "color": green,
+            "shape": "dot",
         };
     }
     let now_client_id = all_nodes[sid].label;
@@ -519,18 +551,19 @@ socket.on("c_eval_complete", function (res) {
             "border": gray,
             "background": "#F8F8F8"
         };
-        all_nodes[task_id].label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>\n<b>complete</b>";
+        all_nodes[task_id].label = now_client_id + "\n<i>eval: " + gep + " complete</i>";
     } else {
         now_nodes++;
-        let now_label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>\n<b>complete</b>";
+        let now_label = now_client_id + "\n<i>eval: " + gep + " complete</i>";
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": now_label,
-            "value": 1,
+            "value": 2,
             "color": {
                 "border": gray,
                 "background": "#F8F8F8"
             },
+            "shape": "box",
         };
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -539,7 +572,8 @@ socket.on("c_eval_complete", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -552,15 +586,16 @@ socket.on("s_eval_aggre", function (res) {
     let gep = res["gep"];
     let task_id = "eval_aggre";
     if (all_nodes.hasOwnProperty(task_id)) {
-        all_nodes[task_id].color = green;
+        all_nodes[task_id].color = blue;
         all_nodes[task_id].label = "<b>server</b>\n<i>eval_aggre:</i><b>" + gep + "</b>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": "<b>server</b>\n<i>eval_aggre:</i><b>" + gep + "</b>",
-            "value": 1,
-            "color": green,
+            "value": 3,
+            "color": blue,
+            "shape": "box",
         }
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -569,7 +604,8 @@ socket.on("s_eval_aggre", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -585,17 +621,18 @@ socket.on("s_eval_aggre_complete", function (res) {
             "border": gray,
             "background": "#F8F8F8"
         };
-        all_nodes[task_id].label = "<b>server</b>\n<i>eval_aggre:</i><b>" + gep + "</b>\n<b>complete</b>";
+        all_nodes[task_id].label = "<b>server</b>\n<i>eval_aggre: " + gep + " complete</i>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
             "id": now_nodes,
-            "label": "<b>server</b>\n<i>eval_aggre:</i><b>" + gep + "</b>\n<b>complete</b>",
-            "value": 1,
+            "label": "<b>server</b>\n<i>eval_aggre: " + gep + " complete</i>",
+            "value": 3,
             "color": {
                 "border": gray,
                 "background": "#F8F8F8"
             },
+            "shape": "box",
         }
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -604,7 +641,8 @@ socket.on("s_eval_aggre_complete", function (res) {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -615,15 +653,16 @@ socket.on("s_summary", function () {
     console.log("summary")
     let task_id = "summary";
     if (all_nodes.hasOwnProperty(task_id)) {
-        all_nodes[task_id].color = green;
+        all_nodes[task_id].color = blue;
         all_nodes[task_id].label = "<b>server</b>\n<i>summary</i>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": "<b>server</b>\n<i>summary</i>",
-            "value": 1,
-            "color": green,
+            "value": 3,
+            "color": blue,
+            "shape": "box",
         }
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -632,7 +671,8 @@ socket.on("s_summary", function () {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }
@@ -653,11 +693,12 @@ socket.on("s_summary_complete", function () {
         all_nodes[task_id] = {
             "id": now_nodes,
             "label": "<b>server</b>\n<i>summary complete</i>",
-            "value": 1,
+            "value": 2,
             "color": {
                 "border": gray,
                 "background": "#F8F8F8"
             },
+            "shape": "box",
         }
     }
     if (!all_nodes.hasOwnProperty("server")) {
@@ -666,7 +707,8 @@ socket.on("s_summary_complete", function () {
             "id": now_nodes,
             "label": "<b>server</b>",
             "value": 1,
-            "color": green,
+            "color": blue,
+            "shape": "hexagon",
         };
         server_nodes_to = new Set();
     }

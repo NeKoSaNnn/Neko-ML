@@ -22,7 +22,7 @@ client:
 
   epoch: 2
   batch_size: 4
-  eval_batch_size: 4
+  eval_batch_size: 1
 
   log_interval_iter: 10
 
