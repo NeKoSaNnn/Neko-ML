@@ -524,11 +524,6 @@ class FederatedServer(object):
                 self.socketio.stop()
                 exit(0)
 
-        @self.socketio.on("ui_c_fin", namespace="/ui")
-        def ui_client_fin():
-            self.logger.info("ui client-sid:[{}] close".format(request.sid))
-            disconnect(request.sid)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
