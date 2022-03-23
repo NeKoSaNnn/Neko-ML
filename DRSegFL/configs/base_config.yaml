@@ -1,7 +1,7 @@
 #model
 model:
   model_name: deeplabv3
-  dataset_name: DDR_EX
+  dataset_name: DDR
   img_size: 1024
   data_augment: True
 
@@ -16,18 +16,21 @@ model:
 #    factor: 0.1
 #    patience: 10
     min_lr: 0.0001
-    t_max: 5000
+    t_max: 1000
 
   dataset_dir:
-    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/train"
-    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/EX/test"
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/crop_resize"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/test/crop_resize"
   num_workers: 4
 
   num_channels: 3
-  num_classes: 2
+  num_classes: 5
   classes:
     - "bg"
     - "EX"
+    - "HE"
+    - "MA"
+    - "SE"
 
   slide_inference:
     slide_crop_size: 224
@@ -35,7 +38,7 @@ model:
 
 #client
 client:
-  gpu: "1"
+  gpu: "4"
 
   epoch: 1
   batch_size: 8
@@ -48,24 +51,24 @@ client:
 #server
 server:
   host: "127.0.0.1"
-  port: 9192
-  gpu: "0"
+  port: 9191
+  gpu: "5"
 
-  epoch: 5000
+  epoch: 1000
   num_clients: 4
 
   global_eval:
     # {type : metric to best}
     train:
-      num: 500
+      num: 100
       metric: "mIoU"
     test:
-      num: 500
+      num: 100
       metric: "mIoU"
 
   local_eval:
     # {type : global ep interval to eval}
-    test: 250
+    test: 50
 
   tolerate:
     test:
@@ -73,5 +76,5 @@ server:
       metric: "mIoU"
 
   log_interval_iter: 10
-  save_ckpt_epoch: 250
+  save_ckpt_epoch: 100
   per_client_max_loadavg: 0.8

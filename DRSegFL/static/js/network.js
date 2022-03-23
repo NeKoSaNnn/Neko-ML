@@ -107,7 +107,7 @@ function update_server_nodes_to(server_nodes_to, task_id) {
 }
 
 let name_space = "/ui";
-const socket = io.connect(location.protocol + "//" + document.domain + ":" + location.port + name_space);
+var socket = io.connect(location.protocol + "//" + document.domain + ":" + location.port + name_space);
 console.log(location.protocol + "//" + document.domain + ":" + location.port + name_space)
 var all_nodes = Array();
 var server_nodes_to = new Set();
@@ -115,6 +115,13 @@ var client_nodes_to = new Set();
 var all_edges = new Set();
 var now_nodes = 0;
 var now_client = 0;
+
+window.onbeforeunload = function () {
+    console.log("before unload close socket");
+    socket.close();
+    // socket.disconnect();
+}
+
 socket.on("s_connect", function () {
     console.log("server_connect")
     now_nodes++;
@@ -419,7 +426,7 @@ socket.on("s_train_aggre", function (res) {
     let task_id = "train_aggre";
     if (all_nodes.hasOwnProperty(task_id)) {
         all_nodes[task_id].color = blue;
-        all_nodes[task_id].label = "<b>server</b>\n<i>train_aggre:</i><b>" + +"</b>";
+        all_nodes[task_id].label = "<b>server</b>\n<i>train_aggre:</i><b>" + gep + "</b>";
     } else {
         now_nodes++;
         all_nodes[task_id] = {
