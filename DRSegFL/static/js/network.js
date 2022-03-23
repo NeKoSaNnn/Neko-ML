@@ -107,7 +107,7 @@ function update_server_nodes_to(server_nodes_to, task_id) {
 }
 
 let name_space = "/ui";
-var socket = io.connect(location.protocol + "//" + document.domain + ":" + location.port + name_space);
+var sio = io.connect(location.protocol + "//" + document.domain + ":" + location.port + name_space, {'sync disconnect on unload': true});
 console.log(location.protocol + "//" + document.domain + ":" + location.port + name_space)
 var all_nodes = Array();
 var server_nodes_to = new Set();
@@ -117,12 +117,18 @@ var now_nodes = 0;
 var now_client = 0;
 
 window.onbeforeunload = function () {
-    console.log("before unload close socket");
-    socket.close();
-    // socket.disconnect();
+    console.log(sio);
+    sio.close();
+    return "close";
 }
+//
+// window.onunload = () => {
+//     console.log("before unload close sio");
+//     sio.close();
+//     // sio.disconnect();
+// }
 
-socket.on("s_connect", function () {
+sio.on("s_connect", function () {
     console.log("server_connect")
     now_nodes++;
     all_nodes["server"] = {
@@ -135,7 +141,7 @@ socket.on("s_connect", function () {
     server_nodes_to = new Set();
     update_network(all_nodes, server_nodes_to, client_nodes_to);
 });
-socket.on("c_connect", function (res) {
+sio.on("c_connect", function (res) {
     console.log("client_connect")
     let sid = res["sid"];
     if (all_nodes.hasOwnProperty(sid)) {
@@ -173,7 +179,7 @@ socket.on("c_connect", function (res) {
     update_client_nodes_to(client_nodes_to, sid, "server")
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("c_wakeup", async function (res) {
+sio.on("c_wakeup", async function (res) {
     console.log("wakeup")
     let sid = res["sid"];
     if (all_nodes.hasOwnProperty(sid)) {
@@ -206,10 +212,10 @@ socket.on("c_wakeup", async function (res) {
     update_client_nodes_to(client_nodes_to, sid, "server");
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 })
-socket.on("c_reconnect", function (res) {
+sio.on("c_reconnect", function (res) {
 
 });
-socket.on("c_disconnect", function (res) {
+sio.on("c_disconnect", function (res) {
     console.log("client_disconnect")
     let sid = res["sid"];
     if (all_nodes.hasOwnProperty(sid)) {
@@ -220,7 +226,7 @@ socket.on("c_disconnect", function (res) {
     }
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("c_check_resource", function (res) {
+sio.on("c_check_resource", function (res) {
     console.log("check_resource")
     let sid = res["sid"];
     let task_id = "check_resource_" + sid;
@@ -266,7 +272,7 @@ socket.on("c_check_resource", function (res) {
     update_client_nodes_to(client_nodes_to, sid, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("c_check_resource_complete", function (res) {
+sio.on("c_check_resource_complete", function (res) {
     console.log("check_resource_complete")
     let sid = res["sid"];
     let task_id = "check_resource_" + sid;
@@ -318,7 +324,7 @@ socket.on("c_check_resource_complete", function (res) {
     update_client_nodes_to(client_nodes_to, sid, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("c_train", function (res) {
+sio.on("c_train", function (res) {
     console.log("train")
     let sid = res["sid"];
     let gep = res["gep"];
@@ -366,7 +372,7 @@ socket.on("c_train", function (res) {
     update_client_nodes_to(client_nodes_to, sid, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("c_train_complete", function (res) {
+sio.on("c_train_complete", function (res) {
     console.log("train_complete")
     let sid = res["sid"];
     let gep = res["gep"];
@@ -420,7 +426,7 @@ socket.on("c_train_complete", function (res) {
     update_client_nodes_to(client_nodes_to, sid, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("s_train_aggre", function (res) {
+sio.on("s_train_aggre", function (res) {
     console.log("train_aggre")
     let gep = res["gep"];
     let task_id = "train_aggre";
@@ -451,7 +457,7 @@ socket.on("s_train_aggre", function (res) {
     update_server_nodes_to(server_nodes_to, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("s_train_aggre_complete", function (res) {
+sio.on("s_train_aggre_complete", function (res) {
     console.log("train_aggre_complete")
     let gep = res["gep"];
     let task_id = "train_aggre";
@@ -488,7 +494,7 @@ socket.on("s_train_aggre_complete", function (res) {
     update_server_nodes_to(server_nodes_to, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("c_eval", function (res) {
+sio.on("c_eval", function (res) {
     console.log("eval")
     let sid = res["sid"];
     let gep = res["gep"];
@@ -535,7 +541,7 @@ socket.on("c_eval", function (res) {
     update_client_nodes_to(client_nodes_to, sid, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("c_eval_complete", function (res) {
+sio.on("c_eval_complete", function (res) {
     console.log("eval_complete")
     let sid = res["sid"];
     let gep = res["gep"];
@@ -588,7 +594,7 @@ socket.on("c_eval_complete", function (res) {
     update_client_nodes_to(client_nodes_to, sid, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("s_eval_aggre", function (res) {
+sio.on("s_eval_aggre", function (res) {
     console.log("eval_aggre")
     let gep = res["gep"];
     let task_id = "eval_aggre";
@@ -619,7 +625,7 @@ socket.on("s_eval_aggre", function (res) {
     update_server_nodes_to(server_nodes_to, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("s_eval_aggre_complete", function (res) {
+sio.on("s_eval_aggre_complete", function (res) {
     console.log("eval_aggre_complete")
     let gep = res["gep"];
     let task_id = "eval_aggre";
@@ -656,7 +662,7 @@ socket.on("s_eval_aggre_complete", function (res) {
     update_server_nodes_to(server_nodes_to, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("s_summary", function () {
+sio.on("s_summary", function () {
     console.log("summary")
     let task_id = "summary";
     if (all_nodes.hasOwnProperty(task_id)) {
@@ -686,7 +692,7 @@ socket.on("s_summary", function () {
     update_server_nodes_to(server_nodes_to, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("s_summary_complete", function () {
+sio.on("s_summary_complete", function () {
     console.log("summary_complete")
     let task_id = "summary";
     if (all_nodes.hasOwnProperty(task_id)) {
@@ -722,7 +728,7 @@ socket.on("s_summary_complete", function () {
     update_server_nodes_to(server_nodes_to, task_id);
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("c_fin", function (res) {
+sio.on("c_fin", function (res) {
     console.log("client_fin")
     let sid = res["sid"];
     if (all_nodes.hasOwnProperty(sid)) {
@@ -733,7 +739,7 @@ socket.on("c_fin", function (res) {
     }
     update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
 });
-socket.on("s_fin", function () {
+sio.on("s_fin", function () {
     console.log("server_fin")
     if (all_nodes.hasOwnProperty("server")) {
         all_nodes["server"].color = {

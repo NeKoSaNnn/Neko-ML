@@ -21,7 +21,7 @@ model:
   dataset_dir:
     train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/crop_resize"
     test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/test/crop_resize"
-  num_workers: 4
+  num_workers: 1
 
   num_channels: 3
   num_classes: 5
