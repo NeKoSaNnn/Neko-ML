@@ -31,15 +31,15 @@ class LocalModel(object):
         self.model = getattr(Models, self.config[constants.NAME_MODEL])(config, logger)
         self.weights_path = self.config[constants.PATH_WEIGHTS]
 
-    def get_weights(self):
-        return self.model.get_weights()
+    def get_weights(self, to_cpu):
+        return self.model.get_weights(to_cpu)
 
     def auto_set_weights(self):
         weights = utils.pickle2obj(self.weights_path)
-        self.model.set_weights(weights)
+        self.model.set_weights(weights, is_cpu=True)
 
-    def set_weights(self, params):
-        self.model.set_weights(params)
+    def set_weights(self, params, is_cpu=True):
+        self.model.set_weights(params, is_cpu)
 
     def get_contribution(self, contribution_type):
         if contribution_type == constants.TRAIN:
@@ -53,7 +53,7 @@ class LocalModel(object):
 
     def train(self, local_epoch, tbX=None):
         losses = self.model.train(local_epoch, tbX)
-        return self.get_weights(), np.mean(losses)
+        return self.get_weights(to_cpu=True), np.mean(losses)
 
     def eval(self, eval_type):
         loss, acc = self.model.eval(eval_type)
@@ -197,14 +197,15 @@ class FederatedClient(object):
                 self.logger.info("Receive Init Weights ...")
                 now_weights = utils.pickle2obj(data["now_weights"])
                 utils.obj2pickle(now_weights, self.local_model.weights_path)  # init local weights
-                self.local_model.set_weights(now_weights)
+                self.local_model.set_weights(now_weights, is_cpu=True)
                 self.logger.info("Init Local Weights Completed")
 
             # train local_epoch
             self.logger.info("GlobalEpoch:{} -- Local Train Start ...".format(now_global_epoch))
-            weights, loss = self.local_model.train(self.local_epoch, self.tbX)
+            cpu_weights, loss = self.local_model.train(self.local_epoch, self.tbX)
+            self.logger.debug(self.local_model.model.device)
 
-            pickle_weights = utils.obj2pickle(weights, self.local_model.weights_path)  # pickle weights path
+            pickle_weights = utils.obj2pickle(cpu_weights, self.local_model.weights_path)  # pickle weights path
 
             emit_data = {
                 "now_global_epoch": now_global_epoch,
@@ -245,7 +246,7 @@ class FederatedClient(object):
             global_weights = utils.pickle2obj(data["now_weights"])
             utils.obj2pickle(global_weights, self.local_model.weights_path)  # save global weights to local weights path
 
-            self.local_model.set_weights(global_weights)
+            self.local_model.set_weights(global_weights, is_cpu=True)
             self.logger.info("Update Local Weights Completed.")
 
             emit_data = {}

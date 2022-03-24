@@ -60,7 +60,7 @@ class GlobalModel(object):
         self.global_weights = copy.deepcopy(fed.FedAvg(clients_weights, clients_contribution))
 
     def get_init_weights(self):
-        model = getattr(Models, self.config[constants.NAME_MODEL])(self.config, self.logger)
+        model = getattr(Models, self.config[constants.NAME_MODEL])(self.config, self.logger, only_init_weights=True)
         init_weights = copy.deepcopy(model.get_weights())
         self.logger.info("Init Weights Load Completed")
         del model

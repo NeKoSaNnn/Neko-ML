@@ -2,8 +2,8 @@ body {
     height: 100vh;
     width: 100vw;
     margin: 0;
-    background: linear-gradient(-45deg, rgba(255, 209, 148, 0.73), rgba(112, 225, 245, 0.68), rgba(80, 173, 213, 0.73), rgba(99, 208, 241, 0.73));
-    background-size: 400% 400%;
+    background: linear-gradient(-45deg,  rgba(151, 173, 16, 0.7), rgba(94, 203, 171, 0.68), rgba(99, 192, 211, 0.68), rgba(82, 167, 206, 0.73), rgba(83, 176, 206, 0.7));
+    background-size: 500% 500%;
     animation: gradient 30s ease infinite;
 }
 

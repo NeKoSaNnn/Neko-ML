@@ -26,7 +26,7 @@ torch.set_num_threads(4)
 
 
 class BaseModel(object):
-    def __init__(self, config: dict, logger=None):
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
         self.config = config
         self.logger = Logger(logger)
 
@@ -66,12 +66,6 @@ class BaseModel(object):
                                               num_workers=self.config[constants.NUM_WORKERS])
             self.test_contribution = len(self.test_dataloader)
 
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-            # torch.backends.cudnn.benchmark = True
-        else:
-            self.device = torch.device("cpu")
-
         self.net = None
         self.optimizer = None
         self.loss_f = []
@@ -80,28 +74,37 @@ class BaseModel(object):
 
         self.logger.info("Model:{} init ......".format(self.config[constants.NAME_MODEL]))
 
-        self.net_init()
-        self.loss_init()
-
-        if "optim" in self.config.keys() and self.config["optim"] is not None:
-            if self.config["optim"]["type"] == "SGD":
-                self.optimizer = torch.optim.SGD(self.net.parameters(), lr=float(self.config["optim"]["lr"]),
-                                                 momentum=float(self.config["optim"]["momentum"]),
-                                                 weight_decay=float(self.config["optim"]["weight_decay"]))
+        if only_init_weights:
+            self.net_init(device=torch.device("cpu"))
         else:
-            # default is adam optimizer
-            self.optimizer = torch.optim.Adam(self.net.parameters())
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+                # torch.backends.cudnn.benchmark = True
+            else:
+                self.device = torch.device("cpu")
 
-        if "lr_schedule" in self.config.keys() and self.config["lr_schedule"] is not None:
-            self.schedule = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.config["lr_schedule"]["t_max"],
-                                                                       eta_min=float(self.config["lr_schedule"]["min_lr"]))
-            # self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
-            #                                                            mode=self.config["lr_schedule"]["mode"],
-            #                                                            factor=float(self.config["lr_schedule"]["factor"]),
-            #                                                            patience=int(self.config["lr_schedule"]["patience"]),
-            #                                                            min_lr=float(self.config["lr_schedule"]["min_lr"]))
+            self.net_init(device=self.device)
+            self.loss_init()
 
-        self.logger.info("Model:{} Construct and Init Completed.".format(self.config[constants.NAME_MODEL]))
+            if "optim" in self.config.keys() and self.config["optim"] is not None:
+                if self.config["optim"]["type"] == "SGD":
+                    self.optimizer = torch.optim.SGD(self.net.parameters(), lr=float(self.config["optim"]["lr"]),
+                                                     momentum=float(self.config["optim"]["momentum"]),
+                                                     weight_decay=float(self.config["optim"]["weight_decay"]))
+            else:
+                # default is adam optimizer
+                self.optimizer = torch.optim.Adam(self.net.parameters())
+
+            if "lr_schedule" in self.config.keys() and self.config["lr_schedule"] is not None:
+                self.schedule = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.config["lr_schedule"]["t_max"],
+                                                                           eta_min=float(self.config["lr_schedule"]["min_lr"]))
+                # self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+                #                                                            mode=self.config["lr_schedule"]["mode"],
+                #                                                            factor=float(self.config["lr_schedule"]["factor"]),
+                #                                                            patience=int(self.config["lr_schedule"]["patience"]),
+                #                                                            min_lr=float(self.config["lr_schedule"]["min_lr"]))
+
+            self.logger.info("Model:{} Construct and Init Completed.".format(self.config[constants.NAME_MODEL]))
 
     def __del__(self):
         self.optimizer = None
@@ -112,20 +115,25 @@ class BaseModel(object):
         del self.loss_f
         torch.cuda.empty_cache()
 
-    def get_weights(self):
-        return copy.deepcopy(self.net.state_dict())
+    def get_weights(self, to_cpu=False):
+        return copy.deepcopy(self.net).cpu().state_dict() if to_cpu else copy.deepcopy(self.net).state_dict()
 
     def get_opt_weights(self):
-        return copy.deepcopy(self.optimizer.state_dict())
+        return copy.deepcopy(self.optimizer).state_dict()
 
-    def set_weights(self, weights):
+    def set_weights(self, weights, is_cpu=False):
         if isinstance(weights, str) and (".pt" in weights or ".pth" in weights):
             # .pt/.pth file
-            weights = torch.load(weights)
+            weights = torch.load(weights, map_location=self.device)
             self.net.load_state_dict(weights)
         else:
             # state_dict file
-            self.net.load_state_dict(copy.deepcopy(weights))
+            if is_cpu:
+                self.net = self.net.to("cpu")
+                self.net.load_state_dict(copy.deepcopy(weights))
+                self.net = self.net.to(self.device)
+            else:
+                self.net.load_state_dict(copy.deepcopy(weights))
 
     def loss_init(self):
         self.loss_f = []
@@ -190,14 +198,14 @@ class BaseModel(object):
                 loss += loss_func(pred, target)
         return loss
 
-    def net_init(self):
+    def net_init(self, device):
         """
         init self.net:
         """
         raise NotImplementedError
 
-    def train(self, epoch=1, tbX=None):
-        # target_data_type = torch.long if self.num_classes > 1 else torch.float32
+    def train(self, epoch=1, tbX=None):  # target_data_type = torch.long if self.num_classes > 1 else torch.float32
+        self.net = self.net.to(self.device)
         self.net.train()
         ep_losses = []
         for ep in range(1, epoch + 1):
@@ -237,6 +245,7 @@ class BaseModel(object):
         return ep_losses
 
     def eval(self, eval_type):
+        self.net = self.net.to(self.device)
         self.net.eval()
         if eval_type == constants.TRAIN:
             train_dataset = ListDataset(txt_path=self.config[constants.TRAIN], dataset_name=self.config[constants.NAME_DATASET],
@@ -312,96 +321,96 @@ class BaseModel(object):
 
 
 class unet(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(unet, self).__init__(config, logger)
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
+        super(unet, self).__init__(config, logger, only_init_weights)
 
-    def net_init(self):
-        self.net = UNet(self.num_channels, self.num_classes).to(self.device)
+    def net_init(self, device):
+        self.net = UNet(self.num_channels, self.num_classes).to(device)
 
 
 class res_unet(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(res_unet, self).__init__(config, logger)
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
+        super(res_unet, self).__init__(config, logger, only_init_weights)
 
-    def net_init(self):
+    def net_init(self, device):
         self.net = smp.Unet(
             encoder_name="resnet50",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
-            classes=self.num_classes).to(self.device)
+            classes=self.num_classes).to(device)
         # self.net = UNet(self.num_channels, self.num_classes).to(self.device)
 
 
 class dense_unet(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(dense_unet, self).__init__(config, logger)
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
+        super(dense_unet, self).__init__(config, logger, only_init_weights)
 
-    def net_init(self):
+    def net_init(self, device):
         self.net = smp.Unet(
             encoder_name="densenet169",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
-            classes=self.num_classes).to(self.device)
+            classes=self.num_classes).to(device)
 
 
 class unetplusplus(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(unetplusplus, self).__init__(config, logger)
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
+        super(unetplusplus, self).__init__(config, logger, only_init_weights)
 
-    def net_init(self):
+    def net_init(self, device):
         self.net = smp.UnetPlusPlus(
             encoder_name="resnet50",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
-            classes=self.num_classes).to(self.device)
+            classes=self.num_classes).to(device)
 
 
 class deeplabv3(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(deeplabv3, self).__init__(config, logger)
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
+        super(deeplabv3, self).__init__(config, logger, only_init_weights)
 
-    def net_init(self):
+    def net_init(self, device):
         self.net = smp.DeepLabV3(
             encoder_name="resnet50",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
-            classes=self.num_classes).to(self.device)
+            classes=self.num_classes).to(device)
 
 
 class deeplabv3plus(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(deeplabv3plus, self).__init__(config, logger)
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
+        super(deeplabv3plus, self).__init__(config, logger, only_init_weights)
 
-    def net_init(self):
+    def net_init(self, device):
         self.net = smp.DeepLabV3Plus(
             encoder_name="resnet50",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
-            classes=self.num_classes).to(self.device)
+            classes=self.num_classes).to(device)
 
 
 class fpn(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(fpn, self).__init__(config, logger)
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
+        super(fpn, self).__init__(config, logger, only_init_weights)
 
-    def net_init(self):
+    def net_init(self, device):
         self.net = smp.FPN(
             encoder_name="resnet50",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
-            classes=self.num_classes).to(self.device)
+            classes=self.num_classes).to(device)
 
 
 class pspnet(BaseModel):
-    def __init__(self, config: dict, logger=None):
-        super(pspnet, self).__init__(config, logger)
+    def __init__(self, config: dict, logger=None, only_init_weights=False):
+        super(pspnet, self).__init__(config, logger, only_init_weights)
 
-    def net_init(self):
+    def net_init(self, device):
         self.net = smp.PSPNet(
             encoder_name="resnet50",
             encoder_weights="imagenet",
             in_channels=self.num_channels,
-            classes=self.num_classes).to(self.device)
+            classes=self.num_classes).to(device)
 
 
 class Models:
