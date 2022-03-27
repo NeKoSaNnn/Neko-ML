@@ -8,6 +8,7 @@ import logging
 import os
 import os.path as osp
 import sys
+from threading import Timer
 
 import numpy as np
 import socketio
@@ -99,14 +100,20 @@ class FederatedClient(object):
         self.ignore_loadavg = self.client_config["ignore_loadavg"]
 
         # self.socketio = SocketIO(self.server_host, self.server_port, None, {"timeout": 36000})
-        self.socketio = socketio.Client()
+        self.socketio = socketio.Client(logger=True, engineio_logger=True)
         self.register_handles()
         self.socketio.connect("http://{}:{}".format(self.server_host, self.server_port))
 
     def wakeup(self):
         self.logger.info("Client Start {}:{}".format(self.server_host, self.server_port))
         self.socketio.emit("client_wakeup")
+        # self.socketio.start_background_task(self.heartbeat_task)
         self.socketio.wait()
+
+    def heartbeat_task(self):
+        self.socketio.emit("heartbeat")
+        t = Timer(20, self.heartbeat_task)
+        t.start()
 
     def _local_eval(self, eval_type, emit_data, now_global_epoch, sid):
         assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST]
@@ -133,17 +140,25 @@ class FederatedClient(object):
         self.tbX.add_scalars("global_eval/{}_acc".format(eval_type), acc, now_global_epoch)
 
     def register_handles(self):
-        @self.socketio.on("connect")
+        @self.socketio.event
         def connect():
             self.logger.info("Connect")
+
+        @self.socketio.event
+        def connect_error(e):
+            self.logger.error(e)
+
+        @self.socketio.event
+        def disconnect():
+            self.logger.info("Close Connect.")
 
         @self.socketio.on("reconnect")
         def reconnect():
             self.logger.info("Re Connect")
 
-        @self.socketio.on("disconnect")
-        def disconnect():
-            self.logger.info("Close Connect.")
+        @self.socketio.on("re_heartbeat")
+        def re_heartbeat():
+            self.logger.debug("HeartBeat Complete. Keep Connecting")
 
         @self.socketio.on("client_init")
         def client_init():

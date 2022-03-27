@@ -202,8 +202,9 @@ class FederatedServer(object):
 
         self.app = Flask(__name__, template_folder=osp.join(now_dir_name, "static", "templates"),
                          static_folder=osp.join(now_dir_name, "static"))
-        async_mode = None
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode=async_mode)
+        # async_mode = None
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*", ping_timeout=3600,
+                                 ping_interval=60)
 
         self.logger = logging.getLogger(constants.SERVER)
         log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
@@ -252,6 +253,11 @@ class FederatedServer(object):
         @self.app.route("/stats")
         def stats_page():
             return json.dumps(self.global_model.get_stats())
+
+    def start(self):
+        self.logger.info("Server Start {}:{}".format(self.server_host, self.server_port))
+        self.socketio.run(self.app, host=self.server_host, port=self.server_port)
+        emit("s_connect", broadcast=True, namespace="/ui")  # for ui
 
     def clients_check_resource(self):
         self.client_resource = dict()
@@ -321,21 +327,24 @@ class FederatedServer(object):
         self.tbX.add_scalar("global_eval/{}_loss".format(eval_type), global_loss, self.global_model.now_global_epoch)
         self.tbX.add_scalars("global_eval/{}_acc".format(eval_type), global_acc, self.global_model.now_global_epoch)
 
-    def start(self):
-        self.logger.info("Server Start {}:{}".format(self.server_host, self.server_port))
-        self.socketio.run(self.app, host=self.server_host, port=self.server_port)
-        emit("s_connect", broadcast=True, namespace="/ui")  # for ui
-
     def register_handles(self):
         @self.socketio.on("connect")
         def connect_handle():
             self.logger.info("[{}] Connect".format(request.sid))
             emit("c_connect", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
 
+        @self.socketio.on("connect", namespace="/ui")
+        def ui_connect_handle():
+            self.logger.info("ui [{}] Connect".format(request.sid))
+
         @self.socketio.on("reconnect")
         def reconnect_handle():
             self.logger.info("[{}] Re Connect".format(request.sid))
             emit("c_reconnect", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
+
+        @self.socketio.on("reconnect", namespace="/ui")
+        def ui_reconnect_handle():
+            self.logger.info("ui [{}] Re Connect".format(request.sid))
 
         @self.socketio.on("disconnect")
         def disconnect_handle():
@@ -343,6 +352,25 @@ class FederatedServer(object):
             if request.sid in self.ready_client_sids:
                 self.ready_client_sids.remove(request.sid)
             emit("c_disconnect", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
+
+        @self.socketio.on("disconnect", namespace="/ui")
+        def ui_disconnect_handle():
+            self.logger.info("ui [{}] Close Connect.".format(request.sid))
+            emit("ui_disconnect", namespace="/ui")
+            disconnect(request.sid, namespace="/ui")
+
+        @self.socketio.on("heartbeat")
+        def heartbeat_handle():
+            self.logger.debug("Receive HeartBeat from [{}] , Still Alive".format(request.sid))
+            emit("re_heartbeat")
+
+        @self.socketio.on_error()
+        def error_handle(e):
+            self.logger.error(e)
+
+        @self.socketio.on_error(namespace="/ui")
+        def ui_error_handle(e):
+            self.logger.error("ui:{}".format(e))
 
         @self.socketio.on("client_wakeup")
         def client_wakeup_handle():

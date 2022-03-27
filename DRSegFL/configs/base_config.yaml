@@ -1,7 +1,7 @@
 #model
 model:
-  model_name: deeplabv3
-  dataset_name: DDR_HE
+  model_name: res_unet
+  dataset_name: DDR
   img_size: 1024
   data_augment: True
 
@@ -19,15 +19,18 @@ model:
     t_max: 1000
 
   dataset_dir:
-    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/HE/train"
-    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/HE/test"
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/crop_resize"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/test/crop_resize"
   num_workers: 1
 
   num_channels: 3
-  num_classes: 2
+  num_classes: 5
   classes:
     - "bg"
+    - "EX"
     - "HE"
+    - "MA"
+    - "SE"
 
   slide_inference:
     slide_crop_size: 224
@@ -48,11 +51,11 @@ client:
 #server
 server:
   host: "127.0.0.1"
-  port: 9193
+  port: 9191
   gpu: "5"
 
   epoch: 1000
-  num_clients: 4
+  num_clients: 1
 
   global_eval:
     # {type : metric to best}
