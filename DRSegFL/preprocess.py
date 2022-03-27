@@ -41,7 +41,6 @@ def ISIC_preprocess(img_path, target_path, img_size):
     tensor_img, tensor_target = tensor_trans(pil_img, pil_target)
 
     tensor_target[tensor_target > 0] = 1
-    tensor_target = tensor_target.unsqueeze(0)
     return tensor_img, tensor_target, pil_img, pil_target
 
 

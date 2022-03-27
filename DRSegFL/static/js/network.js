@@ -369,10 +369,59 @@ $(document).ready(function () {
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
                 all_nodes[task_id].color = green;
-                all_nodes[task_id].label = now_client_id + "\n<i>train:</i><b>" + gep + "</b>";
+                all_nodes[task_id].label = now_client_id + "\n<i>train: </i><b>" + gep + "</b>";
             } else {
                 now_nodes++;
-                let now_label = now_client_id + "\n<i>train:</i><b>" + gep + "</b>";
+                let now_label = now_client_id + "\n<i>train: </i><b>" + gep + "</b>";
+                all_nodes[task_id] = {
+                    "id": now_nodes,
+                    "label": now_label,
+                    "value": 2,
+                    "color": green,
+                    "shape": "box",
+                    "title": "train",
+                };
+            }
+            if (!all_nodes.hasOwnProperty("server")) {
+                now_nodes++;
+                all_nodes["server"] = {
+                    "id": now_nodes,
+                    "label": "<b>server</b>",
+                    "value": 1,
+                    "color": blue,
+                    "shape": "hexagon",
+                };
+                server_nodes_to = new Set();
+            }
+            update_client_nodes_to(client_nodes_to, sid, "server")
+            update_client_nodes_to(client_nodes_to, sid, task_id);
+            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+        });
+        sio.on("ui_train_process", function (res) {
+            // console.log("train_process")
+            let sid = res["sid"];
+            let gep = res["gep"];
+            let process = res["process"];
+            let task_id = "train_" + sid;
+            if (!all_nodes.hasOwnProperty(sid)) {
+                now_nodes++;
+                now_client++;
+                let now_label = "<b>client-" + now_client + "</b>";
+                all_nodes[sid] = {
+                    "id": now_nodes,
+                    "label": now_label,
+                    "value": 1,
+                    "color": green,
+                    "shape": "dot",
+                };
+            }
+            let now_client_id = all_nodes[sid].label;
+            if (all_nodes.hasOwnProperty(task_id)) {
+                all_nodes[task_id].color = green;
+                all_nodes[task_id].label = now_client_id + "\n<i>train: </i><b>" + gep + " [" + process + "]</b>";
+            } else {
+                now_nodes++;
+                let now_label = now_client_id + "\n<i>train: </i><b>" + gep + " [" + process + "]</b>";
                 all_nodes[task_id] = {
                     "id": now_nodes,
                     "label": now_label,
@@ -539,10 +588,59 @@ $(document).ready(function () {
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
                 all_nodes[task_id].color = green;
-                all_nodes[task_id].label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>";
+                all_nodes[task_id].label = now_client_id + "\n<i>eval: </i><b>" + gep + "</b>";
             } else {
                 now_nodes++;
-                let now_label = now_client_id + "\n<i>eval:</i><b>" + gep + "</b>";
+                let now_label = now_client_id + "\n<i>eval: </i><b>" + gep + "</b>";
+                all_nodes[task_id] = {
+                    "id": now_nodes,
+                    "label": now_label,
+                    "value": 2,
+                    "color": green,
+                    "shape": "box",
+                };
+            }
+            if (!all_nodes.hasOwnProperty("server")) {
+                now_nodes++;
+                all_nodes["server"] = {
+                    "id": now_nodes,
+                    "label": "<b>server</b>",
+                    "value": 1,
+                    "color": blue,
+                    "shape": "hexagon",
+                };
+                server_nodes_to = new Set();
+            }
+            update_client_nodes_to(client_nodes_to, sid, "server")
+            update_client_nodes_to(client_nodes_to, sid, task_id);
+            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+        });
+        sio.on("ui_eval_process", function (res) {
+            // console.log("eval_process")
+            let sid = res["sid"];
+            let gep = res["gep"];
+            let process = res["process"];
+            let type = res["type"];
+            let task_id = "eval_" + sid;
+            if (!all_nodes.hasOwnProperty(sid)) {
+                now_nodes++;
+                now_client++;
+                let now_label = "<b>client-" + now_client + "</b>";
+                all_nodes[sid] = {
+                    "id": now_nodes,
+                    "label": now_label,
+                    "value": 1,
+                    "color": green,
+                    "shape": "dot",
+                };
+            }
+            let now_client_id = all_nodes[sid].label;
+            if (all_nodes.hasOwnProperty(task_id)) {
+                all_nodes[task_id].color = green;
+                all_nodes[task_id].label = now_client_id + "\n<i>eval(" + type + "): </i><b>" + gep + " [" + process + "]</b>";
+            } else {
+                now_nodes++;
+                let now_label = now_client_id + "\n<i>eval(" + type + "): </i><b>" + gep + " [" + process + "]</b>";
                 all_nodes[task_id] = {
                     "id": now_nodes,
                     "label": now_label,

@@ -52,12 +52,12 @@ class LocalModel(object):
         else:
             raise TypeError
 
-    def train(self, local_epoch, tbX=None):
-        losses = self.model.train(local_epoch, tbX)
+    def train(self, local_epoch, tbX=None, sio=None):
+        losses = self.model.train(local_epoch, tbX, sio)
         return self.get_weights(to_cpu=True), np.mean(losses)
 
-    def eval(self, eval_type):
-        loss, acc = self.model.eval(eval_type)
+    def eval(self, eval_type, is_global_eval, sio=None):
+        loss, acc = self.model.eval(eval_type, is_global_eval, sio)
         return loss, acc
 
 
@@ -118,7 +118,7 @@ class FederatedClient(object):
     def _local_eval(self, eval_type, emit_data, now_global_epoch, sid):
         assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST]
         self.logger.info("Local Eval [{}] Start ...".format(eval_type))
-        loss, acc = self.local_model.eval(eval_type)
+        loss, acc = self.local_model.eval(eval_type, is_global_eval=False)
         emit_data[eval_type] = {
             constants.LOSS: loss, constants.ACC: acc,
             constants.CONTRIB: self.local_model.get_contribution(eval_type)}
@@ -130,7 +130,7 @@ class FederatedClient(object):
     def _global_eval(self, eval_type, emit_data, now_global_epoch, sid):
         assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST]
         self.logger.info("Global Eval [{}] Start ...".format(eval_type))
-        loss, acc = self.local_model.eval(eval_type)
+        loss, acc = self.local_model.eval(eval_type, is_global_eval=True, sio=self.socketio)
         emit_data[eval_type] = {
             constants.LOSS: loss, constants.ACC: acc,
             constants.CONTRIB: self.local_model.get_contribution(eval_type)}
@@ -217,7 +217,7 @@ class FederatedClient(object):
 
             # train local_epoch
             self.logger.info("GlobalEpoch:{} -- Local Train Start ...".format(now_global_epoch))
-            cpu_weights, loss = self.local_model.train(self.local_epoch, self.tbX)
+            cpu_weights, loss = self.local_model.train(self.local_epoch, self.tbX, sio=self.socketio)
             self.logger.debug(self.local_model.model.device)
 
             pickle_weights = utils.obj2pickle(cpu_weights, self.local_model.weights_path)  # pickle weights path

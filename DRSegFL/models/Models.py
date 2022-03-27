@@ -140,7 +140,7 @@ class BaseModel(object):
         # Todo: add dataset , modify belows
         if self.dataset_name == constants.ISIC:
             self.loss_weight = 1
-            self.loss_f.append(nn.BCEWithLogitsLoss())
+            self.loss_f.append(nn.CrossEntropyLoss())
         elif self.dataset_name == constants.DDR:
             self.loss_weight = 1
             self.loss_f.append(FocalLoss(np.array([1.0, 3.0, 3.0, 3.0, 3.0])))
@@ -204,13 +204,14 @@ class BaseModel(object):
         """
         raise NotImplementedError
 
-    def train(self, epoch=1, tbX=None):  # target_data_type = torch.long if self.num_classes > 1 else torch.float32
+    def train(self, epoch=1, tbX=None, sio=None):  # target_data_type = torch.long if self.num_classes > 1 else torch.float32
         self.net = self.net.to(self.device)
         self.net.train()
         ep_losses = []
         for ep in range(1, epoch + 1):
             self.logger.info("Train -- LocalEpoch:{} -- lr:{}".format(ep, self.optimizer.state_dict()['param_groups'][0]['lr']))
-            self.logger.info("Train -- LocalEpoch:{} -- last_epoch:{}".format(ep, self.schedule.last_epoch))
+            if self.schedule:
+                self.logger.info("Train -- LocalEpoch:{} -- last_epoch:{}".format(ep, self.schedule.last_epoch))
             iter_losses = 0
             for iter, (imgs, targets) in enumerate(self.train_dataloader, start=1):
                 imgs = Variable(imgs.to(self.device, torch.float32))
@@ -236,6 +237,8 @@ class BaseModel(object):
 
                 if iter % self.config["log_interval_iter"] == 0 or iter == len(self.train_dataloader):
                     self.logger.info("Train -- LocalEpoch:{} -- iter:{} -- loss:{:.4f}".format(ep, iter, loss.item()))
+                if sio is not None:
+                    sio.emit("train_process", {"process": "{:.1f}%".format((ep + iter / len(self.train_dataloader) - 1) / epoch * 100)})
             ep_loss = iter_losses / len(self.train_dataloader)
             if tbX is not None:
                 tbX.add_scalar("train/local_loss", ep_loss, self.schedule.last_epoch + 1)
@@ -244,7 +247,7 @@ class BaseModel(object):
                 self.schedule.step()
         return ep_losses
 
-    def eval(self, eval_type):
+    def eval(self, eval_type, is_global_eval, sio=None):
         self.net = self.net.to(self.device)
         self.net.eval()
         if eval_type == constants.TRAIN:
@@ -290,6 +293,9 @@ class BaseModel(object):
                     # acc_score += metrics.multi_dice_coeff(preds, targets).item()
                 list_preds.extend(preds[:, ])
                 list_targets.extend(targets[:, ].cpu().numpy())
+
+                if is_global_eval and sio is not None:
+                    sio.emit("eval_process", {"process": "{:.1f}%".format(iter / len(eval_dataloader) * 100), "type": eval_type})
 
             eval_loss /= len(eval_dataloader)
             if self.num_classes == 1:

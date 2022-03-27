@@ -5,6 +5,19 @@ model:
   img_size: 256
   data_augment: False
 
+  optim:
+    type: "SGD"
+    lr: 0.01
+    momentum: 0.9
+    weight_decay: 0.0005
+
+  lr_schedule:
+    #    mode: "min"
+    #    factor: 0.1
+    #    patience: 10
+    min_lr: 0.0001
+    t_max: 200
+
   dataset_dir:
     train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train"
     val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/val"
@@ -12,8 +25,9 @@ model:
   num_workers: 1
 
   num_channels: 3
-  num_classes: 1
+  num_classes: 2
   classes:
+    - "bg"
     - "lesions"
 
 #client
@@ -31,7 +45,7 @@ client:
 #server
 server:
   host: "127.0.0.1"
-  port: 9191
+  port: 9190
   gpu: "5"
 
   epoch: 100
@@ -39,14 +53,20 @@ server:
 
   global_eval:
     # {type : metric to best}
-    train: "loss"
-    val: "mIoU"
-    test: "mIoU"
+    train:
+      num: 2
+      metric: "mIoU"
+    val:
+      num: 2
+      metric: "mIoU"
+    test:
+      num: 2
+      metric: "mIoU"
 
-  local_eval:
-    # {type : global ep interval to eval}
-    val: 5
-    test: 5
+  #  local_eval:
+  #    # {type : global ep interval to eval}
+  #    val: 5
+  #    test: 5
 
   tolerate:
     val:

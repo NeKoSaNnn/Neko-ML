@@ -66,9 +66,9 @@ server:
       num: 500
       metric: "mIoU"
 
-  local_eval:
-    # {type : global ep interval to eval}
-    test: 250
+#  local_eval:
+#    # {type : global ep interval to eval}
+#    test: 250
 
   tolerate:
     test:

@@ -229,7 +229,7 @@ class FederatedServer(object):
 
         self.NUM_CLIENTS = self.server_config[constants.NUM_CLIENTS]
         self.NUM_GLOBAL_EPOCH = self.server_config[constants.EPOCH]
-        self.LOCAL_EVAL = self.server_config[constants.LOCAL_EVAL]
+        self.LOCAL_EVAL = self.server_config[constants.LOCAL_EVAL] if constants.LOCAL_EVAL in self.server_config else None
         self.GLOBAL_EVAL = self.server_config[constants.GLOBAL_EVAL]
         self.CLIENT_SINGLE_MAX_LOADAVG = self.server_config["per_client_max_loadavg"]
         self.SAVE_CKPT_EPOCH = self.server_config["save_ckpt_epoch"] if "save_ckpt_epoch" in self.server_config.keys() else None
@@ -283,12 +283,13 @@ class FederatedServer(object):
         if self.global_model.now_global_epoch == 1:
             emit_data["now_weights"] = now_weights_pickle
         else:
-            if constants.TRAIN in self.LOCAL_EVAL:
-                emit_data[constants.TRAIN] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.TRAIN] == 0
-            if constants.VALIDATION in self.LOCAL_EVAL:
-                emit_data[constants.VALIDATION] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.VALIDATION] == 0
-            if constants.TEST in self.LOCAL_EVAL:
-                emit_data[constants.TEST] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.TEST] == 0
+            if self.LOCAL_EVAL:
+                if constants.TRAIN in self.LOCAL_EVAL:
+                    emit_data[constants.TRAIN] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.TRAIN] == 0
+                if constants.VALIDATION in self.LOCAL_EVAL:
+                    emit_data[constants.VALIDATION] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.VALIDATION] == 0
+                if constants.TEST in self.LOCAL_EVAL:
+                    emit_data[constants.TEST] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.TEST] == 0
 
         for sid in runnable_client_sids:
             # first global epoch
@@ -434,7 +435,7 @@ class FederatedServer(object):
                 if self.NUM_CLIENTS == len(self.client_update_datas):
                     emit("s_train_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                     time.sleep(sleep_time)
-                    local_eval_types = list(self.client_update_datas[0].keys())
+                    receive_data_keys = list(self.client_update_datas[0].keys())
 
                     self.global_model.update_global_weights(
                         [client_data["now_weights"] for client_data in self.client_update_datas],
@@ -451,13 +452,13 @@ class FederatedServer(object):
                         "Train -- GlobalEpoch:{} -- AvgLoss:{:.4f}".format(self.global_model.now_global_epoch, global_train_loss))
                     self.tbX.add_scalar("train/global_loss", global_train_loss, self.global_model.now_global_epoch)
 
-                    if constants.TRAIN in local_eval_types:
+                    if constants.TRAIN in receive_data_keys:
                         self._local_eval(constants.TRAIN)
 
-                    if constants.VALIDATION in local_eval_types:
+                    if constants.VALIDATION in receive_data_keys:
                         self._local_eval(constants.VALIDATION)
 
-                    if constants.TEST in local_eval_types:
+                    if constants.TEST in receive_data_keys:
                         self._local_eval(constants.TEST)
 
                     now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)  # weights path
@@ -480,6 +481,12 @@ class FederatedServer(object):
                         time.sleep(sleep_time)
                         emit("eval_with_global_weights", emit_data, room=sid)
                         self.logger.info("Server Send Federated Weights To Client-sid:[{}]".format(sid))
+
+        @self.socketio.on("train_process")
+        def train_process_handle(data):
+            self.logger.debug("Received Client-sid:[{}] Train-process-data:{} ".format(request.sid, data))
+            emit("ui_train_process", {"sid": request.sid, "gep": self.global_model.now_global_epoch, "process": data["process"]},
+                 broadcast=True, namespace="/ui")  # for ui
 
         @self.socketio.on("eval_with_global_weights_complete")
         def eval_with_global_weights_complete_handle(data):
@@ -535,6 +542,13 @@ class FederatedServer(object):
                     time.sleep(sleep_time)
 
                 self.clients_check_resource()
+
+        @self.socketio.on("eval_process")
+        def eval_process_handle(data):
+            self.logger.debug("Received Client-sid:[{}] Eval-process-data:{} ".format(request.sid, data))
+            emit("ui_eval_process",
+                 {"sid": request.sid, "gep": self.global_model.now_global_epoch, "process": data["process"], "type": data["type"]},
+                 broadcast=True, namespace="/ui")  # for ui
 
         @self.socketio.on("client_fin")
         def handle_client_fin(data):
