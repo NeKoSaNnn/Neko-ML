@@ -48,9 +48,9 @@ var container = document.getElementById('mynetwork');
 var network = new vis.Network(container, data, options);
 
 function update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges) {
-    console.log(all_nodes)
-    console.log(server_nodes_to)
-    console.log(client_nodes_to)
+    // console.log(all_nodes)
+    // console.log(server_nodes_to)
+    // console.log(client_nodes_to)
 
     for (let key in all_nodes) {
         nodes.update(all_nodes[key]);
@@ -113,7 +113,7 @@ $(document).ready(function () {
         console.log(sio)
         sio.pingTimeout = 3600000;
         sio.pingInterval = 60000;
-        console.log(sio)
+        // console.log(sio)
         // console.log(location.protocol + "//" + document.domain + ":" + location.port + name_space)
         // console.log(sio)
         // console.log(sio.heartbeatTimeout)

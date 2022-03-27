@@ -102,7 +102,7 @@ class FederatedClient(object):
         # self.socketio = SocketIO(self.server_host, self.server_port, None, {"timeout": 36000})
         self.socketio = socketio.Client(logger=True, engineio_logger=True)
         self.register_handles()
-        self.socketio.connect("http://{}:{}".format(self.server_host, self.server_port))
+        self.socketio.connect("ws://{}:{}".format(self.server_host, self.server_port))
 
     def wakeup(self):
         self.logger.info("Client Start {}:{}".format(self.server_host, self.server_port))

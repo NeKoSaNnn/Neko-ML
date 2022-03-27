@@ -550,7 +550,6 @@ class FederatedServer(object):
                 self.logger.info("All Clients Fin. Federated Learning Server Fin.")
                 emit("s_fin", broadcast=True, namespace="/ui")  # for ui
                 self.socketio.stop()
-                exit(0)
 
 
 if __name__ == "__main__":

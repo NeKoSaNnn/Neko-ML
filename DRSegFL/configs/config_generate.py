@@ -35,7 +35,7 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
         target_dir = osp.join(dataset_dir, "mask")
 
         if is_augment and dataset_type == constants.TRAIN:
-            datasets.dataset_augment(img_dir, target_dir, "jpg", "png", dataset_type)
+            datasets.dataset_augment(img_dir, target_dir, "jpg", "png", dataset_type, force=False)
 
         if isinstance(dataset_txt_path, list):
             datasets.iid_dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)
@@ -54,7 +54,7 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
         datasets.labels2annotations(img_dir, target_dir, ann_dir, "jpg", "tif", no_bg_classes, dataset_type, force=False)
 
         if is_augment and dataset_type == constants.TRAIN:
-            datasets.dataset_augment(img_dir, ann_dir, "jpg", "png", dataset_type)
+            datasets.dataset_augment(img_dir, ann_dir, "jpg", "png", dataset_type, force=False)
 
         if isinstance(dataset_txt_path, list):
             datasets.iid_dataset_txt_generate(img_dir, "jpg", ann_dir, "png", dataset_txt_path, is_augment)
@@ -66,7 +66,7 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
         target_dir = osp.join(dataset_dir, "label")
 
         if is_augment and dataset_type == constants.TRAIN:
-            datasets.dataset_augment(img_dir, target_dir, "jpg", "png", dataset_type)
+            datasets.dataset_augment(img_dir, target_dir, "jpg", "png", dataset_type, force=False)
 
         if isinstance(dataset_txt_path, list):
             datasets.iid_dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)

@@ -145,7 +145,7 @@ def get_loss_weights(ann_dir: str, num_classes: int, ann_suffix: str):
     return loss_weights
 
 
-def dataset_augment(img_dir: str, target_dir: str, img_suffix: str, target_suffix: str, dataset_type: str):
+def dataset_augment(img_dir: str, target_dir: str, img_suffix: str, target_suffix: str, dataset_type: str, force=False):
     imgs = sorted(glob.glob(osp.join(img_dir, "*.{}".format(img_suffix))))
     targets = sorted(glob.glob(osp.join(target_dir, "*.{}".format(target_suffix))))
     augment_img_dir = osp.join(img_dir, "augment")
@@ -153,24 +153,26 @@ def dataset_augment(img_dir: str, target_dir: str, img_suffix: str, target_suffi
     augment_target_dir = osp.join(target_dir, "augment")
     os.makedirs(augment_target_dir, exist_ok=True)
     assert len(imgs) == len(targets), "len(imgs)!=len(targets)"
-    trans = transforms.RandAugment
-    for img_path in tqdm(imgs, desc="{}_imgs_augment".format(dataset_type)):
-        img_name = osp.basename(img_path).strip().rsplit(".", 1)[0]
-        img_pil = Image.open(img_path)
-        img_pil.transpose(Image.ROTATE_90).save(osp.join(augment_img_dir, "{}_90.{}".format(img_name, img_suffix)))
-        img_pil.transpose(Image.ROTATE_180).save(osp.join(augment_img_dir, "{}_180.{}".format(img_name, img_suffix)))
-        img_pil.transpose(Image.ROTATE_270).save(osp.join(augment_img_dir, "{}_270.{}".format(img_name, img_suffix)))
-        img_pil.transpose(Image.FLIP_LEFT_RIGHT).save(osp.join(augment_img_dir, "{}_horizontal.{}".format(img_name, img_suffix)))
-        img_pil.transpose(Image.FLIP_TOP_BOTTOM).save(osp.join(augment_img_dir, "{}_vertical.{}".format(img_name, img_suffix)))
+    if force or len(glob.glob(osp.join(augment_img_dir, "*.{}".format(img_suffix)))) != len(imgs) * 5:
+        for img_path in tqdm(imgs, desc="{}_imgs_augment".format(dataset_type)):
+            img_name = osp.basename(img_path).strip().rsplit(".", 1)[0]
+            img_pil = Image.open(img_path)
+            img_pil.transpose(Image.ROTATE_90).save(osp.join(augment_img_dir, "{}_90.{}".format(img_name, img_suffix)))
+            img_pil.transpose(Image.ROTATE_180).save(osp.join(augment_img_dir, "{}_180.{}".format(img_name, img_suffix)))
+            img_pil.transpose(Image.ROTATE_270).save(osp.join(augment_img_dir, "{}_270.{}".format(img_name, img_suffix)))
+            img_pil.transpose(Image.FLIP_LEFT_RIGHT).save(osp.join(augment_img_dir, "{}_horizontal.{}".format(img_name, img_suffix)))
+            img_pil.transpose(Image.FLIP_TOP_BOTTOM).save(osp.join(augment_img_dir, "{}_vertical.{}".format(img_name, img_suffix)))
 
-    for target_path in tqdm(targets, desc="{}_targets_augment".format(dataset_type)):
-        target_name = osp.basename(target_path).strip().rsplit(".", 1)[0]
-        target_pil = Image.open(target_path)
-        target_pil.transpose(Image.ROTATE_90).save(osp.join(augment_target_dir, "{}_90.{}".format(target_name, target_suffix)))
-        target_pil.transpose(Image.ROTATE_180).save(osp.join(augment_target_dir, "{}_180.{}".format(target_name, target_suffix)))
-        target_pil.transpose(Image.ROTATE_270).save(osp.join(augment_target_dir, "{}_270.{}".format(target_name, target_suffix)))
-        target_pil.transpose(Image.FLIP_LEFT_RIGHT).save(osp.join(augment_target_dir, "{}_horizontal.{}".format(target_name, target_suffix)))
-        target_pil.transpose(Image.FLIP_TOP_BOTTOM).save(osp.join(augment_target_dir, "{}_vertical.{}".format(target_name, target_suffix)))
+    if force or len(glob.glob(osp.join(augment_target_dir, "*.{}".format(target_suffix)))) != len(targets) * 5:
+        for target_path in tqdm(targets, desc="{}_targets_augment".format(dataset_type)):
+            target_name = osp.basename(target_path).strip().rsplit(".", 1)[0]
+            target_pil = Image.open(target_path)
+            target_pil.transpose(Image.ROTATE_90).save(osp.join(augment_target_dir, "{}_90.{}".format(target_name, target_suffix)))
+            target_pil.transpose(Image.ROTATE_180).save(osp.join(augment_target_dir, "{}_180.{}".format(target_name, target_suffix)))
+            target_pil.transpose(Image.ROTATE_270).save(osp.join(augment_target_dir, "{}_270.{}".format(target_name, target_suffix)))
+            target_pil.transpose(Image.FLIP_LEFT_RIGHT).save(
+                osp.join(augment_target_dir, "{}_horizontal.{}".format(target_name, target_suffix)))
+            target_pil.transpose(Image.FLIP_TOP_BOTTOM).save(osp.join(augment_target_dir, "{}_vertical.{}".format(target_name, target_suffix)))
 
 
 class ListDataset(Dataset):
