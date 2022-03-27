@@ -484,7 +484,7 @@ class FederatedServer(object):
 
         @self.socketio.on("train_process")
         def train_process_handle(data):
-            self.logger.debug("Received Client-sid:[{}] Train-process-data:{} ".format(request.sid, data))
+            # self.logger.debug("Received Client-sid:[{}] Train-process-data:{} ".format(request.sid, data))
             emit("ui_train_process", {"sid": request.sid, "gep": self.global_model.now_global_epoch, "process": data["process"]},
                  broadcast=True, namespace="/ui")  # for ui
 
@@ -545,7 +545,7 @@ class FederatedServer(object):
 
         @self.socketio.on("eval_process")
         def eval_process_handle(data):
-            self.logger.debug("Received Client-sid:[{}] Eval-process-data:{} ".format(request.sid, data))
+            # self.logger.debug("Received Client-sid:[{}] Eval-process-data:{} ".format(request.sid, data))
             emit("ui_eval_process",
                  {"sid": request.sid, "gep": self.global_model.now_global_epoch, "process": data["process"], "type": data["type"]},
                  broadcast=True, namespace="/ui")  # for ui
