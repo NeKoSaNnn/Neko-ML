@@ -203,8 +203,7 @@ class FederatedServer(object):
         self.app = Flask(__name__, template_folder=osp.join(now_dir_name, "static", "templates"),
                          static_folder=osp.join(now_dir_name, "static"))
         # async_mode = None
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*", ping_timeout=3600,
-                                 ping_interval=60)
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*", ping_timeout=36000, ping_interval=300)
 
         self.logger = logging.getLogger(constants.SERVER)
         log_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")

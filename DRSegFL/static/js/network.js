@@ -111,8 +111,8 @@ $(document).ready(function () {
         let name_space = "/ui";
         var sio = io.connect(location.protocol + "//" + document.domain + ":" + location.port + name_space);
         console.log(sio)
-        sio.pingTimeout = 3600000;
-        sio.pingInterval = 60000;
+        sio.pingTimeout = 36000000;
+        sio.pingInterval = 300000;
         // console.log(sio)
         // console.log(location.protocol + "//" + document.domain + ":" + location.port + name_space)
         // console.log(sio)
