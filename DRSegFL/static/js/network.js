@@ -268,8 +268,10 @@ $(document).ready(function () {
                 update_node(all_nodes[sid]);
             }
             for (let child of client_nodes_to[sid]) {
-                all_nodes[child].color = red;
-                update_node(all_nodes[child]);
+                if (child !== "server") {
+                    all_nodes[child].color = red;
+                    update_node(all_nodes[child]);
+                }
             }
             // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });

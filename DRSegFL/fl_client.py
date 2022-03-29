@@ -26,10 +26,10 @@ DEBUG = True
 
 
 class LocalModel(object):
-    def __init__(self, config: dict, logger):
+    def __init__(self, config: dict, logger, last_epoch=-1):
         self.config = config
         self.local_epoch = self.config[constants.EPOCH]
-        self.model = getattr(Models, self.config[constants.NAME_MODEL])(config, logger)
+        self.model = getattr(Models, self.config[constants.NAME_MODEL])(config, logger, only_init_weights=False, last_epoch=last_epoch)
         self.weights_path = self.config[constants.PATH_WEIGHTS]
 
     def get_weights(self, to_cpu):
@@ -161,17 +161,22 @@ class FederatedClient(object):
             self.logger.debug("HeartBeat Complete. Keep Connecting")
 
         @self.socketio.on("client_init")
-        def client_init():
+        def client_init(data):
+            if data and "now_global_epoch" in data:
+                last_epoch = max((data["now_global_epoch"] - 1) * self.local_epoch - 1, -1)
+            else:
+                last_epoch = -1
             self.logger.info("Init ...")
-            self.local_model = LocalModel(self.client_config, self.logger)
+            self.local_model = LocalModel(self.client_config, self.logger, last_epoch=last_epoch)
             self.logger.info("Local Model Init Completed.")
-
             self.socketio.emit("client_ready")
 
         @self.socketio.on("client_check_resource")
         def client_check_resource(*args):
             self.logger.info("Start Check Resource ...")
             data = args[0]
+            is_halfway = data["halfway"] if "halfway" in data else False
+            now_global_epoch = data["now_global_epoch"]
             if self.ignore_loadavg:
                 self.logger.info("Ignore Loadavg")
                 loadavg = 0.15
@@ -188,7 +193,10 @@ class FederatedClient(object):
                 loadavg = loadavg_data["loadavg_15min"]
                 self.logger.info("Loadavg : {}".format(loadavg))
 
-            self.socketio.emit("client_check_resource_complete", {"now_global_epoch": data["now_global_epoch"], "loadavg": loadavg})
+            if is_halfway:
+                self.socketio.emit("halfway_client_check_resource_complete", {"now_global_epoch": now_global_epoch, "loadavg": loadavg})
+            else:
+                self.socketio.emit("client_check_resource_complete", {"now_global_epoch": now_global_epoch, "loadavg": loadavg})
             self.logger.info("Check Resource Completed.")
 
         @self.socketio.on("local_update")
@@ -208,7 +216,7 @@ class FederatedClient(object):
             self.logger.info("Local Update Start ...")
 
             # first global epoch
-            if now_global_epoch == 1:
+            if now_global_epoch == 1 or "now_weights" in data:
                 self.logger.info("Receive Init Weights ...")
                 now_weights = utils.pickle2obj(data["now_weights"])
                 utils.obj2pickle(now_weights, self.local_model.weights_path)  # init local weights

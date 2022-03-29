@@ -4,7 +4,7 @@ model:
   dataset_name: ISIC
   img_size: 256
   data_augment: False
-  DP: True
+  DP: False
 
   optim:
     type: "SGD"
@@ -36,7 +36,7 @@ client:
   gpu: "3"
 
   epoch: 1
-  batch_size: 8
+  batch_size: 4
   eval_batch_size: 1
 
   log_interval_iter: 10
@@ -50,18 +50,18 @@ server:
   gpu: "5"
 
   epoch: 100
-  num_clients: 1
+  num_clients: 2
 
   global_eval:
     # {type : metric to best}
     train:
-      num: 4
+      num: 2
       metric: "mIoU"
     val:
-      num: 4
+      num: 2
       metric: "mIoU"
     test:
-      num: 4
+      num: 2
       metric: "mIoU"
 
   #  local_eval:
@@ -75,5 +75,5 @@ server:
       metric: "mIoU"
 
   log_interval_iter: 10
-  save_ckpt_epoch: 10
+  save_ckpt_epoch: 40
   per_client_max_loadavg: 0.8

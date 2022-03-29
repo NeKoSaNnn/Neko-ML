@@ -27,7 +27,7 @@ torch.set_num_threads(4)
 
 
 class BaseModel(object):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
         self.config = config
         self.logger = Logger(logger)
 
@@ -95,16 +95,20 @@ class BaseModel(object):
 
             if "optim" in self.config.keys() and self.config["optim"] is not None:
                 if self.config["optim"]["type"] == "SGD":
-                    self.optimizer = torch.optim.SGD(self.net.parameters(), lr=float(self.config["optim"]["lr"]),
+                    self.optimizer = torch.optim.SGD([{"params": self.net.parameters(), "initial_lr": float(self.config["optim"]["lr"])}],
+                                                     lr=float(self.config["optim"]["lr"]),
                                                      momentum=float(self.config["optim"]["momentum"]),
                                                      weight_decay=float(self.config["optim"]["weight_decay"]))
             else:
                 # default is adam optimizer
-                self.optimizer = torch.optim.Adam(self.net.parameters())
+                self.optimizer = torch.optim.Adam([{"params": self.net.parameters(), "initial_lr": float(self.config["optim"]["lr"])}],
+                                                  lr=float(self.config["optim"]["lr"]))
 
             if "lr_schedule" in self.config.keys() and self.config["lr_schedule"] is not None:
-                self.schedule = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.config["lr_schedule"]["t_max"],
-                                                                           eta_min=float(self.config["lr_schedule"]["min_lr"]))
+                self.schedule = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
+                                                                           T_max=int(self.config["lr_schedule"]["t_max"]),
+                                                                           eta_min=float(self.config["lr_schedule"]["min_lr"]),
+                                                                           last_epoch=last_epoch)
                 # self.schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
                 #                                                            mode=self.config["lr_schedule"]["mode"],
                 #                                                            factor=float(self.config["lr_schedule"]["factor"]),
@@ -343,16 +347,16 @@ class BaseModel(object):
 
 
 class unet(BaseModel):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
-        super(unet, self).__init__(config, logger, only_init_weights)
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
+        super(unet, self).__init__(config, logger, only_init_weights, last_epoch)
 
     def net_init(self, device):
         self.net = UNet(self.num_channels, self.num_classes).to(device)
 
 
 class res_unet(BaseModel):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
-        super(res_unet, self).__init__(config, logger, only_init_weights)
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
+        super(res_unet, self).__init__(config, logger, only_init_weights, last_epoch)
 
     def net_init(self, device):
         self.net = smp.Unet(
@@ -364,8 +368,8 @@ class res_unet(BaseModel):
 
 
 class dense_unet(BaseModel):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
-        super(dense_unet, self).__init__(config, logger, only_init_weights)
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
+        super(dense_unet, self).__init__(config, logger, only_init_weights, last_epoch)
 
     def net_init(self, device):
         self.net = smp.Unet(
@@ -376,8 +380,8 @@ class dense_unet(BaseModel):
 
 
 class unetplusplus(BaseModel):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
-        super(unetplusplus, self).__init__(config, logger, only_init_weights)
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
+        super(unetplusplus, self).__init__(config, logger, only_init_weights, last_epoch)
 
     def net_init(self, device):
         self.net = smp.UnetPlusPlus(
@@ -388,8 +392,8 @@ class unetplusplus(BaseModel):
 
 
 class deeplabv3(BaseModel):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
-        super(deeplabv3, self).__init__(config, logger, only_init_weights)
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
+        super(deeplabv3, self).__init__(config, logger, only_init_weights, last_epoch)
 
     def net_init(self, device):
         self.net = smp.DeepLabV3(
@@ -400,8 +404,8 @@ class deeplabv3(BaseModel):
 
 
 class deeplabv3plus(BaseModel):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
-        super(deeplabv3plus, self).__init__(config, logger, only_init_weights)
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
+        super(deeplabv3plus, self).__init__(config, logger, only_init_weights, last_epoch)
 
     def net_init(self, device):
         self.net = smp.DeepLabV3Plus(
@@ -412,8 +416,8 @@ class deeplabv3plus(BaseModel):
 
 
 class fpn(BaseModel):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
-        super(fpn, self).__init__(config, logger, only_init_weights)
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
+        super(fpn, self).__init__(config, logger, only_init_weights, last_epoch)
 
     def net_init(self, device):
         self.net = smp.FPN(
@@ -424,8 +428,8 @@ class fpn(BaseModel):
 
 
 class pspnet(BaseModel):
-    def __init__(self, config: dict, logger=None, only_init_weights=False):
-        super(pspnet, self).__init__(config, logger, only_init_weights)
+    def __init__(self, config: dict, logger=None, only_init_weights=False, last_epoch=-1):
+        super(pspnet, self).__init__(config, logger, only_init_weights, last_epoch)
 
     def net_init(self, device):
         self.net = smp.PSPNet(
