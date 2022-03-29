@@ -1,8 +1,8 @@
 // create an array with nodes
 const green = '#c2e59c';
-const deepgreen = 'rgba(181,252,145,0.9)';
+const lightgreen = 'rgb(218,253,201)';
 const blue = '#64b3f4';
-const deepblue = 'rgba(55,166,248,0.87)';
+const lightblue = 'rgb(195,220,250)';
 const orange = '#FEAC5E';
 const gray = '#d7d2cc';
 const red = '#E59393';
@@ -64,7 +64,7 @@ function update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges) 
                 let edge = "from" + server.id + "to" + all_nodes[v].id;
                 if (!all_edges.has(edge)) {
                     all_edges.add(edge);
-                    edges.add({from: server.id, to: all_nodes[v].id, color: deepblue});
+                    edges.add({from: server.id, to: all_nodes[v].id, color: lightblue});
                 }
             }
         }
@@ -78,12 +78,24 @@ function update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges) 
                         let edge = "from" + client.id + "to" + all_nodes[v].id;
                         if (!all_edges.has(edge)) {
                             all_edges.add(edge);
-                            edges.add({from: client.id, to: all_nodes[v].id, color: deepgreen});
+                            edges.add({from: client.id, to: all_nodes[v].id, color: lightgreen});
                         }
                     }
                 }
             }
         }
+    }
+}
+
+function update_node(now_node) {
+    nodes.update(now_node);
+}
+
+function update_edge(from_node, to_node, all_edges, color) {
+    let edge = "from" + from_node.id + "to" + to_node.id;
+    if (!all_edges.has(edge)) {
+        all_edges.add(edge);
+        edges.add({from: from_node.id, to: to_node.id, color: color});
     }
 }
 
@@ -164,7 +176,8 @@ $(document).ready(function () {
                 "shape": "hexagon",
             };
             server_nodes_to = new Set();
-            update_network(all_nodes, server_nodes_to, client_nodes_to);
+            update_node(all_nodes["server"]);
+            // update_network(all_nodes, server_nodes_to, client_nodes_to);
         });
         sio.on("c_connect", function (res) {
             console.log("client_connect")
@@ -190,6 +203,7 @@ $(document).ready(function () {
                 };
                 client_nodes_to[sid] = new Set();
             }
+            update_node(all_nodes[sid]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -200,9 +214,12 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("c_wakeup", async function (res) {
             console.log("wakeup")
@@ -222,6 +239,7 @@ $(document).ready(function () {
                 };
                 client_nodes_to[sid] = new Set();
             }
+            update_node(all_nodes[sid]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -232,24 +250,28 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
-            update_client_nodes_to(client_nodes_to, sid, "server");
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         })
         sio.on("c_reconnect", function (res) {
-
+            console.log("client_reconnect");
         });
         sio.on("c_disconnect", function (res) {
-            console.log("client_disconnect")
+            console.log("client_disconnect");
             let sid = res["sid"];
             if (all_nodes.hasOwnProperty(sid)) {
                 all_nodes[sid].color = red;
+                update_node(all_nodes[sid]);
             }
             for (let child of client_nodes_to[sid]) {
                 all_nodes[child].color = red;
+                update_node(all_nodes[child]);
             }
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("c_check_resource", function (res) {
             console.log("check_resource")
@@ -266,6 +288,7 @@ $(document).ready(function () {
                     "color": green,
                     "shape": "dot",
                 };
+                update_node(all_nodes[sid]);
             }
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
@@ -282,6 +305,7 @@ $(document).ready(function () {
                     "shape": "box",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -292,10 +316,15 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
             update_client_nodes_to(client_nodes_to, sid, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+            update_edge(all_nodes[sid], all_nodes[task_id], all_edges, lightgreen);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("c_check_resource_complete", function (res) {
             console.log("check_resource_complete")
@@ -312,6 +341,7 @@ $(document).ready(function () {
                     "color": green,
                     "shape": "dot",
                 };
+                update_node(all_nodes[sid]);
             }
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
@@ -334,6 +364,7 @@ $(document).ready(function () {
                     "shape": "box",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -344,10 +375,15 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
             update_client_nodes_to(client_nodes_to, sid, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+            update_edge(all_nodes[sid], all_nodes[task_id], all_edges, lightgreen);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("c_train", function (res) {
             console.log("train")
@@ -365,6 +401,7 @@ $(document).ready(function () {
                     "color": green,
                     "shape": "dot",
                 };
+                update_node(all_nodes[sid]);
             }
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
@@ -382,6 +419,7 @@ $(document).ready(function () {
                     "title": "train",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -392,10 +430,15 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
             update_client_nodes_to(client_nodes_to, sid, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+            update_edge(all_nodes[sid], all_nodes[task_id], all_edges, lightgreen);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("ui_train_process", function (res) {
             // console.log("train_process")
@@ -414,6 +457,7 @@ $(document).ready(function () {
                     "color": green,
                     "shape": "dot",
                 };
+                update_node(all_nodes[sid]);
             }
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
@@ -431,6 +475,7 @@ $(document).ready(function () {
                     "title": "train",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -441,10 +486,15 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
             update_client_nodes_to(client_nodes_to, sid, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+            update_edge(all_nodes[sid], all_nodes[task_id], all_edges, lightgreen);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("c_train_complete", function (res) {
             console.log("train_complete")
@@ -462,6 +512,7 @@ $(document).ready(function () {
                     "color": green,
                     "shape": "dot",
                 };
+                update_node(all_nodes[sid]);
             }
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
@@ -485,6 +536,7 @@ $(document).ready(function () {
                     "title": "train",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -495,10 +547,15 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
             update_client_nodes_to(client_nodes_to, sid, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+            update_edge(all_nodes[sid], all_nodes[task_id], all_edges, lightgreen);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("s_train_aggre", function (res) {
             console.log("train_aggre")
@@ -517,6 +574,7 @@ $(document).ready(function () {
                     "shape": "box",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -527,9 +585,12 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_server_nodes_to(server_nodes_to, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            update_edge(all_nodes[task_id], all_nodes["server"], all_edges, lightblue);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("s_train_aggre_complete", function (res) {
             console.log("train_aggre_complete")
@@ -554,6 +615,7 @@ $(document).ready(function () {
                     "shape": "box",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -564,9 +626,12 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_server_nodes_to(server_nodes_to, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            update_edge(all_nodes["server"], all_nodes[task_id], all_edges, lightblue);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("c_eval", function (res) {
             console.log("eval")
@@ -584,6 +649,7 @@ $(document).ready(function () {
                     "color": green,
                     "shape": "dot",
                 };
+                update_node(all_nodes[sid]);
             }
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
@@ -600,6 +666,7 @@ $(document).ready(function () {
                     "shape": "box",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -610,10 +677,15 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
             update_client_nodes_to(client_nodes_to, sid, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+            update_edge(all_nodes[sid], all_nodes[task_id], all_edges, lightgreen);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("ui_eval_process", function (res) {
             // console.log("eval_process")
@@ -633,6 +705,7 @@ $(document).ready(function () {
                     "color": green,
                     "shape": "dot",
                 };
+                update_node(all_nodes[sid]);
             }
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
@@ -649,6 +722,7 @@ $(document).ready(function () {
                     "shape": "box",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -659,10 +733,15 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
             update_client_nodes_to(client_nodes_to, sid, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+            update_edge(all_nodes[sid], all_nodes[task_id], all_edges, lightgreen);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("c_eval_complete", function (res) {
             console.log("eval_complete")
@@ -680,6 +759,7 @@ $(document).ready(function () {
                     "color": green,
                     "shape": "dot",
                 };
+                update_node(all_nodes[sid]);
             }
             let now_client_id = all_nodes[sid].label;
             if (all_nodes.hasOwnProperty(task_id)) {
@@ -702,6 +782,7 @@ $(document).ready(function () {
                     "shape": "box",
                 };
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -712,10 +793,15 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_client_nodes_to(client_nodes_to, sid, "server")
             update_client_nodes_to(client_nodes_to, sid, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+
+            update_edge(all_nodes[sid], all_nodes["server"], all_edges, lightblue);
+            update_edge(all_nodes[sid], all_nodes[task_id], all_edges, lightgreen);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("s_eval_aggre", function (res) {
             console.log("eval_aggre")
@@ -734,6 +820,7 @@ $(document).ready(function () {
                     "shape": "box",
                 }
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -744,9 +831,12 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_server_nodes_to(server_nodes_to, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            update_edge(all_nodes["server"], all_nodes[task_id], all_edges, lightblue);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("s_eval_aggre_complete", function (res) {
             console.log("eval_aggre_complete")
@@ -771,6 +861,7 @@ $(document).ready(function () {
                     "shape": "box",
                 }
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -781,9 +872,12 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_server_nodes_to(server_nodes_to, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            update_edge(all_nodes["server"], all_nodes[task_id], all_edges, lightblue);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("s_summary", function () {
             console.log("summary")
@@ -801,6 +895,7 @@ $(document).ready(function () {
                     "shape": "box",
                 }
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -811,9 +906,12 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_server_nodes_to(server_nodes_to, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            update_edge(all_nodes["server"], all_nodes[task_id], all_edges, lightblue);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("s_summary_complete", function () {
             console.log("summary_complete")
@@ -837,6 +935,7 @@ $(document).ready(function () {
                     "shape": "box",
                 }
             }
+            update_node(all_nodes[task_id]);
             if (!all_nodes.hasOwnProperty("server")) {
                 now_nodes++;
                 all_nodes["server"] = {
@@ -847,9 +946,12 @@ $(document).ready(function () {
                     "shape": "hexagon",
                 };
                 server_nodes_to = new Set();
+                update_node(all_nodes["server"]);
             }
             update_server_nodes_to(server_nodes_to, task_id);
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            update_edge(all_nodes["server"], all_nodes[task_id], all_edges, lightblue);
+
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("c_fin", function (res) {
             console.log("client_fin")
@@ -859,8 +961,9 @@ $(document).ready(function () {
                     "border": gray,
                     "background": "#F8F8F8"
                 };
+                update_node(all_nodes[sid]);
             }
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
         sio.on("s_fin", function () {
             console.log("server_fin")
@@ -869,8 +972,9 @@ $(document).ready(function () {
                     "border": gray,
                     "background": "#F8F8F8"
                 };
+                update_node(all_nodes["server"]);
             }
-            update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
+            // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });
     }, 2000);
 });
