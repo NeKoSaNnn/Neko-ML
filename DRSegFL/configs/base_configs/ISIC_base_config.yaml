@@ -4,6 +4,7 @@ model:
   dataset_name: ISIC
   img_size: 256
   data_augment: False
+  DP: False
 
   optim:
     type: "SGD"

@@ -218,7 +218,6 @@ class FederatedClient(object):
             # train local_epoch
             self.logger.info("GlobalEpoch:{} -- Local Train Start ...".format(now_global_epoch))
             cpu_weights, loss = self.local_model.train(self.local_epoch, self.tbX, sio=self.socketio)
-            self.logger.debug(self.local_model.model.device)
 
             pickle_weights = utils.obj2pickle(cpu_weights, self.local_model.weights_path)  # pickle weights path
 

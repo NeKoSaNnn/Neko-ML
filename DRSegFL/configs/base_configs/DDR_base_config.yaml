@@ -4,6 +4,7 @@ model:
   dataset_name: DDR
   img_size: 1024
   data_augment: True
+  DP: False
 
   optim:
     type: "SGD"
@@ -12,9 +13,9 @@ model:
     weight_decay: 0.0005
 
   lr_schedule:
-#    mode: "min"
-#    factor: 0.1
-#    patience: 10
+    #    mode: "min"
+    #    factor: 0.1
+    #    patience: 10
     min_lr: 0.0001
     t_max: 5000
 
@@ -66,9 +67,9 @@ server:
       num: 500
       metric: "mIoU"
 
-#  local_eval:
-#    # {type : global ep interval to eval}
-#    test: 250
+  #  local_eval:
+  #    # {type : global ep interval to eval}
+  #    test: 250
 
   tolerate:
     test:

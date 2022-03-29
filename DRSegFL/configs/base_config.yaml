@@ -1,9 +1,10 @@
 #model
 model:
   model_name: res_unet
-  dataset_name: DDR
-  img_size: 1024
-  data_augment: True
+  dataset_name: ISIC
+  img_size: 256
+  data_augment: False
+  DP: True
 
   optim:
     type: "SGD"
@@ -12,33 +13,27 @@ model:
     weight_decay: 0.0005
 
   lr_schedule:
-#    mode: "min"
-#    factor: 0.1
-#    patience: 10
+    #    mode: "min"
+    #    factor: 0.1
+    #    patience: 10
     min_lr: 0.0001
-    t_max: 5000
+    t_max: 200
 
   dataset_dir:
-    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/crop_resize"
-    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/test/crop_resize"
-  num_workers: 4
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train"
+    val: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/val"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/test"
+  num_workers: 1
 
   num_channels: 3
-  num_classes: 5
+  num_classes: 2
   classes:
     - "bg"
-    - "EX"
-    - "HE"
-    - "MA"
-    - "SE"
-
-  slide_inference:
-    slide_crop_size: 224
-    slide_stride: 112
+    - "lesions"
 
 #client
 client:
-  gpu: "4"
+  gpu: "3"
 
   epoch: 1
   batch_size: 8
@@ -51,30 +46,34 @@ client:
 #server
 server:
   host: "127.0.0.1"
-  port: 9191
+  port: 9190
   gpu: "5"
 
-  epoch: 5000
+  epoch: 100
   num_clients: 1
 
   global_eval:
     # {type : metric to best}
     train:
-      num: 250
+      num: 4
+      metric: "mIoU"
+    val:
+      num: 4
       metric: "mIoU"
     test:
-      num: 250
+      num: 4
       metric: "mIoU"
 
-#  local_eval:
-#    # {type : global ep interval to eval}
-#    test: 250
+  #  local_eval:
+  #    # {type : global ep interval to eval}
+  #    val: 5
+  #    test: 5
 
   tolerate:
-    test:
-      num: 10
+    val:
+      num: 5
       metric: "mIoU"
 
   log_interval_iter: 10
-  save_ckpt_epoch: 250
+  save_ckpt_epoch: 10
   per_client_max_loadavg: 0.8

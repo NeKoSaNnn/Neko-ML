@@ -62,6 +62,8 @@ DIR_TBX_LOGFILE = "tbX_logfile_dir"
 GLOBAL_EVAL = "global_eval"
 LOCAL_EVAL = "local_eval"
 
+DP = "DP"
+
 FIN = "fin."
 
 ISIC = "ISIC"

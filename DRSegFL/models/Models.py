@@ -16,6 +16,7 @@ from torch.backends.cudnn import benchmark
 from torch.utils.data import DataLoader
 
 import segmentation_models_pytorch as smp
+from opacus import PrivacyEngine
 from DRSegFL import metrics, constants, inference
 from DRSegFL.datasets import ListDataset
 from DRSegFL.logger import Logger
@@ -34,6 +35,7 @@ class BaseModel(object):
         self.num_channels = self.config[constants.NUM_CHANNELS]
         self.dataset_name = self.config[constants.NAME_DATASET]
         self.classes = self.config[constants.CLASSES]
+        self.DP = self.config[constants.DP] if constants.DP in self.config else False
         if constants.SLIDE_INFERENCE in self.config:
             self.is_slide_inference = True
             self.slide_crop_size = self.config[constants.SLIDE_INFERENCE][constants.SLIDE_CROP_SIZE]
@@ -76,6 +78,7 @@ class BaseModel(object):
 
         if only_init_weights:
             self.net_init(device=torch.device("cpu"))
+            self.net = PrivacyEngine.get_compatible_module(self.net) if self.DP else self.net
         else:
             if torch.cuda.is_available():
                 self.device = torch.device("cuda")
@@ -85,6 +88,10 @@ class BaseModel(object):
 
             self.net_init(device=self.device)
             self.loss_init()
+
+            self.logger.info("Model:{} Construct and Init Completed.".format(self.config[constants.NAME_MODEL]))
+
+            self.net = PrivacyEngine.get_compatible_module(self.net) if self.DP else self.net
 
             if "optim" in self.config.keys() and self.config["optim"] is not None:
                 if self.config["optim"]["type"] == "SGD":
@@ -104,7 +111,16 @@ class BaseModel(object):
                 #                                                            patience=int(self.config["lr_schedule"]["patience"]),
                 #                                                            min_lr=float(self.config["lr_schedule"]["min_lr"]))
 
-            self.logger.info("Model:{} Construct and Init Completed.".format(self.config[constants.NAME_MODEL]))
+            # Difference Privacy
+            if self.DP:
+                privacy_engine = PrivacyEngine(accountant="rdp")
+                self.net, self.optimizer, self.train_dataloader = privacy_engine.make_private(
+                    module=self.net,
+                    optimizer=self.optimizer,
+                    data_loader=self.train_dataloader,
+                    noise_multiplier=1.1,
+                    max_grad_norm=1.0,
+                    clipping="flat")
 
     def __del__(self):
         self.optimizer = None
@@ -125,15 +141,15 @@ class BaseModel(object):
         if isinstance(weights, str) and (".pt" in weights or ".pth" in weights):
             # .pt/.pth file
             weights = torch.load(weights, map_location=self.device)
-            self.net.load_state_dict(weights)
+            self.net.load_state_dict(weights, strict=False)
         else:
             # state_dict file
             if is_cpu:
                 self.net = self.net.to("cpu")
-                self.net.load_state_dict(copy.deepcopy(weights))
+                self.net.load_state_dict(copy.deepcopy(weights), strict=False)
                 self.net = self.net.to(self.device)
             else:
-                self.net.load_state_dict(copy.deepcopy(weights))
+                self.net.load_state_dict(copy.deepcopy(weights), strict=False)
 
     def loss_init(self):
         self.loss_f = []
