@@ -217,12 +217,12 @@ class FederatedClient(object):
             self.logger.info("Local Update Start ...")
 
             # first global epoch
-            if now_global_epoch == 1 or "now_weights" in data:
-                self.logger.info("Receive Init Weights ...")
+            if "now_weights" in data:
+                self.logger.info("Receive Weights ...")
                 now_weights = utils.pickle2obj(data["now_weights"])
                 utils.obj2pickle(now_weights, self.local_model.weights_path)  # init local weights
                 self.local_model.set_weights(now_weights, is_cpu=True)
-                self.logger.info("Init Local Weights Completed")
+                self.logger.info("Update Weights Completed")
 
             # train local_epoch
             self.logger.info("GlobalEpoch:{} -- Local Train Start ...".format(now_global_epoch))

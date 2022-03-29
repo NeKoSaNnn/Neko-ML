@@ -238,6 +238,7 @@ class FederatedServer(object):
         self.wait_time = 0
         self.fin = False
         self.ready_client_sids = set()
+        self.running_client_sids = set()
         self.fin_client_sids = set()
         self.client_resource = dict()
         self.client_update_datas = dict()  # now global epoch , all client-update datas
@@ -264,13 +265,14 @@ class FederatedServer(object):
             for sid in self.ready_client_sids:
                 emit("fin", {constants.FIN: self.fin, "sid": sid}, room=sid)
         else:
-            choice_client_sids = np.random.choice(list(self.ready_client_sids), self.NUM_CLIENTS, replace=False)
-            for sid in choice_client_sids:
+            self.running_client_sids = set(np.random.choice(list(self.ready_client_sids), self.NUM_CLIENTS, replace=False))
+            for sid in self.running_client_sids:
                 emit("c_check_resource", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
                 time.sleep(sleep_time)
                 emit("client_check_resource", {"now_global_epoch": self.global_model.now_global_epoch}, room=sid)
 
     def halfway_client_check_resource(self, sid):
+        self.running_client_sids.add(sid)
         emit("c_check_resource", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
         time.sleep(sleep_time)
         emit("client_check_resource", {"now_global_epoch": self.global_model.now_global_epoch, "halfway": True}, room=sid)
@@ -280,12 +282,9 @@ class FederatedServer(object):
         self.client_update_datas = dict()
         self.logger.info("GlobalEpoch : {}".format(self.global_model.now_global_epoch))
         self.logger.info("Clients-sids : [{}]".format(",".join(runnable_client_sids)))
-        now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)
 
-        emit_data = {"now_global_epoch": self.global_model.now_global_epoch}
-        # first global epoch
-        if self.global_model.now_global_epoch == 1:
-            emit_data["now_weights"] = now_weights_pickle
+        now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)
+        emit_data = {"now_global_epoch": self.global_model.now_global_epoch, "now_weights": now_weights_pickle}
         if self.LOCAL_EVAL:
             if constants.TRAIN in self.LOCAL_EVAL:
                 emit_data[constants.TRAIN] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.TRAIN] == 0
@@ -304,9 +303,7 @@ class FederatedServer(object):
         self.logger.info("Clients-sids : [{}]".format(runnable_client_sid))
 
         now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)
-
         emit_data = {"now_global_epoch": self.global_model.now_global_epoch, "now_weights": now_weights_pickle}
-
         if self.LOCAL_EVAL:
             if constants.TRAIN in self.LOCAL_EVAL:
                 emit_data[constants.TRAIN] = self.global_model.now_global_epoch % self.LOCAL_EVAL[constants.TRAIN] == 0
@@ -373,6 +370,8 @@ class FederatedServer(object):
             self.logger.info("[{}] Close Connect.".format(sid))
             if sid in self.ready_client_sids:
                 self.ready_client_sids.remove(sid)
+            if sid in self.running_client_sids:
+                self.running_client_sids.remove(sid)
             if sid in self.client_update_datas.keys():
                 self.client_update_datas.pop(sid)
             if sid in self.client_eval_datas.keys():
@@ -482,58 +481,63 @@ class FederatedServer(object):
             time.sleep(sleep_time)
 
             if self.global_model.now_global_epoch == data["now_global_epoch"]:
-                data["now_weights"] = copy.deepcopy(utils.pickle2obj(data["now_weights"]))
+                # data["now_weights"] = copy.deepcopy(utils.pickle2obj(data["now_weights"]))
                 self.client_update_datas[sid] = data
                 # all clients upload complete
-                if self.NUM_CLIENTS == len(self.client_update_datas.keys()):
-                    emit("s_train_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
-                    time.sleep(sleep_time)
-                    receive_data_keys = list(list(self.client_update_datas.values())[0].keys())
-
-                    self.global_model.update_global_weights(
-                        [client_data["now_weights"] for client_data in self.client_update_datas.values()],
-                        [client_data[constants.TRAIN_CONTRIB] for client_data in self.client_update_datas.values()])
-
-                    global_train_loss, _ = self.global_model.get_aggre_loss_acc(
-                        constants.TRAIN,
-                        [client_data[constants.TRAIN_LOSS] for client_data in self.client_update_datas.values()],
-                        None,
-                        [client_data[constants.TRAIN_CONTRIB] for client_data in self.client_update_datas.values()],
-                        False)
-
-                    self.logger.info(
-                        "Train -- GlobalEpoch:{} -- AvgLoss:{:.4f}".format(self.global_model.now_global_epoch, global_train_loss))
-                    self.tbX.add_scalar("train/global_loss", global_train_loss, self.global_model.now_global_epoch)
-
-                    if constants.TRAIN in receive_data_keys:
-                        self._local_eval(constants.TRAIN)
-
-                    if constants.VALIDATION in receive_data_keys:
-                        self._local_eval(constants.VALIDATION)
-
-                    if constants.TEST in receive_data_keys:
-                        self._local_eval(constants.TEST)
-
-                    now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)  # weights path
-                    emit_data = {"now_global_epoch": self.global_model.now_global_epoch,
-                                 "now_weights": now_weights_pickle}
-                    if constants.TRAIN in self.GLOBAL_EVAL:
-                        emit_data[constants.TRAIN] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.TRAIN][constants.NUM] == 0
-                    if constants.VALIDATION in self.GLOBAL_EVAL:
-                        emit_data[constants.VALIDATION] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.VALIDATION][
-                            constants.NUM] == 0
-                    if constants.TEST in self.GLOBAL_EVAL:
-                        emit_data[constants.TEST] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.TEST][constants.NUM] == 0
-
-                    emit("s_train_aggre_complete", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
-                    time.sleep(sleep_time)
-                    self.client_eval_datas = dict()  # empty eval datas for next eval epoch
-                    for sid in self.ready_client_sids:
-                        emit_data["sid"] = sid
-                        emit("c_eval", {"sid": sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
+                if len(self.client_update_datas.keys()) == len(self.running_client_sids):
+                    if len(self.running_client_sids) < self.NUM_CLIENTS <= len(self.ready_client_sids):
+                        self.clients_check_resource()
+                    if len(self.running_client_sids) == self.NUM_CLIENTS <= len(self.ready_client_sids):
+                        emit("s_train_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                         time.sleep(sleep_time)
-                        emit("eval_with_global_weights", emit_data, room=sid)
-                        self.logger.info("Server Send Federated Weights To Client-sid:[{}]".format(sid))
+                        receive_data_keys = list(list(self.client_update_datas.values())[0].keys())
+
+                        self.global_model.update_global_weights(
+                            [copy.deepcopy(utils.pickle2obj(client_data["now_weights"])) for client_data in self.client_update_datas.values()],
+                            [client_data[constants.TRAIN_CONTRIB] for client_data in self.client_update_datas.values()])
+
+                        global_train_loss, _ = self.global_model.get_aggre_loss_acc(
+                            constants.TRAIN,
+                            [client_data[constants.TRAIN_LOSS] for client_data in self.client_update_datas.values()],
+                            None,
+                            [client_data[constants.TRAIN_CONTRIB] for client_data in self.client_update_datas.values()],
+                            False)
+
+                        self.logger.info(
+                            "Train -- GlobalEpoch:{} -- AvgLoss:{:.4f}".format(self.global_model.now_global_epoch, global_train_loss))
+                        self.tbX.add_scalar("train/global_loss", global_train_loss, self.global_model.now_global_epoch)
+
+                        if constants.TRAIN in receive_data_keys:
+                            self._local_eval(constants.TRAIN)
+
+                        if constants.VALIDATION in receive_data_keys:
+                            self._local_eval(constants.VALIDATION)
+
+                        if constants.TEST in receive_data_keys:
+                            self._local_eval(constants.TEST)
+
+                        now_weights_pickle = utils.obj2pickle(self.global_model.global_weights, self.global_model.weights_path)  # weights path
+                        emit_data = {"now_global_epoch": self.global_model.now_global_epoch,
+                                     "now_weights": now_weights_pickle}
+                        if constants.TRAIN in self.GLOBAL_EVAL:
+                            emit_data[constants.TRAIN] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.TRAIN][
+                                constants.NUM] == 0
+                        if constants.VALIDATION in self.GLOBAL_EVAL:
+                            emit_data[constants.VALIDATION] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.VALIDATION][
+                                constants.NUM] == 0
+                        if constants.TEST in self.GLOBAL_EVAL:
+                            emit_data[constants.TEST] = self.global_model.now_global_epoch % self.GLOBAL_EVAL[constants.TEST][
+                                constants.NUM] == 0
+
+                        emit("s_train_aggre_complete", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
+                        time.sleep(sleep_time)
+                        self.client_eval_datas = dict()  # empty eval datas for next eval epoch
+                        for sid in self.running_client_sids:
+                            emit_data["sid"] = sid
+                            emit("c_eval", {"sid": sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
+                            time.sleep(sleep_time)
+                            emit("eval_with_global_weights", emit_data, room=sid)
+                            self.logger.info("Server Send Federated Weights To Client-sid:[{}]".format(sid))
 
         @self.socketio.on("train_process")
         def train_process_handle(data):
@@ -549,52 +553,55 @@ class FederatedServer(object):
             time.sleep(sleep_time)
 
             self.client_eval_datas[sid] = data
-            if len(self.client_eval_datas.keys()) == self.NUM_CLIENTS:
-                emit("s_eval_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
-                time.sleep(sleep_time)
-                global_eval_types = list(list(self.client_eval_datas.values())[0].keys())
-
-                if constants.TRAIN in global_eval_types:
-                    self._global_eval(constants.TRAIN)
-                    self.global_model.update_best(constants.TRAIN)
-                    tolerate_res = self.global_model.update_tolerate(constants.TRAIN)
-                    if isinstance(tolerate_res, bool):
-                        self.fin = tolerate_res
-
-                if constants.VALIDATION in global_eval_types:
-                    self._global_eval(constants.VALIDATION)
-                    self.global_model.update_best(constants.VALIDATION)
-                    tolerate_res = self.global_model.update_tolerate(constants.VALIDATION)
-                    if isinstance(tolerate_res, bool):
-                        self.fin = tolerate_res
-
-                if constants.TEST in global_eval_types:
-                    self._global_eval(constants.TEST)
-                    self.global_model.update_best(constants.TEST)
-                    tolerate_res = self.global_model.update_tolerate(constants.TEST)
-                    if isinstance(tolerate_res, bool):
-                        self.fin = tolerate_res
-
-                self.global_model.save_ckpt(self.SAVE_CKPT_EPOCH)
-
-                emit("s_eval_aggre_complete", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
-                time.sleep(sleep_time)
-
-                if self.global_model.now_global_epoch >= self.NUM_GLOBAL_EPOCH > 0:
-                    self.fin = True
-                    self.logger.info("Go to NUM_GLOBAL_EPOCH:{}".format(self.NUM_GLOBAL_EPOCH))
-
-                if not self.fin:
-                    # next global epoch
-                    self.logger.info("Start Next Global-Epoch Training ...")
-                else:
-                    emit("s_summary", broadcast=True, namespace="/ui")  # for ui
+            if len(self.client_eval_datas.keys()) == len(self.running_client_sids):
+                if len(self.running_client_sids) < self.NUM_CLIENTS <= len(self.ready_client_sids):
+                    self.clients_check_resource()
+                if len(self.running_client_sids) == self.NUM_CLIENTS <= len(self.ready_client_sids):
+                    emit("s_eval_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                     time.sleep(sleep_time)
-                    self.global_model.fin_summary(global_eval_types)
-                    emit("s_summary_complete", broadcast=True, namespace="/ui")  # for ui
+                    global_eval_types = list(list(self.client_eval_datas.values())[0].keys())
+
+                    if constants.TRAIN in global_eval_types:
+                        self._global_eval(constants.TRAIN)
+                        self.global_model.update_best(constants.TRAIN)
+                        tolerate_res = self.global_model.update_tolerate(constants.TRAIN)
+                        if isinstance(tolerate_res, bool):
+                            self.fin = tolerate_res
+
+                    if constants.VALIDATION in global_eval_types:
+                        self._global_eval(constants.VALIDATION)
+                        self.global_model.update_best(constants.VALIDATION)
+                        tolerate_res = self.global_model.update_tolerate(constants.VALIDATION)
+                        if isinstance(tolerate_res, bool):
+                            self.fin = tolerate_res
+
+                    if constants.TEST in global_eval_types:
+                        self._global_eval(constants.TEST)
+                        self.global_model.update_best(constants.TEST)
+                        tolerate_res = self.global_model.update_tolerate(constants.TEST)
+                        if isinstance(tolerate_res, bool):
+                            self.fin = tolerate_res
+
+                    self.global_model.save_ckpt(self.SAVE_CKPT_EPOCH)
+
+                    emit("s_eval_aggre_complete", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                     time.sleep(sleep_time)
 
-                self.clients_check_resource()
+                    if self.global_model.now_global_epoch >= self.NUM_GLOBAL_EPOCH > 0:
+                        self.fin = True
+                        self.logger.info("Go to NUM_GLOBAL_EPOCH:{}".format(self.NUM_GLOBAL_EPOCH))
+
+                    if not self.fin:
+                        # next global epoch
+                        self.logger.info("Start Next Global-Epoch Training ...")
+                    else:
+                        emit("s_summary", broadcast=True, namespace="/ui")  # for ui
+                        time.sleep(sleep_time)
+                        self.global_model.fin_summary(global_eval_types)
+                        emit("s_summary_complete", broadcast=True, namespace="/ui")  # for ui
+                        time.sleep(sleep_time)
+
+                    self.clients_check_resource()
 
         @self.socketio.on("eval_process")
         def eval_process_handle(data):
@@ -612,6 +619,8 @@ class FederatedServer(object):
             if sid in self.ready_client_sids:
                 self.ready_client_sids.remove(sid)
                 emit("c_fin", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
+            if sid in self.running_client_sids:
+                self.running_client_sids.remove(sid)
             if sid in self.client_update_datas.keys():
                 self.client_update_datas.pop(sid)
             if sid in self.client_eval_datas.keys():
