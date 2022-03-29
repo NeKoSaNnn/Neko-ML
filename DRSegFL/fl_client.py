@@ -155,6 +155,7 @@ class FederatedClient(object):
         @self.socketio.on("reconnect")
         def reconnect():
             self.logger.info("Re Connect")
+            self.wakeup()
 
         @self.socketio.on("re_heartbeat")
         def re_heartbeat():
