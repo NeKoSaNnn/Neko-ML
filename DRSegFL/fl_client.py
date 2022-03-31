@@ -4,6 +4,7 @@
 @author:mjx
 """
 import argparse
+import json
 import logging
 import os
 import os.path as osp
@@ -31,9 +32,10 @@ class LocalModel(object):
         self.local_epoch = self.config[constants.EPOCH]
         self.model = getattr(Models, self.config[constants.NAME_MODEL])(config, logger, only_init_weights=False, last_epoch=last_epoch)
         self.weights_path = self.config[constants.PATH_WEIGHTS]
+        self.DP = self.config[constants.DP] if constants.DP in self.config else False
 
-    def get_weights(self, to_cpu):
-        return self.model.get_weights(to_cpu)
+    def get_weights(self, to_cpu, DP):
+        return self.model.get_weights(to_cpu, DP)
 
     def auto_set_weights(self):
         weights = utils.pickle2obj(self.weights_path)
@@ -54,7 +56,7 @@ class LocalModel(object):
 
     def train(self, local_epoch, tbX=None, sio=None):
         losses = self.model.train(local_epoch, tbX, sio)
-        return self.get_weights(to_cpu=True), np.mean(losses)
+        return self.get_weights(to_cpu=True, DP=self.DP), np.mean(losses)
 
     def eval(self, eval_type, is_global_eval, sio=None):
         loss, acc = self.model.eval(eval_type, is_global_eval, sio)
@@ -305,6 +307,10 @@ if __name__ == "__main__":
     assert osp.exists(args.client_config_path), "{} not exist".format(args.client_config_path)
 
     try:
+        config = utils.load_json(args.client_config_path)
+        config[constants.PID] = os.getpid()
+        with open(args.client_config_path, "w+") as f:
+            json.dump(config, f, indent=4)
         client = FederatedClient(args.client_config_path, args.host, args.port)
         client.wakeup()
     except ConnectionError:

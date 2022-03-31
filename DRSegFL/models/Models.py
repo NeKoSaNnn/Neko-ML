@@ -78,7 +78,7 @@ class BaseModel(object):
 
         if only_init_weights:
             self.net_init(device=torch.device("cpu"))
-            self.net = PrivacyEngine.get_compatible_module(self.net) if self.DP else self.net
+            # self.net = PrivacyEngine.get_compatible_module(self.net) if self.DP else self.net
         else:
             if torch.cuda.is_available():
                 self.device = torch.device("cuda")
@@ -91,7 +91,7 @@ class BaseModel(object):
 
             self.logger.info("Model:{} Construct and Init Completed.".format(self.config[constants.NAME_MODEL]))
 
-            self.net = PrivacyEngine.get_compatible_module(self.net) if self.DP else self.net
+            # self.net = PrivacyEngine.get_compatible_module(self.net) if self.DP else self.net
 
             if "optim" in self.config.keys() and self.config["optim"] is not None:
                 if self.config["optim"]["type"] == "SGD":
@@ -116,15 +116,18 @@ class BaseModel(object):
                 #                                                            min_lr=float(self.config["lr_schedule"]["min_lr"]))
 
             # Difference Privacy
-            if self.DP:
-                privacy_engine = PrivacyEngine(accountant="rdp")
-                self.net, self.optimizer, self.train_dataloader = privacy_engine.make_private(
-                    module=self.net,
-                    optimizer=self.optimizer,
-                    data_loader=self.train_dataloader,
-                    noise_multiplier=1.1,
-                    max_grad_norm=1.0,
-                    clipping="flat")
+            # if self.DP:
+            #     max_per_sample_grad_norm = 1.0
+            #     privacy_engine = PrivacyEngine(accountant="gdp")
+            #     n_layers = len([(n, p) for n, p in self.net.named_parameters() if p.requires_grad])
+            #     max_grad_norm = [max_per_sample_grad_norm / np.sqrt(n_layers)] * n_layers
+            #     self.net, self.optimizer, self.train_dataloader = privacy_engine.make_private(
+            #         module=self.net,
+            #         optimizer=self.optimizer,
+            #         data_loader=self.train_dataloader,
+            #         noise_multiplier=1.1,
+            #         max_grad_norm=max_grad_norm,
+            #         clipping="per_layer")
 
     def __del__(self):
         self.optimizer = None
@@ -135,7 +138,13 @@ class BaseModel(object):
         del self.loss_f
         torch.cuda.empty_cache()
 
-    def get_weights(self, to_cpu=False):
+    def get_weights(self, to_cpu=False, DP=False):
+        if DP:
+            for name, param in self.net.named_parameters():
+                if param.requires_grad:
+                    noise = torch.normal(0, 1, param.shape, requires_grad=True).to(param.device)
+                    param = param + noise
+                    self.logger.debug("{}({},{}):add noise".format(name, param.shape, param.dtype))
         return copy.deepcopy(self.net).cpu().state_dict() if to_cpu else copy.deepcopy(self.net).state_dict()
 
     def get_opt_weights(self):

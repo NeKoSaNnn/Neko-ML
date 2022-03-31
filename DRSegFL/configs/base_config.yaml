@@ -4,7 +4,7 @@ model:
   dataset_name: ISIC
   img_size: 256
   data_augment: False
-  DP: False
+  DP: True
 
   optim:
     type: "SGD"
@@ -17,7 +17,7 @@ model:
     #    factor: 0.1
     #    patience: 10
     min_lr: 0.0001
-    t_max: 200
+    t_max: 100
 
   dataset_dir:
     train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/ISIC/train"
@@ -33,7 +33,7 @@ model:
 
 #client
 client:
-  gpu: "3"
+  gpu: "4"
 
   epoch: 1
   batch_size: 4
@@ -46,7 +46,7 @@ client:
 #server
 server:
   host: "127.0.0.1"
-  port: 9190
+  port: 9191
   gpu: "5"
 
   epoch: 100
@@ -75,5 +75,5 @@ server:
       metric: "mIoU"
 
   log_interval_iter: 10
-  save_ckpt_epoch: 40
+  save_ckpt_epoch: 10
   per_client_max_loadavg: 0.8

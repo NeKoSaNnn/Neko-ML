@@ -643,6 +643,10 @@ if __name__ == "__main__":
     assert osp.exists(args.server_config_path), "{} not exist".format(args.server_config_path)
 
     try:
+        config = utils.load_json(args.server_config_path)
+        config[constants.PID] = os.getpid()
+        with open(args.server_config_path, "w+") as f:
+            json.dump(config, f, indent=4)
         server = FederatedServer(args.server_config_path, args.host, args.port)
         server.start()
     except ConnectionError:
