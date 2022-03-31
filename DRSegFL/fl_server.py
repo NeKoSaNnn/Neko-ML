@@ -14,6 +14,7 @@ import time
 from typing import List
 
 import numpy as np
+import rsa
 from flask import Flask, request, render_template
 from flask_socketio import SocketIO, emit, disconnect
 from tensorboardX import SummaryWriter
@@ -22,7 +23,7 @@ root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
 now_dir_name = sys.path[0]  # ...DRSegFL/
 sys.path.append(root_dir_name)
 
-from DRSegFL import utils, constants, fed
+from DRSegFL import utils, constants, fed, endecrypt
 from DRSegFL.logger import Logger
 from DRSegFL.models.Models import Models
 
@@ -234,15 +235,16 @@ class FederatedServer(object):
         self.SAVE_CKPT_EPOCH = self.server_config["save_ckpt_epoch"] if "save_ckpt_epoch" in self.server_config.keys() else None
 
         self.global_model = GlobalModel(self.server_config, self.logger)
+        self.pubkey, self.privkey = rsa.newkeys(512)
 
         self.wait_time = 0
         self.fin = False
         self.ready_client_sids = set()
         self.running_client_sids = set()
-        self.fin_client_sids = set()
         self.client_resource = dict()
         self.client_update_datas = dict()  # now global epoch , all client-update datas
         self.client_eval_datas = dict()  # now global epoch , all client-eval datas
+        self.client_pubkeys = dict()
 
         self.register_handles()
 
@@ -254,6 +256,35 @@ class FederatedServer(object):
         def stats_page():
             return json.dumps(self.global_model.get_stats())
 
+    def rsaEncrypt(self, sid, data, dumps=True):
+        """
+        rsaEncrypt data
+        :param sid: the client context sid
+        :param data: the data will encrypt
+        :param dumps: default is True , whether data need to serialize before encrypt
+        :return:
+        """
+        if sid not in self.client_pubkeys or self.client_pubkeys[sid] is None:
+            retry = 10
+            while retry > 0:
+                emit("get_client_pubkey", broadcast=True)
+                time.sleep(3)
+                if sid in self.client_pubkeys and self.client_pubkeys[sid] is not None:
+                    break
+                retry -= 1
+        res_data = endecrypt.rsaEncrypt(self.client_pubkeys[sid], data, dumps)
+        return res_data
+
+    def rsaDecrypt(self, data, loads=True):
+        """
+        rsaDecrypt data
+        :param data: the data will decrypt
+        :param loads: default is True , whether decrypt data need to deserialize
+        :return:
+        """
+        res_data = endecrypt.rsaDecrypt(self.privkey, data, loads)
+        return res_data
+
     def start(self):
         self.logger.info("Server Start {}:{}".format(self.server_host, self.server_port))
         self.socketio.run(self.app, host=self.server_host, port=self.server_port)
@@ -263,19 +294,22 @@ class FederatedServer(object):
         self.client_resource = dict()
         if self.fin:
             for sid in self.ready_client_sids:
-                emit("fin", {constants.FIN: self.fin, "sid": sid}, room=sid)
+                emit_data = {constants.FIN: self.fin, "sid": sid}
+                emit("fin", self.rsaEncrypt(sid, emit_data), room=sid)
         else:
             self.running_client_sids = set(np.random.choice(list(self.ready_client_sids), self.NUM_CLIENTS, replace=False))
             for sid in self.running_client_sids:
                 emit("c_check_resource", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
                 time.sleep(sleep_time)
-                emit("client_check_resource", {"now_global_epoch": self.global_model.now_global_epoch}, room=sid)
+                emit_data = {"now_global_epoch": self.global_model.now_global_epoch}
+                emit("client_check_resource", self.rsaEncrypt(sid, emit_data), room=sid)
 
     def halfway_client_check_resource(self, sid):
         self.running_client_sids.add(sid)
         emit("c_check_resource", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
         time.sleep(sleep_time)
-        emit("client_check_resource", {"now_global_epoch": self.global_model.now_global_epoch, "halfway": True}, room=sid)
+        emit_data = {"now_global_epoch": self.global_model.now_global_epoch, "halfway": True}
+        emit("client_check_resource", self.rsaEncrypt(sid, emit_data), room=sid)
 
     def global_train_next_epoch(self, runnable_client_sids):
         self.global_model.now_global_epoch += 1
@@ -296,7 +330,7 @@ class FederatedServer(object):
         for sid in runnable_client_sids:
             emit_data["sid"] = sid
             emit("c_train", {"sid": sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
-            emit("local_update", emit_data, room=sid)
+            emit("local_update", self.rsaEncrypt(sid, emit_data), room=sid)
 
     def halfway_train(self, runnable_client_sid):
         self.logger.info("GlobalEpoch : {}".format(self.global_model.now_global_epoch))
@@ -314,7 +348,7 @@ class FederatedServer(object):
 
         emit_data["sid"] = runnable_client_sid
         emit("c_train", {"sid": runnable_client_sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
-        emit("local_update", emit_data, room=runnable_client_sid)
+        emit("local_update", self.rsaEncrypt(runnable_client_sid, emit_data), room=runnable_client_sid)
 
     def _local_eval(self, eval_type):
         assert eval_type in [constants.TRAIN, constants.VALIDATION, constants.TEST], "eval_type:{} error".format(eval_type)
@@ -397,11 +431,21 @@ class FederatedServer(object):
         def ui_error_handle(e):
             self.logger.error("ui:{}".format(e))
 
+        @self.socketio.on("get_server_pubkey")
+        def get_server_pubkey():
+            emit("server_pubkey", {"server_pubkey": self.pubkey})
+
+        @self.socketio.on("client_pubkey")
+        def client_pubkey(data):
+            self.client_pubkeys[request.sid] = data["client_pubkey"]
+
         @self.socketio.on("client_wakeup")
-        def client_wakeup_handle():
-            self.logger.info("[{}] Wake Up".format(request.sid))
-            emit("c_wakeup", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
-            emit("client_init", {"now_global_epoch": self.global_model.now_global_epoch})
+        def client_wakeup_handle(data):
+            sid = request.sid
+            self.client_pubkeys[sid] = data["client_pubkey"]
+            self.logger.info("[{}] Wake Up".format(sid))
+            emit("c_wakeup", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
+            emit("client_init", {"now_global_epoch": self.global_model.now_global_epoch, "server_pubkey": self.pubkey})
 
         @self.socketio.on("client_ready")
         def client_ready_handle():
@@ -429,6 +473,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_check_resource_complete")
         def client_check_resource_complete_handle(data):
+            data = self.rsaDecrypt(data)
             if data["now_global_epoch"] == self.global_model.now_global_epoch:
                 emit("c_check_resource_complete", {"sid": request.sid}, broadcast=True, namespace="/ui")  # for ui
                 time.sleep(sleep_time)
@@ -455,6 +500,7 @@ class FederatedServer(object):
 
         @self.socketio.on("halfway_client_check_resource_complete")
         def halfway_client_check_resource_complete_handle(data):
+            data = self.rsaDecrypt(data)
             if data["now_global_epoch"] == self.global_model.now_global_epoch:
                 sid = request.sid
                 emit("c_check_resource_complete", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
@@ -474,6 +520,7 @@ class FederatedServer(object):
 
         @self.socketio.on("client_update_complete")
         def client_update_complete_handle(data):
+            data = self.rsaDecrypt(data)
             sid = request.sid
             self.logger.debug("Received Client-sid:[{}] Update-Data:{} ".format(sid, data))
             emit("c_train_complete", {"sid": request.sid, "gep": self.global_model.now_global_epoch}, broadcast=True,
@@ -536,7 +583,7 @@ class FederatedServer(object):
                             emit_data["sid"] = sid
                             emit("c_eval", {"sid": sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
                             time.sleep(sleep_time)
-                            emit("eval_with_global_weights", emit_data, room=sid)
+                            emit("eval_with_global_weights", self.rsaEncrypt(sid, emit_data), room=sid)
                             self.logger.info("Server Send Federated Weights To Client-sid:[{}]".format(sid))
 
         @self.socketio.on("train_process")
@@ -547,6 +594,7 @@ class FederatedServer(object):
 
         @self.socketio.on("eval_with_global_weights_complete")
         def eval_with_global_weights_complete_handle(data):
+            data = self.rsaDecrypt(data)
             sid = request.sid
             self.logger.debug("Receive Client-sid:[{}] Eval Datas:{}".format(sid, data))
             emit("c_eval_complete", {"sid": request.sid, "gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
@@ -612,8 +660,8 @@ class FederatedServer(object):
 
         @self.socketio.on("client_fin")
         def handle_client_fin(data):
+            data = self.rsaDecrypt(data)
             sid = data["sid"]
-            self.fin_client_sids.add(sid)
             self.logger.info("Federated Learning Client-sid:[{}] Fin.".format(sid))
             disconnect(sid)
             if sid in self.ready_client_sids:

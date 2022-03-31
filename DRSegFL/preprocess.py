@@ -37,7 +37,6 @@ def ISIC_preprocess(img_path, target_path, img_size):
     ])
 
     pil_img, pil_target = pil_trans(pil_img, pil_target)
-
     tensor_img, tensor_target = tensor_trans(pil_img, pil_target)
 
     tensor_target[tensor_target > 0] = 1
@@ -53,14 +52,6 @@ def DDR_preprocess(img_path: str, target_path: str, img_size: int, is_train: boo
     :return: tensor_img [Channel,H,W] ; tensor_target [H,W]:values in [0,num_classes); pil_img ; pil_target
     """
 
-    # foreground crop
-    # fore_h, fore_w = utils.get_foreground_hw(img_path)
-    # pad_h, pad_w = max(0, (fore_w - fore_h) // 2), max(0, (fore_h - fore_w) // 2)
-    # trans = transforms.Compose([
-    #     transforms.CenterCrop((fore_h, fore_w)),
-    #     transforms.Pad((pad_w, pad_h)),
-    #     transforms.Resize(img_size, interpolation=transforms.InterpolationMode.BICUBIC)
-    # ])
     assert utils.is_img(target_path), "target must be img"
     pil_img = Image.open(img_path)
     pil_target = Image.open(target_path)
@@ -95,7 +86,6 @@ def DDR_OneLesion_preprocess(img_path: str, target_path: str, img_size: int, is_
     :param is_train: bool
     :return: tensor_img [Channel,H,W] ; tensor_target [H,W]:values in [0,num_classes); pil_img ; pil_target
     """
-
     assert utils.is_img(target_path), "target must be img"
     pil_img = Image.open(img_path)
     pil_target = Image.open(target_path)

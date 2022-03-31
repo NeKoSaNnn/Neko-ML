@@ -22,7 +22,7 @@ def kill(pid, logger):
         cmd = "taskkill /pid " + str(pid) + " /f"
         try:
             os.system(cmd)
-            logger.info("killed {}".format(pid))
+            logger.info("killed {} success".format(pid))
         except Exception as e:
             logger.error(e)
     elif os.name == "posix":
@@ -30,11 +30,11 @@ def kill(pid, logger):
         cmd = "kill -9" + str(pid)
         try:
             os.system(cmd)
-            logger.info("killed {}".format(pid))
+            logger.info("killed {} success".format(pid))
         except Exception as e:
             logger.error(e)
     else:
-        logger.error("Undefined os.name")
+        logger.warn("Undefined os.name")
 
 
 if __name__ == "__main__":
@@ -51,6 +51,6 @@ if __name__ == "__main__":
             pid = config[constants.PID]
             kill(pid, logger)
         else:
-            logger.info("config haven't run")
+            logger.warn("config haven't run")
     except Exception as e:
         logger.error(e)

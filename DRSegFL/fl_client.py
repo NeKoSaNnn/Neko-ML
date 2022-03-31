@@ -9,9 +9,11 @@ import logging
 import os
 import os.path as osp
 import sys
+import time
 from threading import Timer
 
 import numpy as np
+import rsa
 import socketio
 from tensorboardX import SummaryWriter
 
@@ -19,7 +21,7 @@ root_dir_name = osp.dirname(sys.path[0])  # ...Neko-ML/
 now_dir_name = sys.path[0]  # ...DRSegFL/
 sys.path.append(root_dir_name)
 
-from DRSegFL import utils, constants
+from DRSegFL import utils, constants, endecrypt
 from DRSegFL.logger import Logger
 from DRSegFL.models.Models import Models
 
@@ -103,14 +105,44 @@ class FederatedClient(object):
 
         # self.socketio = SocketIO(self.server_host, self.server_port, None, {"timeout": 36000})
         self.socketio = socketio.Client(logger=True, engineio_logger=True)
+        self.pubkey, self.privkey = rsa.newkeys(512)
+        self.server_pubkey = None
         self.register_handles()
         self.socketio.connect("ws://{}:{}".format(self.server_host, self.server_port))
 
     def wakeup(self):
         self.logger.info("Client Start {}:{}".format(self.server_host, self.server_port))
-        self.socketio.emit("client_wakeup")
+        self.socketio.emit("client_wakeup", {"client_pubkey": self.pubkey})
         # self.socketio.start_background_task(self.heartbeat_task)
         self.socketio.wait()
+
+    def rsaEncrypt(self, data, dumps=True):
+        """
+        rsaEncrypt data
+        :param data: the data will encrypt
+        :param dumps: default is True , whether data need to serialize before encrypt
+        :return:
+        """
+        if self.server_pubkey is None:
+            retry = 10
+            while retry > 0:
+                self.socketio.emit("get_server_pubkey")
+                time.sleep(3)
+                if self.server_pubkey is not None:
+                    break
+                retry -= 1
+        res_data = endecrypt.rsaEncrypt(self.server_pubkey, data, dumps)
+        return res_data
+
+    def rsaDecrypt(self, data, loads=True):
+        """
+        rsaDecrypt data
+        :param data: the data will decrypt
+        :param loads: default is True , whether decrypt data need to deserialize
+        :return:
+        """
+        res_data = endecrypt.rsaDecrypt(self.privkey, data, loads)
+        return res_data
 
     def heartbeat_task(self):
         self.socketio.emit("heartbeat")
@@ -163,12 +195,18 @@ class FederatedClient(object):
         def re_heartbeat():
             self.logger.debug("HeartBeat Complete. Keep Connecting")
 
+        @self.socketio.on("get_client_pubkey")
+        def get_client_pubkey():
+            self.socketio.emit("client_pubkey", {"client_pubkey": self.pubkey})
+
+        @self.socketio.on("server_pubkey")
+        def server_pubkey(data):
+            self.server_pubkey = data["server_pubkey"]
+
         @self.socketio.on("client_init")
         def client_init(data):
-            if data and "now_global_epoch" in data:
-                last_epoch = max((data["now_global_epoch"] - 1) * self.local_epoch - 1, -1)
-            else:
-                last_epoch = -1
+            last_epoch = max((data["now_global_epoch"] - 1) * self.local_epoch - 1, -1)
+            self.server_pubkey = data["server_pubkey"]
             self.logger.info("Init ...")
             self.local_model = LocalModel(self.client_config, self.logger, last_epoch=last_epoch)
             self.logger.info("Local Model Init Completed.")
@@ -177,7 +215,12 @@ class FederatedClient(object):
         @self.socketio.on("client_check_resource")
         def client_check_resource(*args):
             self.logger.info("Start Check Resource ...")
+
             data = args[0]
+            self.logger.debug("before decrypt data={}".format(data))
+            data = self.rsaDecrypt(data)
+            self.logger.debug("decrypt data={}".format(data))
+
             is_halfway = data["halfway"] if "halfway" in data else False
             now_global_epoch = data["now_global_epoch"]
             if self.ignore_loadavg:
@@ -195,27 +238,26 @@ class FederatedClient(object):
 
                 loadavg = loadavg_data["loadavg_15min"]
                 self.logger.info("Loadavg : {}".format(loadavg))
-
+            emit_data = {"now_global_epoch": now_global_epoch, "loadavg": loadavg}
             if is_halfway:
-                self.socketio.emit("halfway_client_check_resource_complete", {"now_global_epoch": now_global_epoch, "loadavg": loadavg})
+                self.socketio.emit("halfway_client_check_resource_complete", self.rsaEncrypt(emit_data))
             else:
-                self.socketio.emit("client_check_resource_complete", {"now_global_epoch": now_global_epoch, "loadavg": loadavg})
+                self.socketio.emit("client_check_resource_complete", self.rsaEncrypt(emit_data))
             self.logger.info("Check Resource Completed.")
 
         @self.socketio.on("local_update")
         def local_update(*args):
             self.logger.info("Local Update Receiving ...")
 
-            self.logger.debug("args={}".format(args))
-
             data = args[0]
+            self.logger.debug("before decrypt data={}".format(data))
+            data = self.rsaDecrypt(data)
+            self.logger.debug("decrypt data={}".format(data))
+
             sid = data["sid"]
-
-            self.logger.debug("receive_data={}".format(data))
-            self.logger.debug("sid=[{}]".format(sid))
-
             now_global_epoch = data["now_global_epoch"]
 
+            self.logger.debug("sid=[{}]".format(sid))
             self.logger.info("Local Update Start ...")
 
             # first global epoch
@@ -254,19 +296,21 @@ class FederatedClient(object):
 
             self.logger.info("Local Update Complete.")
             self.logger.info("Emit Local Update To Server ...")
-            self.socketio.emit("client_update_complete", emit_data)
+            self.socketio.emit("client_update_complete", self.rsaEncrypt(emit_data))
             self.logger.info("Emit Local Update Completed.")
 
         @self.socketio.on("eval_with_global_weights")
         def eval_with_global_weights(*args):
             self.logger.info("Receive Global Weights From Server ...")
+
             data = args[0]
+            self.logger.debug("before decrypt data={}".format(data))
+            data = self.rsaDecrypt(data)
+            self.logger.debug("decrypt data={}".format(data))
+
             sid = data["sid"]
-
-            self.logger.debug("receive_data={}".format(data))
-            self.logger.debug("sid=[{}]".format(sid))
-
             now_global_epoch = data["now_global_epoch"]
+            self.logger.debug("sid=[{}]".format(sid))
 
             global_weights = utils.pickle2obj(data["now_weights"])
             utils.obj2pickle(global_weights, self.local_model.weights_path)  # save global weights to local weights path
@@ -285,15 +329,20 @@ class FederatedClient(object):
             if constants.TEST in data and data[constants.TEST]:
                 self._global_eval(constants.TEST, emit_data, now_global_epoch, sid)
 
-            self.socketio.emit("eval_with_global_weights_complete", emit_data)
+            self.socketio.emit("eval_with_global_weights_complete", self.rsaEncrypt(emit_data))
 
         @self.socketio.on("fin")
         def fin(*args):
             data = args[0]
+            self.logger.debug("before decrypt data={}".format(data))
+            data = self.rsaDecrypt(data)
+            self.logger.debug("decrypt data={}".format(data))
+
             if data[constants.FIN]:
                 self.tbX.close()
                 self.logger.info("Federated Learning Client Fin.")
-                self.socketio.emit("client_fin", {"sid": data["sid"]})
+                emit_data = {"sid": data["sid"]}
+                self.socketio.emit("client_fin", self.rsaEncrypt(emit_data))
 
 
 if __name__ == "__main__":
