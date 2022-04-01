@@ -433,19 +433,23 @@ class FederatedServer(object):
 
         @self.socketio.on("get_server_pubkey")
         def get_server_pubkey():
-            emit("server_pubkey", {"server_pubkey": self.pubkey})
+            emit_data = {"server_pubkey": {"n": str(self.pubkey.n), "e": str(self.pubkey.e)}}
+            emit("server_pubkey", emit_data)
 
         @self.socketio.on("client_pubkey")
         def client_pubkey(data):
-            self.client_pubkeys[request.sid] = data["client_pubkey"]
+            sid = request.sid
+            self.client_pubkeys[sid] = rsa.PublicKey(int(data["client_pubkey"]["n"]), int(data["client_pubkey"]["e"]))
 
         @self.socketio.on("client_wakeup")
         def client_wakeup_handle(data):
             sid = request.sid
-            self.client_pubkeys[sid] = data["client_pubkey"]
+            self.client_pubkeys[sid] = rsa.PublicKey(int(data["client_pubkey"]["n"]), int(data["client_pubkey"]["e"]))
             self.logger.info("[{}] Wake Up".format(sid))
             emit("c_wakeup", {"sid": sid}, broadcast=True, namespace="/ui")  # for ui
-            emit("client_init", {"now_global_epoch": self.global_model.now_global_epoch, "server_pubkey": self.pubkey})
+            emit_data = {"now_global_epoch": self.global_model.now_global_epoch,
+                         "server_pubkey": {"n": str(self.pubkey.n), "e": str(self.pubkey.e)}}
+            emit("client_init", emit_data)
 
         @self.socketio.on("client_ready")
         def client_ready_handle():
@@ -677,6 +681,7 @@ class FederatedServer(object):
                 self.tbX.close()
                 self.logger.info("All Clients Fin. Federated Learning Server Fin.")
                 emit("s_fin", broadcast=True, namespace="/ui")  # for ui
+                time.sleep(5)
                 self.socketio.stop()
 
 

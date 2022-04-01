@@ -27,7 +27,7 @@ def kill(pid, logger):
             logger.error(e)
     elif os.name == "posix":
         # Linux
-        cmd = "kill -9" + str(pid)
+        cmd = "kill -9 " + str(pid)
         try:
             os.system(cmd)
             logger.info("killed {} success".format(pid))

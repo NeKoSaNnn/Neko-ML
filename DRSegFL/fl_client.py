@@ -112,7 +112,8 @@ class FederatedClient(object):
 
     def wakeup(self):
         self.logger.info("Client Start {}:{}".format(self.server_host, self.server_port))
-        self.socketio.emit("client_wakeup", {"client_pubkey": self.pubkey})
+        emit_data = {"client_pubkey": {"n": str(self.pubkey.n), "e": str(self.pubkey.e)}}
+        self.socketio.emit("client_wakeup", emit_data)
         # self.socketio.start_background_task(self.heartbeat_task)
         self.socketio.wait()
 
@@ -197,16 +198,17 @@ class FederatedClient(object):
 
         @self.socketio.on("get_client_pubkey")
         def get_client_pubkey():
-            self.socketio.emit("client_pubkey", {"client_pubkey": self.pubkey})
+            emit_data = {"client_pubkey": {"n": str(self.pubkey.n), "e": str(self.pubkey.e)}}
+            self.socketio.emit("client_pubkey", emit_data)
 
         @self.socketio.on("server_pubkey")
         def server_pubkey(data):
-            self.server_pubkey = data["server_pubkey"]
+            self.server_pubkey = rsa.PublicKey(int(data["server_pubkey"]["n"]), int(data["server_pubkey"]["e"]))
 
         @self.socketio.on("client_init")
         def client_init(data):
             last_epoch = max((data["now_global_epoch"] - 1) * self.local_epoch - 1, -1)
-            self.server_pubkey = data["server_pubkey"]
+            self.server_pubkey = rsa.PublicKey(int(data["server_pubkey"]["n"]), int(data["server_pubkey"]["e"]))
             self.logger.info("Init ...")
             self.local_model = LocalModel(self.client_config, self.logger, last_epoch=last_epoch)
             self.logger.info("Local Model Init Completed.")
