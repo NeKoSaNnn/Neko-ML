@@ -28,7 +28,7 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
     :param dataset_txt_path:
     :param dataset_type:
     """
-    is_augment = config[constants.MODEL]["data_augment"]
+    is_augment = config[constants.MODEL]["data_augment"] if "data_augment" in config[constants.MODEL] else False
     # ISIC
     if config[constants.MODEL][constants.NAME_DATASET] == constants.ISIC:
         img_dir = osp.join(dataset_dir, "image")

@@ -74,6 +74,5 @@ server:
       num: 5
       metric: "mIoU"
 
-  log_interval_iter: 10
   save_ckpt_epoch: 40
   per_client_max_loadavg: 0.8

@@ -4,7 +4,7 @@ model:
   dataset_name: DDR
   img_size: 1024
   data_augment: True
-  DP: True
+  DP: False
 
   optim:
     type: "SGD"
@@ -41,7 +41,7 @@ model:
 client:
   gpu: "4"
 
-  epoch: 1
+  epoch: 100
   batch_size: 8
   eval_batch_size: 1
 
@@ -55,16 +55,16 @@ server:
   port: 9191
   gpu: "5"
 
-  epoch: 5000
+  epoch: 50
   num_clients: 4
 
   global_eval:
     # {type : metric to best}
-    train:
-      num: 250
-      metric: "mIoU"
+#    train:
+#      num: 500
+#      metric: "mIoU"
     test:
-      num: 250
+      num: 5
       metric: "mIoU"
 
   #  local_eval:
@@ -76,6 +76,5 @@ server:
       num: 10
       metric: "mIoU"
 
-  log_interval_iter: 10
-  save_ckpt_epoch: 250
+  save_ckpt_epoch: 5
   per_client_max_loadavg: 0.8

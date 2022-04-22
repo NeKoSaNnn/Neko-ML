@@ -3,5 +3,6 @@
 cd ..
 
 read -p "logdir : " logdir
+read -p "port : " port
 
-tensorboard --logdir="${logdir}" --port=6006
+tensorboard --logdir="${logdir}" --port="${port}"
