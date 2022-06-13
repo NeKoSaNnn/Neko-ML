@@ -590,7 +590,7 @@ $(document).ready(function () {
                 update_node(all_nodes["server"]);
             }
             update_server_nodes_to(server_nodes_to, task_id);
-            update_edge(all_nodes["server"], all_edges[task_id], all_edges, lightblue);
+            update_edge(all_nodes["server"], all_nodes[task_id], all_edges, lightblue);
 
             // update_network(all_nodes, server_nodes_to, client_nodes_to, all_edges);
         });

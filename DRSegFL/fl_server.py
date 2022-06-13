@@ -529,7 +529,6 @@ class FederatedServer(object):
             self.logger.debug("Received Client-sid:[{}] Update-Data:{} ".format(sid, data))
             emit("c_train_complete", {"sid": request.sid, "gep": self.global_model.now_global_epoch}, broadcast=True,
                  namespace="/ui")  # for ui
-            time.sleep(sleep_time)
 
             if self.global_model.now_global_epoch == data["now_global_epoch"]:
                 # data["now_weights"] = copy.deepcopy(utils.pickle2obj(data["now_weights"]))
@@ -540,7 +539,6 @@ class FederatedServer(object):
                         self.clients_check_resource()
                     if len(self.running_client_sids) == self.NUM_CLIENTS <= len(self.ready_client_sids):
                         emit("s_train_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
-                        time.sleep(sleep_time)
                         receive_data_keys = list(list(self.client_update_datas.values())[0].keys())
 
                         self.global_model.update_global_weights(
@@ -610,7 +608,6 @@ class FederatedServer(object):
                     self.clients_check_resource()
                 if len(self.running_client_sids) == self.NUM_CLIENTS <= len(self.ready_client_sids):
                     emit("s_eval_aggre", {"gep": self.global_model.now_global_epoch}, broadcast=True, namespace="/ui")  # for ui
-                    time.sleep(sleep_time)
                     global_eval_types = list(list(self.client_eval_datas.values())[0].keys())
 
                     if constants.TRAIN in global_eval_types:
