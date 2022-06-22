@@ -112,7 +112,7 @@ def pickle2obj(pickle_or_filepath):
     return obj
 
 
-def cal_dataset_norm(dataset_dir: str, img_suffix: str, img_size: None):
+def cal_dataset_norm(dataset_dir: str, img_suffix: str, img_size):
     means, stdevs = [], []
     img_list = []
 

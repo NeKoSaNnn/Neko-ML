@@ -53,7 +53,7 @@ server:
   gpu: "5"
 
   epoch: 5000
-  num_clients: 2
+  num_clients: 4
 
   global_eval:
     # {type : metric to best}

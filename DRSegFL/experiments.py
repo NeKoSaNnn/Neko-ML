@@ -340,40 +340,40 @@ import torch.nn as nn
 #         print("{}_{}_label={}".format(lesion, _type, len(label_paths)))
 
 # val merge to test
-dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
+# dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
+# #
+# lesions = ["EX", "HE", "MA", "SE"]
+# _types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
 #
-lesions = ["EX", "HE", "MA", "SE"]
-_types = [constants.TRAIN, constants.VALIDATION, constants.TEST]
-
-test_dir = osp.join(dataset_dir, constants.TEST, "crop_resize")
-val_dir = osp.join(dataset_dir, constants.VALIDATION, "crop_resize")
-
-val_image_dir = osp.join(val_dir, "image")
-val_label_dir = osp.join(val_dir, "label")
-val_annotation_dir = osp.join(val_dir, "annotation")
-test_image_dir = osp.join(test_dir, "image")
-test_label_dir = osp.join(test_dir, "label")
-test_annotation_dir = osp.join(test_dir, "annotation")
-
-print(len(glob.glob(osp.join(test_image_dir, "*.jpg"))))
-print(len(glob.glob(osp.join(test_annotation_dir, "*.png"))))
-
-# for val_image in glob.glob(osp.join(val_image_dir, "*.jpg")):
-#     shutil.copy(val_image, test_image_dir)
-# for val_annotation in glob.glob(osp.join(val_annotation_dir, "*.png")):
-#     shutil.copy(val_annotation, test_annotation_dir)
-
-for lesion in lesions:
-    lesion_val_label_dir = osp.join(val_label_dir, lesion)
-    lesion_test_label_dir = osp.join(test_label_dir, lesion)
-
-    print(len(glob.glob(osp.join(lesion_test_label_dir, "*.tif"))))
-    # for val_label in glob.glob(osp.join(lesion_val_label_dir, "*.tif")):
-    #     shutil.copy(val_label, lesion_test_label_dir)
-    print(len(glob.glob(osp.join(lesion_test_label_dir, "*.tif"))))
-
-print(len(glob.glob(osp.join(test_image_dir, "*.jpg"))))
-print(len(glob.glob(osp.join(test_annotation_dir, "*.png"))))
+# test_dir = osp.join(dataset_dir, constants.TEST, "crop_resize")
+# val_dir = osp.join(dataset_dir, constants.VALIDATION, "crop_resize")
+#
+# val_image_dir = osp.join(val_dir, "image")
+# val_label_dir = osp.join(val_dir, "label")
+# val_annotation_dir = osp.join(val_dir, "annotation")
+# test_image_dir = osp.join(test_dir, "image")
+# test_label_dir = osp.join(test_dir, "label")
+# test_annotation_dir = osp.join(test_dir, "annotation")
+#
+# print(len(glob.glob(osp.join(test_image_dir, "*.jpg"))))
+# print(len(glob.glob(osp.join(test_annotation_dir, "*.png"))))
+#
+# # for val_image in glob.glob(osp.join(val_image_dir, "*.jpg")):
+# #     shutil.copy(val_image, test_image_dir)
+# # for val_annotation in glob.glob(osp.join(val_annotation_dir, "*.png")):
+# #     shutil.copy(val_annotation, test_annotation_dir)
+#
+# for lesion in lesions:
+#     lesion_val_label_dir = osp.join(val_label_dir, lesion)
+#     lesion_test_label_dir = osp.join(test_label_dir, lesion)
+#
+#     print(len(glob.glob(osp.join(lesion_test_label_dir, "*.tif"))))
+#     # for val_label in glob.glob(osp.join(lesion_val_label_dir, "*.tif")):
+#     #     shutil.copy(val_label, lesion_test_label_dir)
+#     print(len(glob.glob(osp.join(lesion_test_label_dir, "*.tif"))))
+#
+# print(len(glob.glob(osp.join(test_image_dir, "*.jpg"))))
+# print(len(glob.glob(osp.join(test_annotation_dir, "*.png"))))
 
 # dataset_dir = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation"
 #
@@ -469,3 +469,77 @@ print(len(glob.glob(osp.join(test_annotation_dir, "*.png"))))
 # size, _ = utils.getContours("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image/007-1889-100.jpg",
 #                             "./tmp2.jpg")
 # print(size)
+
+fgadr_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/FGARD"
+fgadr_img_dir = osp.join(fgadr_path, "images")
+img = sorted(glob.glob(osp.join(fgadr_img_dir, "*.png")))
+
+# for _lesion in ["HE", "EX", "SE"]:
+#     labels = sorted(glob.glob(osp.join(fgadr_path, _lesion, "backup", "*.png")))
+#     num_labels = len(labels)
+#     train_dir = osp.join(fgadr_path, _lesion, "train")
+#     test_dir = osp.join(fgadr_path, _lesion, "test")
+#     for i, label in enumerate(labels):
+#         if i < int(num_labels * 0.8):
+#             shutil.copy(label, train_dir)
+#         else:
+#             shutil.copy(label, test_dir)
+#     print("{}:{}".format(_lesion, num_labels))
+#     print("{}_train:{}".format(_lesion, len(os.listdir(train_dir))))
+#     print("{}_test:{}".format(_lesion, len(os.listdir(test_dir))))
+
+# for _lesion in ["HE", "EX", "SE"]:
+#     train_dir = osp.join(fgadr_path, _lesion, "train")
+#     test_dir = osp.join(fgadr_path, _lesion, "test")
+#     os.makedirs(osp.join(train_dir, "image"), exist_ok=True)
+#     os.makedirs(osp.join(train_dir, "label"), exist_ok=True)
+#     os.makedirs(osp.join(test_dir, "image"), exist_ok=True)
+#     os.makedirs(osp.join(test_dir, "label"), exist_ok=True)
+#     for label in glob.glob(osp.join(train_dir, "label", "*.png")):
+#         name = osp.basename(label)
+#         if osp.exists(osp.join(fgadr_img_dir, name)):
+#             shutil.copy(osp.join(fgadr_img_dir, name), osp.join(train_dir, "image"))
+#         else:
+#             print(osp.join(fgadr_img_dir, name))
+#     print(len(os.listdir(osp.join(train_dir, "image"))))
+#     print(len(os.listdir(osp.join(train_dir, "label"))))
+#     for label in glob.glob(osp.join(test_dir, "label", "*.png")):
+#         name = osp.basename(label)
+#         if osp.exists(osp.join(fgadr_img_dir, name)):
+#             shutil.copy(osp.join(fgadr_img_dir, name), osp.join(test_dir, "image"))
+#         else:
+#             print(osp.join(fgadr_img_dir, name))
+#     print(len(os.listdir(osp.join(test_dir, "image"))))
+#     print(len(os.listdir(osp.join(test_dir, "label"))))
+
+# utils.cal_dataset_norm("/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/FGARD/images", "png", 1024)
+
+# for _lesion in ["HE", "EX", "SE"]:
+#     for _type in ["train", "test"]:
+#         for label_path in glob.glob(osp.join(fgadr_path, _lesion, _type, "label", "*.png")):
+#             label = cv.imread(label_path, cv.IMREAD_GRAYSCALE)
+#             label[label > 0] = 1
+#             pil_label = Image.fromarray(label.astype(np.uint8), mode="P")
+#             color_map = imgviz.label_colormap()
+#             pil_label.putpalette(color_map)
+#             pil_label.save(label_path)
+
+
+for _lesion in ["HE", "EX", "SE"]:
+    for _type in ["train", "test"]:
+        resize_img_path = osp.join(fgadr_path, _lesion, "resize", _type, "image")
+        resize_label_path = osp.join(fgadr_path, _lesion, "resize", _type, "label")
+        os.makedirs(resize_img_path, exist_ok=True)
+        os.makedirs(resize_label_path, exist_ok=True)
+        for img_path in tqdm(glob.glob(osp.join(fgadr_path, _lesion, _type, "image", "*.png"))):
+            img = Image.open(img_path)
+            img = img.resize((1024, 1024), resample=Image.BILINEAR)
+            img.save(osp.join(resize_img_path, osp.basename(img_path)))
+        for label_path in tqdm(glob.glob(osp.join(fgadr_path, _lesion, _type, "label", "*.png"))):
+            label = Image.open(label_path)
+            label = label.resize((1024, 1024), resample=Image.BILINEAR)
+            label.save(osp.join(resize_label_path, osp.basename(label_path)))
+
+# img1 = cv.imread(list(HE)[222])
+# print(np.max(img1))
+# print(np.min(img1))

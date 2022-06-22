@@ -1,7 +1,7 @@
 #model
 model:
   model_name: res_unet
-  dataset_name: FGARD_HE
+  dataset_name: FGARD_EX
   img_size: 1024
   data_augment: False
   DP: False
@@ -20,15 +20,15 @@ model:
     t_max: 5000
 
   dataset_dir:
-    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/FGARD/HE/resize/train"
-    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/FGARD/HE/resize/test"
+    train: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/FGARD/EX/resize/train"
+    test: "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/FGARD/EX/resize/test"
   num_workers: 1
 
   num_channels: 3
   num_classes: 2
   classes:
     - "bg"
-    - "HE"
+    - "EX"
 
   slide_inference:
     slide_crop_size: 224
@@ -49,11 +49,11 @@ client:
 #server
 server:
   host: "127.0.0.1"
-  port: 9192
+  port: 9191
   gpu: "5"
 
   epoch: 5000
-  num_clients: 2
+  num_clients: 4
 
   global_eval:
     # {type : metric to best}

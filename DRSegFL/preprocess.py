@@ -111,6 +111,39 @@ def DDR_OneLesion_preprocess(img_path: str, target_path: str, img_size: int, is_
     return tensor_img, tensor_target, pil_img, pil_target
 
 
+def FGADR_OneLesion_preprocess(img_path: str, target_path: str, img_size: int, is_train: bool):
+    """
+    :param img_path:
+    :param target_path:
+    :param img_size:
+    :param is_train:
+    :return:
+    """
+    assert utils.is_img(target_path), "target must be img"
+    pil_img = Image.open(img_path)
+    pil_target = Image.open(target_path)
+    if is_train:
+        pil_trans = T.Compose([
+            # T.RandomResizedCrop(img_size),
+            T.RandomCrop(img_size),
+            T.RandomHorizontalFlip(),
+        ])
+    else:
+        pil_trans = T.Compose([
+            T.Resize(img_size)
+        ])
+
+    tensor_trans = T.Compose([
+        T.ToTensor(),
+        T.Normalize(mean=[0.4556, 0.2588, 0.1326], std=[0.2849, 0.1848, 0.1348]),
+    ])
+
+    pil_img, pil_target = pil_trans(pil_img, pil_target)
+    tensor_img, tensor_target = tensor_trans(pil_img, pil_target)
+    # tensor_target = tensor_target.unsqueeze(0)
+    return tensor_img, tensor_target, pil_img, pil_target
+
+
 if __name__ == "__main__":
     # image_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/image/007-3399-200.jpg"
     # target_path = "/home/maojingxin/workspace/Neko-ML/DRSegFL/datas/DDR_lesion_segmentation/train/annotation/007-3399-200.png"

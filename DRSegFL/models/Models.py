@@ -185,7 +185,8 @@ class BaseModel(object):
             # self.loss_f.append(smp.losses.DiceLoss(mode=smp.losses.constants.MULTICLASS_MODE, ignore_index=0))
             # self.loss_f.append(smp.losses.SoftCrossEntropyLoss(smooth_factor=0, ignore_index=0))
             # self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=class_weights))
-        elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_SE]:
+        elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_SE,
+                                   constants.FGARD_EX, constants.FGARD_HE, constants.FGARD_SE]:
             self.loss_weight = 1
             self.loss_f.append(FocalLoss(alpha=np.array([1.0, 3.0])))
             # self.loss_f.append(smp.losses.SoftBCEWithLogitsLoss(pos_weight=torch.FloatTensor([100.]).to(self.device)))

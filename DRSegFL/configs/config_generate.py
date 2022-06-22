@@ -72,6 +72,17 @@ def generate_dataset_txt(config, dataset_dir, dataset_txt_path, dataset_type):
             datasets.iid_dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)
         else:
             datasets.dataset_txt_generate(img_dir, "jpg", target_dir, "png", dataset_txt_path, is_augment)
+    elif config[constants.MODEL][constants.NAME_DATASET] in [constants.FGARD_EX, constants.FGARD_HE, constants.FGARD_SE]:
+        img_dir = osp.join(dataset_dir, "image")
+        target_dir = osp.join(dataset_dir, "label")
+
+        if is_augment and dataset_type == constants.TRAIN:
+            datasets.dataset_augment(img_dir, target_dir, "png", "png", dataset_type, force=False)
+
+        if isinstance(dataset_txt_path, list):
+            datasets.iid_dataset_txt_generate(img_dir, "png", target_dir, "png", dataset_txt_path, is_augment)
+        else:
+            datasets.dataset_txt_generate(img_dir, "png", target_dir, "png", dataset_txt_path, is_augment)
     else:
         raise ValueError(config[constants.MODEL][constants.NAME_DATASET])
 

@@ -60,7 +60,7 @@ class Predictor(object):
         self.net = self.model.net
         self.net.eval()
 
-    def batch_reference(self, predict_img_dir, ground_truth_dir, out_threshold=0.5, num=None):
+    def batch_reference(self, predict_img_dir, ground_truth_dir, out_threshold=0.5, num=None, img_suffix="jpg", gt_suffix="png"):
         now_time = utils.get_now_time()
         if constants.TRAIN in predict_img_dir:
             self.batch_save_dir = osp.join(self.predict_dir, self.now_weight_name, constants.TRAIN, "batch", now_time)
@@ -73,8 +73,10 @@ class Predictor(object):
 
         os.makedirs(self.batch_save_dir, exist_ok=True)
 
-        img_paths = sorted(glob.glob(osp.join(predict_img_dir, "*.jpg")))
-        gt_paths = sorted(glob.glob(osp.join(ground_truth_dir, "*.png")))
+        img_suffix = "jpg" if img_suffix is None else img_suffix
+        gt_suffix = "png" if gt_suffix is None else gt_suffix
+        img_paths = sorted(glob.glob(osp.join(predict_img_dir, "*.{}".format(img_suffix))))
+        gt_paths = sorted(glob.glob(osp.join(ground_truth_dir, "*.{}".format(gt_suffix))))
         assert len(img_paths) == len(gt_paths), "{}!={}".format(len(img_paths), len(gt_paths))
 
         _len = len(img_paths)
@@ -110,6 +112,9 @@ class Predictor(object):
         elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
             tensor_img, _, pil_img, pil_gt = preprocess.DDR_OneLesion_preprocess(predict_img_path, ground_truth_path, self.img_size,
                                                                                  is_train=False)
+        elif self.dataset_name in [constants.FGARD_EX, constants.FGARD_SE, constants.FGARD_HE]:
+            tensor_img, _, pil_img, pil_gt = preprocess.FGADR_OneLesion_preprocess(predict_img_path, ground_truth_path, self.img_size,
+                                                                                   is_train=False)
         else:
             raise AssertionError("no such dataset:{}".format(self.dataset_name))
         batch_img = tensor_img.unsqueeze(0)  # (1,Channel,H,W)
@@ -137,7 +142,8 @@ class Predictor(object):
         elif self.dataset_name == constants.DDR:
             utils.draw_predict(self.classes, pil_img, pil_gt, predict_mask, save_path, draw_gt_one_hot=True, ignore_index=0,
                                verbose=not is_batch)  # ignore bg
-        elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
+        elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE, constants.FGARD_HE,
+                                   constants.FGARD_SE, constants.FGARD_EX]:
             no_bg_classes = copy.deepcopy(self.classes)
             if "bg" in no_bg_classes:
                 no_bg_classes.remove("bg")  # ignore background
@@ -154,13 +160,17 @@ if __name__ == "__main__":
     is_batch = input("batch predict? (y/n)   ")
     if is_batch.lower() == "y":
         predict_img_dir = input("input predict_img_dir:").strip()
+        predict_img_suffix = input("input predict_img_suffix(default is jpg): ").strip()
         ground_truth_dir = input("input ground_truth_dir:").strip()
+        ground_truth_suffix = input("input ground_truth_suffix(default is png): ").strip()
+        predict_img_suffix = None if len(predict_img_suffix) == 0 else predict_img_suffix
+        ground_truth_suffix = None if len(ground_truth_suffix) == 0 else ground_truth_suffix
         is_all = input("predict all ? (y/n)   ")
         if is_all.lower() == "y":
-            predictor.batch_reference(predict_img_dir, ground_truth_dir)
+            predictor.batch_reference(predict_img_dir, ground_truth_dir, img_suffix=predict_img_suffix, gt_suffix=ground_truth_suffix)
         else:
             num = int(input("predict num:"))
-            predictor.batch_reference(predict_img_dir, ground_truth_dir, num=num)
+            predictor.batch_reference(predict_img_dir, ground_truth_dir, num=num, img_suffix=predict_img_suffix, gt_suffix=ground_truth_suffix)
         logger.info("predict over.")
         exit(0)
     else:

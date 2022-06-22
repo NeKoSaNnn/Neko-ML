@@ -197,6 +197,8 @@ class ListDataset(Dataset):
             return preprocess.DDR_preprocess(img_path, target_path, self.img_size, self.is_train)[:2]
         elif self.dataset_name in [constants.DDR_EX, constants.DDR_HE, constants.DDR_MA, constants.DDR_SE]:
             return preprocess.DDR_OneLesion_preprocess(img_path, target_path, self.img_size, self.is_train)[:2]
+        elif self.dataset_name in [constants.FGARD_SE, constants.FGARD_HE, constants.FGARD_EX]:
+            return preprocess.FGADR_OneLesion_preprocess(img_path, target_path, self.img_size, self.is_train)[:2]
 
     def __len__(self):
         return len(self.datas_and_targets_path)
